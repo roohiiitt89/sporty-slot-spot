@@ -1,14 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, X, User, CalendarDays, LogOut } from 'lucide-react';
+import { Menu, X, User, CalendarDays, LogOut, LayoutGrid } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 const Header: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const { user, signOut } = useAuth();
+  const { user, signOut, userRole } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -38,6 +38,8 @@ const Header: React.FC = () => {
     if (isMobileMenuOpen) setIsMobileMenuOpen(false);
   };
 
+  const isAdminUser = userRole === 'admin' || userRole === 'super_admin';
+
   return (
     <header 
       className={`fixed w-full z-50 transition-all duration-300 ${
@@ -65,6 +67,16 @@ const Header: React.FC = () => {
             <Link to="/sports" className={`font-medium transition-colors duration-300 ${
               isScrolled ? 'text-navy-dark hover:text-indigo' : 'text-white hover:text-indigo-light'
             }`}>Sports</Link>
+            
+            {/* Admin Dashboard Link - Only visible to admin and super_admin users */}
+            {isAdminUser && (
+              <Link to="/admin" className={`flex items-center font-medium transition-colors duration-300 ${
+                isScrolled ? 'text-navy-dark hover:text-indigo' : 'text-white hover:text-indigo-light'
+              }`}>
+                <LayoutGrid className="w-4 h-4 mr-1" />
+                Admin
+              </Link>
+            )}
             
             {/* Show different options based on authentication status */}
             {user ? (
@@ -146,6 +158,14 @@ const Header: React.FC = () => {
             <Link to="/" className="font-medium text-navy-dark hover:text-indigo py-2" onClick={toggleMobileMenu}>Home</Link>
             <Link to="/venues" className="font-medium text-navy-dark hover:text-indigo py-2" onClick={toggleMobileMenu}>Venues</Link>
             <Link to="/sports" className="font-medium text-navy-dark hover:text-indigo py-2" onClick={toggleMobileMenu}>Sports</Link>
+            
+            {/* Admin Dashboard Link in Mobile Menu - Only visible to admin users */}
+            {isAdminUser && (
+              <Link to="/admin" className="flex items-center font-medium text-navy-dark hover:text-indigo py-2" onClick={toggleMobileMenu}>
+                <LayoutGrid className="w-4 h-4 mr-1" />
+                Admin Dashboard
+              </Link>
+            )}
             
             {user ? (
               <>

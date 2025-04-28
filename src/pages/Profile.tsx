@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import { useAuth } from '@/context/AuthContext';
@@ -207,7 +206,6 @@ const Profile: React.FC = () => {
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
             <div className="md:flex">
-              {/* Sidebar */}
               <div className="md:w-1/4 bg-gray-50 p-6">
                 <div className="flex flex-col space-y-2">
                   <h2 className="text-xl font-bold text-gray-800 mb-4">Your Account</h2>
@@ -258,7 +256,6 @@ const Profile: React.FC = () => {
                 </div>
               </div>
               
-              {/* Main content */}
               <div className="md:w-3/4 p-6">
                 {activeTab === 'profile' && (
                   <div>
@@ -446,7 +443,7 @@ const Profile: React.FC = () => {
                                   
                                   <div className="bg-gray-50 px-3 py-2 rounded-md">
                                     <p className="text-xs text-gray-500">Price</p>
-                                    <p className="font-medium">${booking.total_price.toFixed(2)}</p>
+                                    <p className="font-medium">₹{booking.total_price.toFixed(2)}</p>
                                   </div>
                                 </div>
                               </div>
