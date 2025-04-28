@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
@@ -12,6 +11,7 @@ type BookingStatus = Database['public']['Enums']['booking_status'];
 
 interface BookingManagementProps {
   userRole: string | null;
+  adminVenues?: Array<{ venue_id: string }>; // Added adminVenues prop
 }
 
 interface Court {
@@ -19,6 +19,7 @@ interface Court {
   name: string;
   venue: {
     name: string;
+    id: string;
   };
   sport: {
     name: string;
@@ -54,7 +55,7 @@ const statusOptions: { value: BookingStatus; label: string; color: string }[] = 
   { value: 'completed', label: 'Completed', color: 'bg-blue-500' }
 ];
 
-const BookingManagement: React.FC<BookingManagementProps> = ({ userRole }) => {
+const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVenues = [] }) => {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -63,6 +64,7 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole }) => {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isBookingDetailOpen, setIsBookingDetailOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const isSuperAdmin = userRole === 'super_admin';
   
   useEffect(() => {
     fetchBookings();
@@ -71,7 +73,7 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole }) => {
   const fetchBookings = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('bookings')
         .select(`
           id, 
@@ -88,12 +90,34 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole }) => {
           court:court_id (
             id, 
             name,
-            venue:venue_id (name),
+            venue:venue_id (name, id),
             sport:sport_id (name)
           ),
           profile:user_id (full_name, phone, email)
         `)
         .order('booking_date', { ascending: false });
+      
+      if (userRole === 'admin' && adminVenues && adminVenues.length > 0) {
+        const venueIds = adminVenues.map(venue => venue.venue_id);
+        
+        const { data: courtData, error: courtError } = await supabase
+          .from('courts')
+          .select('id')
+          .in('venue_id', venueIds);
+          
+        if (courtError) throw courtError;
+        
+        if (courtData && courtData.length > 0) {
+          const courtIds = courtData.map(court => court.id);
+          query = query.in('court_id', courtIds);
+        } else {
+          setBookings([]);
+          setLoading(false);
+          return;
+        }
+      }
+      
+      const { data, error } = await query;
       
       if (error) {
         throw error;
@@ -166,7 +190,6 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole }) => {
   };
 
   const formatTime = (timeStr: string) => {
-    // Formats a time string like "14:00:00" to "2:00 PM"
     const [hours, minutes] = timeStr.split(':');
     const hour = parseInt(hours, 10);
     const ampm = hour >= 12 ? 'PM' : 'AM';
@@ -183,7 +206,6 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole }) => {
     );
   };
 
-  // Filter bookings based on search, status, and date filters
   const filteredBookings = bookings.filter(booking => {
     const matchesSearch = 
       (booking.guest_name?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
@@ -261,7 +283,6 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole }) => {
         </div>
       </div>
       
-      {/* Search and filters */}
       <div className="bg-card p-4 rounded-lg shadow-sm mb-6 border border-slate-dark/20">
         <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
           <div className="relative flex-grow">
@@ -333,7 +354,6 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole }) => {
         )}
       </div>
       
-      {/* Bookings table */}
       {loading ? (
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo"></div>
@@ -430,7 +450,6 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole }) => {
         </div>
       )}
       
-      {/* Booking Detail Modal */}
       {isBookingDetailOpen && selectedBooking && (
         <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
           <div className="bg-card text-card-foreground rounded-lg max-w-2xl w-full">

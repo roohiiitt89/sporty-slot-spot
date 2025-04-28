@@ -5,6 +5,7 @@ import { Plus, Edit, Trash2, CheckCircle, XCircle } from 'lucide-react';
 
 interface TemplateSlotManagementProps {
   userRole: string | null;
+  adminVenues?: Array<{ venue_id: string }>;
 }
 
 interface Venue {
@@ -36,7 +37,7 @@ interface TemplateSlot {
   price: string;
 }
 
-const TemplateSlotManagement: React.FC<TemplateSlotManagementProps> = ({ userRole }) => {
+const TemplateSlotManagement: React.FC<TemplateSlotManagementProps> = ({ userRole, adminVenues = [] }) => {
   const [venues, setVenues] = useState<Venue[]>([]);
   const [sports, setSports] = useState<Sport[]>([]);
   const [courts, setCourts] = useState<Court[]>([]);
@@ -60,6 +61,7 @@ const TemplateSlotManagement: React.FC<TemplateSlotManagementProps> = ({ userRol
     price: '0.00'
   });
   const [isEditing, setIsEditing] = useState(false);
+  const isSuperAdmin = userRole === 'super_admin';
 
   const daysOfWeek = [
     { value: 0, label: 'Sunday' },
@@ -74,7 +76,7 @@ const TemplateSlotManagement: React.FC<TemplateSlotManagementProps> = ({ userRol
   useEffect(() => {
     fetchVenues();
     fetchSports();
-  }, []);
+  }, [userRole, adminVenues]);
 
   useEffect(() => {
     if (selectedVenue && selectedSport) {
@@ -96,10 +98,16 @@ const TemplateSlotManagement: React.FC<TemplateSlotManagementProps> = ({ userRol
   const fetchVenues = async () => {
     setLoading(prev => ({ ...prev, venues: true }));
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('venues')
-        .select('id, name')
-        .order('name');
+        .select('id, name');
+      
+      if (userRole === 'admin' && adminVenues && adminVenues.length > 0) {
+        const venueIds = adminVenues.map(venue => venue.venue_id);
+        query = query.in('id', venueIds);
+      }
+      
+      const { data, error } = await query.order('name');
       
       if (error) throw error;
       
@@ -274,11 +282,32 @@ const TemplateSlotManagement: React.FC<TemplateSlotManagementProps> = ({ userRol
       return;
     }
     
+    if (userRole === 'admin' && adminVenues && currentSlot.court_id) {
+      const { data: courtData, error: courtError } = await supabase
+        .from('courts')
+        .select('venue_id')
+        .eq('id', currentSlot.court_id)
+        .single();
+        
+      if (courtError) throw courtError;
+      
+      if (courtData) {
+        const hasPermission = adminVenues.some(v => v.venue_id === courtData.venue_id);
+        if (!hasPermission) {
+          toast({
+            title: 'Permission denied',
+            description: 'You do not have permission to manage template slots for this court.',
+            variant: 'destructive',
+          });
+          return;
+        }
+      }
+    }
+    
     setLoading(prev => ({ ...prev, savingSlot: true }));
     
     try {
       if (isEditing && currentSlot.id) {
-        // Update existing template slot
         const { error } = await supabase
           .from('template_slots')
           .update({
@@ -297,7 +326,6 @@ const TemplateSlotManagement: React.FC<TemplateSlotManagementProps> = ({ userRol
           description: `The template slot has been updated successfully.`
         });
       } else {
-        // Create new template slot
         const { error } = await supabase
           .from('template_slots')
           .insert({
