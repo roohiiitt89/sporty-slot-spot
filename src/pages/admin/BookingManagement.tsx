@@ -225,7 +225,7 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole }) => {
         `${formatTime(booking.start_time)} - ${formatTime(booking.end_time)}`,
         name || 'Unknown',
         contact || 'None',
-        `$${booking.total_price.toFixed(2)}`,
+        `₹${booking.total_price.toFixed(2)}`,
         booking.status
       ];
     });
@@ -247,13 +247,13 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole }) => {
   };
 
   return (
-    <div>
+    <div className="bg-card rounded-lg shadow-md p-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-semibold">Booking Management</h2>
         <div className="flex items-center space-x-2">
           <button
             onClick={() => exportBookingsToCSV()}
-            className="px-4 py-2 bg-sport-gray-dark text-white rounded-md hover:bg-black transition-colors flex items-center gap-2"
+            className="px-4 py-2 bg-indigo text-white rounded-md hover:bg-indigo-dark transition-colors flex items-center gap-2"
           >
             <DownloadIcon size={16} />
             Export
@@ -262,7 +262,7 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole }) => {
       </div>
       
       {/* Search and filters */}
-      <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
+      <div className="bg-card p-4 rounded-lg shadow-sm mb-6 border border-slate-dark/20">
         <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
           <div className="relative flex-grow">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-sport-gray" size={18} />
@@ -271,7 +271,7 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole }) => {
               placeholder="Search bookings..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 border rounded-md w-full"
+              className="pl-10 pr-4 py-2 border rounded-md w-full bg-card text-card-foreground"
             />
           </div>
           
@@ -288,13 +288,13 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole }) => {
         {isFilterOpen && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 pt-4 border-t">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium mb-1">
                 Status
               </label>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as BookingStatus | '')}
-                className="w-full p-2 border rounded-md"
+                className="w-full p-2 border rounded-md bg-card text-card-foreground"
               >
                 <option value="">All Statuses</option>
                 {statusOptions.map(option => (
@@ -306,14 +306,14 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole }) => {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium mb-1">
                 Booking Date
               </label>
               <input
                 type="date"
                 value={dateFilter}
                 onChange={(e) => setDateFilter(e.target.value)}
-                className="w-full p-2 border rounded-md"
+                className="w-full p-2 border rounded-md bg-card text-card-foreground"
               />
             </div>
             
@@ -324,7 +324,7 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole }) => {
                   setDateFilter('');
                   setSearchTerm('');
                 }}
-                className="px-4 py-2 border text-sport-gray-dark rounded-md hover:bg-sport-gray-light transition-colors"
+                className="px-4 py-2 border text-card-foreground rounded-md hover:bg-sport-gray-light transition-colors"
               >
                 Clear Filters
               </button>
@@ -336,26 +336,26 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole }) => {
       {/* Bookings table */}
       {loading ? (
         <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-sport-green"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo"></div>
         </div>
       ) : filteredBookings.length === 0 ? (
-        <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <p className="text-gray-600">No bookings found matching your filters</p>
+        <div className="text-center py-12 bg-slate rounded-lg">
+          <p className="text-navy-light">No bookings found matching your filters</p>
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="min-w-full bg-white rounded-lg overflow-hidden">
-            <thead className="bg-gray-100">
+          <table className="min-w-full rounded-lg overflow-hidden">
+            <thead className="bg-slate">
               <tr>
-                <th className="py-3 px-4 text-left font-medium text-gray-600">Court</th>
-                <th className="py-3 px-4 text-left font-medium text-gray-600">Date & Time</th>
-                <th className="py-3 px-4 text-left font-medium text-gray-600">Customer</th>
-                <th className="py-3 px-4 text-left font-medium text-gray-600">Price</th>
-                <th className="py-3 px-4 text-left font-medium text-gray-600">Status</th>
-                <th className="py-3 px-4 text-right font-medium text-gray-600">Actions</th>
+                <th className="py-3 px-4 text-left font-medium">Court</th>
+                <th className="py-3 px-4 text-left font-medium">Date & Time</th>
+                <th className="py-3 px-4 text-left font-medium">Customer</th>
+                <th className="py-3 px-4 text-left font-medium">Price</th>
+                <th className="py-3 px-4 text-left font-medium">Status</th>
+                <th className="py-3 px-4 text-right font-medium">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-border">
               {filteredBookings.map(booking => {
                 const name = booking.user_id 
                   ? (booking.profile?.full_name || 'Unknown User') 
@@ -364,19 +364,19 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole }) => {
                 return (
                   <tr 
                     key={booking.id} 
-                    className="hover:bg-gray-50 cursor-pointer"
+                    className="hover:bg-slate-light cursor-pointer"
                     onClick={() => openBookingDetail(booking)}
                   >
                     <td className="py-3 px-4">
                       <div>
                         <p className="font-medium">{booking.court?.name || 'Unknown'}</p>
-                        <p className="text-xs text-sport-gray">{booking.court?.venue?.name || 'Unknown Venue'}</p>
+                        <p className="text-xs text-muted-foreground">{booking.court?.venue?.name || 'Unknown Venue'}</p>
                       </div>
                     </td>
                     <td className="py-3 px-4">
                       <div>
                         <p className="font-medium">{formatDate(booking.booking_date)}</p>
-                        <p className="text-xs text-sport-gray">
+                        <p className="text-xs text-muted-foreground">
                           {formatTime(booking.start_time)} - {formatTime(booking.end_time)}
                         </p>
                       </div>
@@ -384,14 +384,14 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole }) => {
                     <td className="py-3 px-4">
                       <div>
                         <p className="font-medium">{name}</p>
-                        <p className="text-xs text-sport-gray">
+                        <p className="text-xs text-muted-foreground">
                           {booking.user_id 
                             ? booking.profile?.email || 'No email' 
                             : booking.guest_phone || 'No phone'}
                         </p>
                       </div>
                     </td>
-                    <td className="py-3 px-4 font-medium">${booking.total_price.toFixed(2)}</td>
+                    <td className="py-3 px-4 font-medium">₹{booking.total_price.toFixed(2)}</td>
                     <td className="py-3 px-4">
                       {getStatusBadge(booking.status)}
                     </td>
@@ -432,13 +432,13 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole }) => {
       
       {/* Booking Detail Modal */}
       {isBookingDetailOpen && selectedBooking && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-2xl w-full">
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+          <div className="bg-card text-card-foreground rounded-lg max-w-2xl w-full">
             <div className="px-6 py-4 border-b flex justify-between items-center">
               <h3 className="text-xl font-semibold">Booking Details</h3>
               <button 
                 onClick={closeBookingDetail}
-                className="text-sport-gray-dark hover:text-sport-green transition-colors"
+                className="text-muted-foreground hover:text-indigo transition-colors"
               >
                 <XCircle size={24} />
               </button>
@@ -447,55 +447,55 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole }) => {
             <div className="px-6 py-4 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <h4 className="text-sm font-medium text-gray-500">Booking Reference</h4>
+                  <h4 className="text-sm font-medium text-muted-foreground">Booking Reference</h4>
                   <p className="font-mono">{selectedBooking.id}</p>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-gray-500">Status</h4>
+                  <h4 className="text-sm font-medium text-muted-foreground">Status</h4>
                   <div className="mt-1">{getStatusBadge(selectedBooking.status)}</div>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-gray-500">Court</h4>
+                  <h4 className="text-sm font-medium text-muted-foreground">Court</h4>
                   <p>{selectedBooking.court?.name || 'Unknown'}</p>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-gray-500">Venue</h4>
+                  <h4 className="text-sm font-medium text-muted-foreground">Venue</h4>
                   <p>{selectedBooking.court?.venue?.name || 'Unknown'}</p>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-gray-500">Sport</h4>
+                  <h4 className="text-sm font-medium text-muted-foreground">Sport</h4>
                   <p>{selectedBooking.court?.sport?.name || 'Unknown'}</p>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-gray-500">Date</h4>
+                  <h4 className="text-sm font-medium text-muted-foreground">Date</h4>
                   <p>{formatDate(selectedBooking.booking_date)}</p>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-gray-500">Time</h4>
+                  <h4 className="text-sm font-medium text-muted-foreground">Time</h4>
                   <p>{formatTime(selectedBooking.start_time)} - {formatTime(selectedBooking.end_time)}</p>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-gray-500">Price</h4>
-                  <p>${selectedBooking.total_price.toFixed(2)}</p>
+                  <h4 className="text-sm font-medium text-muted-foreground">Price</h4>
+                  <p>₹{selectedBooking.total_price.toFixed(2)}</p>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-gray-500">Booked On</h4>
+                  <h4 className="text-sm font-medium text-muted-foreground">Booked On</h4>
                   <p>{formatDate(selectedBooking.created_at)}</p>
                 </div>
               </div>
               
               <div className="border-t pt-4 mt-4">
-                <h4 className="text-sm font-medium text-gray-500 mb-2">Customer Information</h4>
+                <h4 className="text-sm font-medium text-muted-foreground mb-2">Customer Information</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <h5 className="text-xs text-gray-500">Name</h5>
+                    <h5 className="text-xs text-muted-foreground">Name</h5>
                     <p>{selectedBooking.user_id 
                       ? (selectedBooking.profile?.full_name || 'Unknown User') 
                       : (selectedBooking.guest_name || 'Guest')}
                     </p>
                   </div>
                   <div>
-                    <h5 className="text-xs text-gray-500">Contact</h5>
+                    <h5 className="text-xs text-muted-foreground">Contact</h5>
                     <p>{selectedBooking.user_id 
                       ? selectedBooking.profile?.email || 'No email'
                       : selectedBooking.guest_phone || 'No phone'}
@@ -503,7 +503,7 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole }) => {
                   </div>
                   {selectedBooking.user_id && selectedBooking.profile?.phone && (
                     <div>
-                      <h5 className="text-xs text-gray-500">Phone</h5>
+                      <h5 className="text-xs text-muted-foreground">Phone</h5>
                       <p>{selectedBooking.profile.phone}</p>
                     </div>
                   )}
@@ -511,7 +511,7 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole }) => {
               </div>
             </div>
             
-            <div className="px-6 py-4 border-t bg-gray-50 flex justify-end space-x-2">
+            <div className="px-6 py-4 border-t bg-slate flex justify-end space-x-2">
               {(selectedBooking.status === 'pending' || selectedBooking.status === 'confirmed') && (
                 <>
                   <button
@@ -535,7 +535,7 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole }) => {
               )}
               <button
                 onClick={closeBookingDetail}
-                className="px-4 py-2 border text-gray-700 rounded-md hover:bg-gray-100 transition-colors"
+                className="px-4 py-2 border text-card-foreground rounded-md hover:bg-slate-light transition-colors"
               >
                 Close
               </button>

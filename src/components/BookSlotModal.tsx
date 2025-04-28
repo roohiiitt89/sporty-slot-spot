@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
@@ -63,6 +64,18 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
   const [courtRate, setCourtRate] = useState<number>(0);
 
   useEffect(() => {
+    // Check if user is logged in, if not redirect to login
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to book a slot",
+        variant: "destructive",
+      });
+      onClose();
+      navigate('/login');
+      return;
+    }
+    
     fetchVenues();
     fetchSports();
     
@@ -362,12 +375,14 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       return;
     }
     
-    if (!name || !phone) {
+    // Check if user is authenticated
+    if (!user) {
       toast({
-        title: "Missing information",
-        description: "Please enter your name and phone number.",
+        title: "Authentication Required",
+        description: "Please log in to book a slot",
         variant: "destructive",
       });
+      navigate('/login');
       return;
     }
     
@@ -387,13 +402,13 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
         .from('bookings')
         .insert({
           court_id: selectedCourt,
-          user_id: user?.id || null,
+          user_id: user.id, // Always use logged-in user's ID
           booking_date: selectedDate,
           start_time: startTime,
           end_time: endTime,
           total_price: calculateTotalPrice(),
-          guest_name: user ? null : name,
-          guest_phone: user ? null : phone,
+          guest_name: null, // No guest bookings allowed
+          guest_phone: null, // No guest bookings allowed
           status: 'pending'
         })
         .select();
@@ -407,12 +422,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
         description: "You have successfully booked your slots.",
       });
       
-      if (user) {
-        navigate('/profile');
-      } else {
-        navigate('/');
-      }
-      
+      navigate('/profile');
       onClose();
     } catch (error: any) {
       console.error('Error creating booking:', error);
@@ -425,6 +435,11 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       setLoading(prev => ({ ...prev, booking: false }));
     }
   };
+
+  // If user is not logged in, return nothing
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="modal-bg" onClick={onClose}>
@@ -515,7 +530,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
               >
                 <option value="">Select a court</option>
                 {courts.map(court => (
-                  <option key={court.id} value={court.id}>{court.name} - ${court.hourly_rate}/hr</option>
+                  <option key={court.id} value={court.id}>{court.name}</option>
                 ))}
               </select>
               {loading.courts && <p className="mt-1 text-xs text-navy-light">Loading courts...</p>}
@@ -572,7 +587,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
                         onClick={() => handleSlotClick(slot)}
                       >
                         <div>{slotDisplay}</div>
-                        <div className="font-semibold">${parseFloat(slot.price).toFixed(2)}</div>
+                        <div className="font-semibold">₹{parseFloat(slot.price).toFixed(2)}</div>
                       </div>
                     );
                   })}
@@ -605,12 +620,12 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
                     <div className="flex flex-wrap gap-2">
                       {selectedSlots.sort().map(slot => (
                         <span key={slot} className="bg-indigo text-white px-2 py-1 rounded text-sm">
-                          {slot} - ${selectedSlotPrices[slot]?.toFixed(2)}
+                          {slot} - ₹{selectedSlotPrices[slot]?.toFixed(2)}
                         </span>
                       ))}
                     </div>
                     {selectedSlots.length > 0 && (
-                      <p className="mt-3 font-medium">Total Price: ${calculateTotalPrice().toFixed(2)}</p>
+                      <p className="mt-3 font-medium">Total Price: ₹{calculateTotalPrice().toFixed(2)}</p>
                     )}
                   </div>
                 )}
@@ -636,13 +651,13 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
                     <div className="flex flex-wrap gap-2 mt-1">
                       {selectedSlots.sort().map(slot => (
                         <span key={slot} className="bg-indigo text-white px-2 py-1 rounded text-sm">
-                          {slot} - ${selectedSlotPrices[slot]?.toFixed(2)}
+                          {slot} - ₹{selectedSlotPrices[slot]?.toFixed(2)}
                         </span>
                       ))}
                     </div>
                   </div>
                   
-                  <p className="mt-2 font-medium">Total Price: ${calculateTotalPrice().toFixed(2)}</p>
+                  <p className="mt-2 font-medium">Total Price: ₹{calculateTotalPrice().toFixed(2)}</p>
                 </div>
               </div>
             </div>
@@ -650,55 +665,12 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
             <div className="space-y-6">
               <h3 className="text-xl font-semibold text-navy-dark mb-6">Your Information</h3>
               
-              {user ? (
-                <div className="bg-slate rounded-md p-4 space-y-2">
-                  <p><span className="font-medium">Booking as:</span> {name || user.email}</p>
-                  <p><span className="font-medium">Account Email:</span> {user.email}</p>
-                  {phone && <p><span className="font-medium">Phone:</span> {phone}</p>}
-                  <p className="text-sm text-navy-light">You're signed in. Your booking will be linked to your account.</p>
-                </div>
-              ) : (
-                <>
-                  <div>
-                    <label className="block text-navy-dark mb-2 font-medium">Full Name</label>
-                    <input
-                      type="text"
-                      value={name}
-                      onChange={e => setName(e.target.value)}
-                      placeholder="Enter your full name"
-                      className="w-full p-3 border border-slate-dark rounded-md focus:outline-none focus:ring-2 focus:ring-indigo"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-navy-dark mb-2 font-medium">Phone Number</label>
-                    <input
-                      type="tel"
-                      value={phone}
-                      onChange={e => setPhone(e.target.value)}
-                      placeholder="Enter your phone number"
-                      className="w-full p-3 border border-slate-dark rounded-md focus:outline-none focus:ring-2 focus:ring-indigo"
-                    />
-                  </div>
-                  
-                  <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-                    <p className="text-sm text-yellow-800">
-                      <strong>Note:</strong> Creating an account allows you to track and manage your bookings.
-                    </p>
-                    <a 
-                      href="/register" 
-                      className="text-indigo hover:underline text-sm block mt-1"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        onClose();
-                        navigate('/register');
-                      }}
-                    >
-                      Create an account instead
-                    </a>
-                  </div>
-                </>
-              )}
+              <div className="bg-slate rounded-md p-4 space-y-2">
+                <p><span className="font-medium">Booking as:</span> {name || user.email}</p>
+                <p><span className="font-medium">Account Email:</span> {user.email}</p>
+                {phone && <p><span className="font-medium">Phone:</span> {phone}</p>}
+                <p className="text-sm text-navy-light">You're signed in. Your booking will be linked to your account.</p>
+              </div>
             </div>
           </div>
         )}
@@ -752,7 +724,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
           left: 0;
           right: 0;
           bottom: 0;
-          background-color: rgba(0, 0, 0, 0.6);
+          background-color: rgba(0, 0, 0, 0.7);
           display: flex;
           justify-content: center;
           align-items: center;
@@ -760,7 +732,8 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
           padding: 1rem;
         }
         .modal-content {
-          background: white;
+          background: var(--card, #ffffff);
+          color: var(--card-foreground, #000000);
           border-radius: 0.75rem;
           padding: 2rem;
           width: 100%;
@@ -771,7 +744,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
         .modal-header {
           font-size: 1.5rem;
           font-weight: 600;
-          color: #1E293B;
+          color: var(--foreground, #1E293B);
         }
         .animate-fade-in {
           animation: fadeIn 0.3s ease-out;

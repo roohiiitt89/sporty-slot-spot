@@ -66,21 +66,32 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				},
-				// Updated color scheme
+				// Updated color scheme with black and dark green
 				'navy': {
-					light: '#5A6B89',
-					DEFAULT: '#334155',
-					dark: '#1E293B'
+					light: '#2E5941', // Lighter green shade
+					DEFAULT: '#1E3B2C', // Medium green shade
+					dark: '#000000'    // Black
 				},
 				'indigo': {
-					light: '#818CF8',
-					DEFAULT: '#6366F1',
-					dark: '#4F46E5'
+					light: '#4CAF50', // Lighter green
+					DEFAULT: '#2E7D32', // Medium green
+					dark: '#1B5E20'  // Dark green
 				},
 				'slate': {
-					light: '#F8FAFC',
-					DEFAULT: '#F1F5F9',
-					dark: '#E2E8F0'
+					light: '#E8F5E9', // Very light green tint
+					DEFAULT: '#C8E6C9', // Light green tint
+					dark: '#81C784'   // Medium-light green
+				},
+				// Sport theme colors
+				'sport-green': {
+					light: '#4CAF50',  // Lighter green
+					DEFAULT: '#2E7D32', // Medium green
+					dark: '#1B5E20'     // Dark green
+				},
+				'sport-gray': {
+					light: '#F5F5F5',  // Very light gray
+					DEFAULT: '#E0E0E0', // Light gray
+					dark: '#121212'     // Very dark gray (almost black)
 				}
 			},
 			borderRadius: {
