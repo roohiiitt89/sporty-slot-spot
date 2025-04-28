@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Calendar, MapPin, Clock, User, ChevronRight, Activity, Star } from 'lucide-react';
 import Header from '../components/Header';
 import BookSlotModal from '../components/BookSlotModal';
@@ -37,6 +36,7 @@ const sportsQuotes = [
 ];
 
 const Index: React.FC = () => {
+  const navigate = useNavigate();
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
   const [activeQuoteIndex, setActiveQuoteIndex] = useState(0);
   const [visibleSections, setVisibleSections] = useState({
@@ -137,69 +137,9 @@ const Index: React.FC = () => {
     return () => observer.disconnect();
   }, []);
 
-  // Fallback venues data in case database is empty
-  const fallbackVenues = [
-    {
-      id: '1',
-      name: 'Urban Sports Center',
-      location: 'Downtown',
-      image_url: 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=1000',
-      rating: 4.8,
-    },
-    {
-      id: '2',
-      name: 'Green Field Complex',
-      location: 'West Side',
-      image_url: 'https://images.unsplash.com/photo-1526232636376-53d03f24f092?q=80&w=1000',
-      rating: 4.6,
-    },
-    {
-      id: '3',
-      name: 'Elite Training Center',
-      location: 'North District',
-      image_url: 'https://images.unsplash.com/photo-1478472160422-12f051d9800d?q=80&w=1000',
-      rating: 4.9,
-    },
-    {
-      id: '4',
-      name: 'Community Sports Hub',
-      location: 'East End',
-      image_url: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000',
-      rating: 4.7,
-    },
-  ];
-
-  // Fallback sports data in case database is empty
-  const fallbackSports = [
-    {
-      id: '1',
-      name: 'Basketball',
-      image_url: 'https://images.unsplash.com/photo-1518063319789-7217e6706b04?q=80&w=1000',
-      description: 'Indoor courts available',
-    },
-    {
-      id: '2',
-      name: 'Tennis',
-      image_url: 'https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?q=80&w=1000',
-      description: 'Professional courts with lighting',
-    },
-    {
-      id: '3',
-      name: 'Football',
-      image_url: 'https://images.unsplash.com/photo-1517466787929-bc90951d0974?q=80&w=1000',
-      description: 'Full-size pitches available',
-    },
-    {
-      id: '4',
-      name: 'Swimming',
-      image_url: 'https://images.unsplash.com/photo-1600965962351-9a42dd4deb86?q=80&w=1000',
-      description: 'Olympic-size pools',
-    },
-  ];
-
-  // Use real data if available, otherwise fallback data
-  const displayVenues = venues.length > 0 ? venues : fallbackVenues;
-  const displaySports = sports.length > 0 ? sports : fallbackSports;
+  const handleSportCardClick = (sportId: string) => {
+    navigate(`/venues?sport=${sportId}`);
+  };
 
   return (
     <div className="min-h-screen bg-card text-card-foreground">
@@ -260,10 +200,10 @@ const Index: React.FC = () => {
               <div className="flex justify-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo"></div>
               </div>
-            ) : (
+            ) : venues.length > 0 ? (
               <Carousel className="w-full">
                 <CarouselContent className="-ml-2 md:-ml-4">
-                  {displayVenues.map((venue, index) => (
+                  {venues.map((venue, index) => (
                     <CarouselItem key={venue.id} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/4">
                       <div 
                         className="venue-card group hover-3d"
@@ -271,14 +211,14 @@ const Index: React.FC = () => {
                       >
                         <div className="h-56 overflow-hidden relative">
                           <img 
-                            src={venue.image_url} 
+                            src={venue.image_url || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000'} 
                             alt={venue.name} 
                             className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-110"
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-0 group-hover:opacity-70 transition-opacity"></div>
                           <span className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center text-sm font-semibold text-navy-dark">
                             <Star className="h-4 w-4 text-yellow-500 fill-current mr-1" />
-                            {venue.rating.toFixed(1)}
+                            {venue.rating ? venue.rating.toFixed(1) : '4.5'}
                           </span>
                         </div>
                         <div className="p-4 bg-navy-light text-white relative">
@@ -292,10 +232,10 @@ const Index: React.FC = () => {
                             <span>{venue.location}</span>
                           </div>
                           <button 
-                            onClick={() => setIsBookModalOpen(true)} 
+                            onClick={() => navigate(`/venues/${venue.id}`)}
                             className="mt-4 w-full py-2 bg-indigo text-white rounded-md font-semibold hover:bg-indigo-dark transition-colors transform transition-transform group-hover:scale-105"
                           >
-                            Book Now
+                            View Details
                           </button>
                         </div>
                       </div>
@@ -307,6 +247,10 @@ const Index: React.FC = () => {
                   <CarouselNext className="relative inset-0 translate-y-0 bg-navy-light hover:bg-indigo hover:text-white text-white" />
                 </div>
               </Carousel>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-white text-lg">No venues available at the moment. Please check back later.</p>
+              </div>
             )}
           </div>
         </div>
@@ -333,25 +277,25 @@ const Index: React.FC = () => {
               <div className="flex justify-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo"></div>
               </div>
-            ) : (
+            ) : sports.length > 0 ? (
               <Carousel className="w-full">
                 <CarouselContent className="-ml-2 md:-ml-4">
-                  {displaySports.map((sport, index) => (
+                  {sports.map((sport, index) => (
                     <CarouselItem key={sport.id} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/4">
                       <div 
-                        className="sport-card group hover-3d"
+                        className="sport-card group hover-3d cursor-pointer"
                         style={{ animationDelay: `${0.1 * (index + 1)}s` }}
+                        onClick={() => handleSportCardClick(sport.id)}
                       >
                         <div className="h-56 overflow-hidden relative">
                           <img 
-                            src={sport.image_url} 
+                            src={sport.image_url || 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?q=80&w=1000'} 
                             alt={sport.name} 
                             className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-110"
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-0 group-hover:opacity-70 transition-opacity"></div>
                           <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                             <button 
-                              onClick={() => setIsBookModalOpen(true)} 
                               className="bg-indigo text-white px-6 py-2 rounded-md transform translate-y-4 group-hover:translate-y-0 transition-all duration-300"
                             >
                               Find Venues
@@ -362,7 +306,7 @@ const Index: React.FC = () => {
                           <h3 className="text-xl font-bold group-hover:text-indigo-light transition-colors">
                             {sport.name}
                           </h3>
-                          <p className="text-gray-300 mt-2">{sport.description}</p>
+                          <p className="text-gray-300 mt-2">{sport.description || 'Find venues for this sport'}</p>
                           <div className="mt-4 h-1 w-full bg-navy overflow-hidden">
                             <div className="h-full bg-indigo transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-500"></div>
                           </div>
@@ -376,6 +320,10 @@ const Index: React.FC = () => {
                   <CarouselNext className="relative inset-0 translate-y-0 bg-navy-light hover:bg-indigo hover:text-white text-white" />
                 </div>
               </Carousel>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-white text-lg">No sports available at the moment. Please check back later.</p>
+              </div>
             )}
           </div>
         </div>

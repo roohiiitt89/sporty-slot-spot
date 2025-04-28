@@ -9,6 +9,7 @@ import { RouteGuard } from "./components/RouteGuard";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Venues from "./pages/Venues";
+import VenueDetails from "./pages/VenueDetails";
 import Sports from "./pages/Sports";
 import Bookings from "./pages/Bookings";
 import Login from "./pages/Login";
@@ -48,6 +49,7 @@ const App = () => (
             {/* Semi-public routes - accessible to all but with auth-aware features */}
             <Route path="/" element={<Index />} />
             <Route path="/venues" element={<Venues />} />
+            <Route path="/venues/:id" element={<VenueDetails />} />
             <Route path="/sports" element={<Sports />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -143,6 +143,7 @@ export type Database = {
           description: string | null
           icon: string | null
           id: string
+          image_url: string | null
           is_active: boolean
           name: string
         }
@@ -151,6 +152,7 @@ export type Database = {
           description?: string | null
           icon?: string | null
           id?: string
+          image_url?: string | null
           is_active?: boolean
           name: string
         }
@@ -159,6 +161,7 @@ export type Database = {
           description?: string | null
           icon?: string | null
           id?: string
+          image_url?: string | null
           is_active?: boolean
           name?: string
         }
@@ -270,6 +273,7 @@ export type Database = {
           location: string
           name: string
           opening_hours: string | null
+          rating: number | null
           updated_at: string
         }
         Insert: {
@@ -283,6 +287,7 @@ export type Database = {
           location: string
           name: string
           opening_hours?: string | null
+          rating?: number | null
           updated_at?: string
         }
         Update: {
@@ -296,6 +301,7 @@ export type Database = {
           location?: string
           name?: string
           opening_hours?: string | null
+          rating?: number | null
           updated_at?: string
         }
         Relationships: []

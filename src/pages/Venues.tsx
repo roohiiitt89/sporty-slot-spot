@@ -1,102 +1,153 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MapPin, Star, Filter, Search } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Header from '../components/Header';
 import BookSlotModal from '../components/BookSlotModal';
+import { supabase } from '@/integrations/supabase/client';
 
-// Mock data (would come from API in production)
-const venuesData = [
-  {
-    id: 1,
-    name: 'Urban Sports Center',
-    location: 'Downtown',
-    description: 'Modern sports complex with state-of-the-art facilities',
-    image: 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=1000',
-    rating: 4.8,
-    facilities: ['Basketball', 'Tennis', 'Swimming', 'Gym'],
-    distance: '2.3 km'
-  },
-  {
-    id: 2,
-    name: 'Green Field Complex',
-    location: 'West Side',
-    description: 'Sprawling outdoor venues with multiple sports fields',
-    image: 'https://images.unsplash.com/photo-1526232636376-53d03f24f092?q=80&w=1000',
-    rating: 4.6,
-    facilities: ['Football', 'Cricket', 'Athletics'],
-    distance: '5.1 km'
-  },
-  {
-    id: 3,
-    name: 'Elite Training Center',
-    location: 'North District',
-    description: 'Professional training center with expert coaching staff',
-    image: 'https://images.unsplash.com/photo-1478472160422-12f051d9800d?q=80&w=1000',
-    rating: 4.9,
-    facilities: ['Tennis', 'Squash', 'Badminton'],
-    distance: '3.7 km'
-  },
-  {
-    id: 4,
-    name: 'Community Sports Hub',
-    location: 'East End',
-    description: 'Family-friendly sports center for all ages',
-    image: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000',
-    rating: 4.7,
-    facilities: ['Basketball', 'Volleyball', 'Table Tennis'],
-    distance: '1.9 km'
-  },
-  {
-    id: 5,
-    name: 'Riverside Sports Arena',
-    location: 'Waterfront District',
-    description: 'Beautiful venue with panoramic river views',
-    image: 'https://images.unsplash.com/photo-1577223625816-7546f13df25d?q=80&w=1000',
-    rating: 4.5,
-    facilities: ['Swimming', 'Yoga', 'Fitness Classes'],
-    distance: '6.2 km'
-  },
-  {
-    id: 6,
-    name: 'Central Stadium',
-    location: 'City Center',
-    description: 'Large stadium with multiple courts and pitches',
-    image: 'https://images.unsplash.com/photo-1577471488278-16eec37ffcc2?q=80&w=1000',
-    rating: 4.8,
-    facilities: ['Football', 'Athletics', 'Basketball'],
-    distance: '4.3 km'
-  },
-  {
-    id: 7,
-    name: 'Mountain View Club',
-    location: 'Northern Hills',
-    description: 'Exclusive sports club with breathtaking mountain views',
-    image: 'https://images.unsplash.com/photo-1526178613552-2b45c6c302f0?q=80&w=1000',
-    rating: 4.9,
-    facilities: ['Tennis', 'Golf', 'Swimming'],
-    distance: '8.5 km'
-  },
-  {
-    id: 8,
-    name: 'Youth Sports Complex',
-    location: 'University District',
-    description: 'Modern facilities focused on youth and student sports',
-    image: 'https://images.unsplash.com/photo-1594470117722-de4b9a02ebed?q=80&w=1000',
-    rating: 4.6,
-    facilities: ['Basketball', 'Volleyball', 'Badminton'],
-    distance: '3.1 km'
-  },
-];
+interface Venue {
+  id: string;
+  name: string;
+  location: string;
+  description: string;
+  image_url: string;
+  rating: number;
+  facilities?: string[];
+  distance?: string;
+}
 
-// Available sports for filtering
-const availableSports = ['Basketball', 'Tennis', 'Football', 'Swimming', 'Cricket', 'Volleyball', 'Badminton', 'Squash', 'Athletics', 'Gym', 'Yoga', 'Table Tennis', 'Golf'];
+interface Sport {
+  id: string;
+  name: string;
+}
 
 const Venues: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSports, setSelectedSports] = useState<string[]>([]);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [ratingFilter, setRatingFilter] = useState(0);
+  const [venues, setVenues] = useState<Venue[]>([]);
+  const [sports, setSports] = useState<Sport[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Parse URL query parameters
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const sportId = params.get('sport');
+    
+    if (sportId) {
+      setSelectedSports([sportId]);
+    }
+    
+    fetchVenues();
+    fetchSports();
+  }, [location.search]);
+
+  const fetchVenues = async () => {
+    try {
+      setLoading(true);
+      
+      // Get the sport filter from URL if it exists
+      const params = new URLSearchParams(location.search);
+      const sportId = params.get('sport');
+      
+      let query = supabase
+        .from('venues')
+        .select(`
+          id, 
+          name, 
+          location, 
+          description, 
+          image_url, 
+          rating
+        `)
+        .eq('is_active', true);
+      
+      // Apply sport filter if present
+      if (sportId) {
+        // We need to find venues that have courts for this sport
+        const { data: courtData, error: courtError } = await supabase
+          .from('courts')
+          .select('venue_id')
+          .eq('sport_id', sportId)
+          .eq('is_active', true);
+        
+        if (courtError) throw courtError;
+        
+        if (courtData && courtData.length > 0) {
+          const venueIds = courtData.map(court => court.venue_id);
+          query = query.in('id', venueIds);
+        } else {
+          // No courts for this sport
+          setVenues([]);
+          setLoading(false);
+          return;
+        }
+      }
+        
+      const { data, error } = await query;
+      
+      if (error) throw error;
+      
+      if (data) {
+        // Add distance attribute (mock data for now)
+        const venuesWithDistance = data.map(venue => ({
+          ...venue,
+          distance: `${(Math.random() * 10).toFixed(1)} km`
+        }));
+        
+        // Get court data to determine facilities (sports available)
+        for (const venue of venuesWithDistance) {
+          const { data: courtsData, error: courtsError } = await supabase
+            .from('courts')
+            .select(`
+              sports:sport_id (
+                id, 
+                name
+              )
+            `)
+            .eq('venue_id', venue.id)
+            .eq('is_active', true);
+            
+          if (!courtsError && courtsData) {
+            // Extract unique sports as facilities
+            const facilities = Array.from(
+              new Set(courtsData.map(court => court.sports?.name || ''))
+            ).filter(Boolean);
+            
+            venue.facilities = facilities as string[];
+          }
+        }
+        
+        setVenues(venuesWithDistance);
+      }
+    } catch (error) {
+      console.error('Error fetching venues:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchSports = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('sports')
+        .select('id, name')
+        .eq('is_active', true);
+        
+      if (error) throw error;
+      
+      if (data) {
+        setSports(data);
+      }
+    } catch (error) {
+      console.error('Error fetching sports:', error);
+    }
+  };
 
   const toggleSportFilter = (sport: string) => {
     if (selectedSports.includes(sport)) {
@@ -109,17 +160,39 @@ const Venues: React.FC = () => {
   const clearFilters = () => {
     setSelectedSports([]);
     setRatingFilter(0);
+    setSearchTerm('');
+    
+    // Also clear from URL
+    navigate('/venues');
   };
 
-  const filteredVenues = venuesData.filter(venue => {
+  const applyFilters = () => {
+    setIsFilterOpen(false);
+    
+    // If there's one sport selected, update URL
+    if (selectedSports.length === 1) {
+      navigate(`/venues?sport=${selectedSports[0]}`);
+    } else {
+      // For now, just close the filter panel
+      // In a real app, we might want to handle multiple sport filtering in the URL too
+      fetchVenues();
+    }
+  };
+
+  const filteredVenues = venues.filter(venue => {
     // Apply search term filter
     const matchesSearch = venue.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          venue.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         venue.description.toLowerCase().includes(searchTerm.toLowerCase());
+                         (venue.description && venue.description.toLowerCase().includes(searchTerm.toLowerCase()));
     
-    // Apply sports filter
+    // Apply sports filter (if not already filtered at the database level)
     const matchesSport = selectedSports.length === 0 || 
-                        venue.facilities.some(facility => selectedSports.includes(facility));
+                        (venue.facilities && venue.facilities.some(facility => 
+                          sports
+                            .filter(sport => selectedSports.includes(sport.id))
+                            .map(sport => sport.name)
+                            .includes(facility)
+                        ));
     
     // Apply rating filter
     const matchesRating = venue.rating >= ratingFilter;
@@ -167,17 +240,17 @@ const Venues: React.FC = () => {
                 <div className="mb-6">
                   <h3 className="text-lg font-semibold text-sport-gray-dark mb-3">Filter by Sport</h3>
                   <div className="flex flex-wrap gap-2">
-                    {availableSports.map(sport => (
+                    {sports.map(sport => (
                       <button
-                        key={sport}
-                        onClick={() => toggleSportFilter(sport)}
+                        key={sport.id}
+                        onClick={() => toggleSportFilter(sport.id)}
                         className={`px-3 py-1 rounded-full text-sm ${
-                          selectedSports.includes(sport)
+                          selectedSports.includes(sport.id)
                             ? 'bg-sport-green text-white'
                             : 'bg-gray-100 text-sport-gray-dark hover:bg-gray-200'
                         } transition-colors`}
                       >
-                        {sport}
+                        {sport.name}
                       </button>
                     ))}
                   </div>
@@ -210,7 +283,7 @@ const Venues: React.FC = () => {
                     Clear Filters
                   </button>
                   <button
-                    onClick={() => setIsFilterOpen(false)}
+                    onClick={applyFilters}
                     className="px-4 py-2 bg-sport-green text-white rounded-md hover:bg-sport-green-dark transition-colors"
                   >
                     Apply Filters
@@ -225,7 +298,9 @@ const Venues: React.FC = () => {
       {/* Venues Listing */}
       <div className="container mx-auto px-4 py-12">
         <div className="mb-6 flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-sport-gray-dark">{filteredVenues.length} Venues Found</h2>
+          <h2 className="text-2xl font-bold text-sport-gray-dark">
+            {loading ? 'Loading venues...' : `${filteredVenues.length} Venues Found`}
+          </h2>
           <div className="flex space-x-2">
             <button className="px-3 py-1 border border-sport-gray rounded-md text-sport-gray-dark hover:bg-sport-gray-light transition-colors">
               Sort by Distance
@@ -236,7 +311,11 @@ const Venues: React.FC = () => {
           </div>
         </div>
         
-        {filteredVenues.length === 0 ? (
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo"></div>
+          </div>
+        ) : filteredVenues.length === 0 ? (
           <div className="text-center py-16">
             <h3 className="text-2xl font-semibold text-sport-gray-dark mb-2">No venues found</h3>
             <p className="text-sport-gray mb-6">Try adjusting your filters or search term</p>
@@ -256,13 +335,13 @@ const Venues: React.FC = () => {
               >
                 <div className="h-48 relative overflow-hidden">
                   <img 
-                    src={venue.image} 
+                    src={venue.image_url || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000'} 
                     alt={venue.name} 
                     className="w-full h-full object-cover transform transition-transform duration-500 hover:scale-110"
                   />
                   <div className="absolute top-2 right-2 bg-white px-2 py-1 rounded-md shadow flex items-center">
                     <Star className="h-4 w-4 text-yellow-400 fill-current mr-1" />
-                    <span className="font-bold text-sport-gray-dark">{venue.rating}</span>
+                    <span className="font-bold text-sport-gray-dark">{venue.rating ? venue.rating.toFixed(1) : '4.5'}</span>
                   </div>
                 </div>
                 
@@ -279,12 +358,12 @@ const Venues: React.FC = () => {
                     <span>{venue.location}</span>
                   </div>
                   
-                  <p className="text-sport-gray-dark mb-4">{venue.description}</p>
+                  <p className="text-sport-gray-dark mb-4">{venue.description || 'No description available'}</p>
                   
                   <div className="mb-4">
                     <p className="text-sm font-medium text-sport-gray-dark mb-2">Facilities:</p>
                     <div className="flex flex-wrap gap-1">
-                      {venue.facilities.map(facility => (
+                      {venue.facilities && venue.facilities.map(facility => (
                         <span
                           key={facility}
                           className="text-xs bg-sport-gray-light text-sport-gray-dark px-2 py-1 rounded"
@@ -295,12 +374,20 @@ const Venues: React.FC = () => {
                     </div>
                   </div>
                   
-                  <button
-                    onClick={() => setIsBookModalOpen(true)}
-                    className="w-full py-2 bg-sport-green text-white rounded-md font-semibold hover:bg-sport-green-dark transition-colors"
-                  >
-                    Book Slot
-                  </button>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => navigate(`/venues/${venue.id}`)}
+                      className="py-2 border border-sport-green text-sport-green rounded-md font-semibold hover:bg-sport-green hover:text-white transition-colors"
+                    >
+                      View Details
+                    </button>
+                    <button
+                      onClick={() => setIsBookModalOpen(true)}
+                      className="py-2 bg-sport-green text-white rounded-md font-semibold hover:bg-sport-green-dark transition-colors"
+                    >
+                      Book Now
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
