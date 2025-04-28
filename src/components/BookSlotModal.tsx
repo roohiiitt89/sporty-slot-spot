@@ -35,6 +35,7 @@ interface TimeSlot {
   start_time: string;
   end_time: string;
   is_available: boolean;
+  price: string; // Added price field
 }
 
 const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId }) => {
@@ -48,6 +49,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
   const [selectedCourt, setSelectedCourt] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
+  const [selectedSlotPrices, setSelectedSlotPrices] = useState<Record<string, number>>({});
   const [availableTimeSlots, setAvailableTimeSlots] = useState<TimeSlot[]>([]);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -218,6 +220,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       
       setAvailableTimeSlots(data || []);
       setSelectedSlots([]); // Reset selected slots when availability changes
+      setSelectedSlotPrices({}); // Reset selected slot prices
     } catch (error) {
       console.error('Error fetching availability:', error);
       toast({
@@ -257,9 +260,15 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     if (!slot.is_available) return;
     
     const slotDisplay = `${formatTime(slot.start_time)} - ${formatTime(slot.end_time)}`;
+    const slotPrice = parseFloat(slot.price);
     
     if (selectedSlots.includes(slotDisplay)) {
       setSelectedSlots(selectedSlots.filter(s => s !== slotDisplay));
+      
+      // Remove from selected slot prices
+      const newSelectedSlotPrices = { ...selectedSlotPrices };
+      delete newSelectedSlotPrices[slotDisplay];
+      setSelectedSlotPrices(newSelectedSlotPrices);
     } else {
       // Check if adding this slot maintains continuity
       const updatedSlots = [...selectedSlots, slotDisplay];
@@ -293,32 +302,17 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       }
       
       setSelectedSlots(sortedSlots);
+      
+      // Add to selected slot prices
+      setSelectedSlotPrices({
+        ...selectedSlotPrices,
+        [slotDisplay]: slotPrice
+      });
     }
   };
 
   const calculateTotalPrice = () => {
-    if (selectedSlots.length === 0) return 0;
-    
-    // Calculate total hours by finding the difference between the first and last slot
-    const sortedSlots = [...selectedSlots].sort((a, b) => {
-      const startTimeA = convertTo24Hour(a.split(' - ')[0]);
-      const startTimeB = convertTo24Hour(b.split(' - ')[0]);
-      return startTimeA.localeCompare(startTimeB);
-    });
-    
-    const firstStart = convertTo24Hour(sortedSlots[0].split(' - ')[0]);
-    const lastEnd = convertTo24Hour(sortedSlots[sortedSlots.length - 1].split(' - ')[1]);
-    
-    // Parse hours and minutes
-    const [firstHour, firstMinute] = firstStart.split(':').map(n => parseInt(n));
-    const [lastHour, lastMinute] = lastEnd.split(':').map(n => parseInt(n));
-    
-    // Calculate duration in hours
-    const hoursDiff = lastHour - firstHour;
-    const minutesDiff = lastMinute - firstMinute;
-    const totalHours = hoursDiff + (minutesDiff / 60);
-    
-    return totalHours * courtRate;
+    return Object.values(selectedSlotPrices).reduce((total, price) => total + price, 0);
   };
 
   const handleNextStep = () => {
@@ -434,7 +428,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
           <h2 className="modal-header">Book Your Slot</h2>
           <button 
             onClick={onClose}
-            className="text-sport-gray-dark hover:text-sport-green transition-colors"
+            className="text-navy-dark hover:text-indigo transition-colors"
           >
             <X className="w-6 h-6" />
           </button>
@@ -444,23 +438,23 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
         <div className="flex justify-center mb-8">
           <div className="flex items-center">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-              currentStep === 1 ? 'bg-sport-green text-white' : 'bg-sport-gray-light text-sport-gray-dark'
+              currentStep === 1 ? 'bg-indigo text-white' : 'bg-slate-dark text-navy-dark'
             }`}>
               1
             </div>
-            <div className="w-16 h-1 bg-sport-gray-light">
-              <div className={`h-full ${currentStep > 1 ? 'bg-sport-green' : ''}`}></div>
+            <div className="w-16 h-1 bg-slate-dark">
+              <div className={`h-full ${currentStep > 1 ? 'bg-indigo' : ''}`}></div>
             </div>
             <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-              currentStep === 2 ? 'bg-sport-green text-white' : currentStep > 2 ? 'bg-sport-green-light text-white' : 'bg-sport-gray-light text-sport-gray-dark'
+              currentStep === 2 ? 'bg-indigo text-white' : currentStep > 2 ? 'bg-indigo-light text-white' : 'bg-slate-dark text-navy-dark'
             }`}>
               2
             </div>
-            <div className="w-16 h-1 bg-sport-gray-light">
-              <div className={`h-full ${currentStep > 2 ? 'bg-sport-green' : ''}`}></div>
+            <div className="w-16 h-1 bg-slate-dark">
+              <div className={`h-full ${currentStep > 2 ? 'bg-indigo' : ''}`}></div>
             </div>
             <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-              currentStep === 3 ? 'bg-sport-green text-white' : 'bg-sport-gray-light text-sport-gray-dark'
+              currentStep === 3 ? 'bg-indigo text-white' : 'bg-slate-dark text-navy-dark'
             }`}>
               3
             </div>
@@ -471,11 +465,11 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
         {currentStep === 1 && (
           <div className="space-y-6">
             <div>
-              <label className="block text-sport-gray-dark mb-2 font-medium">Select Venue</label>
+              <label className="block text-navy-dark mb-2 font-medium">Select Venue</label>
               <select
                 value={selectedVenue}
                 onChange={e => setSelectedVenue(e.target.value)}
-                className="w-full p-3 border border-sport-gray-light rounded-md focus:outline-none focus:ring-2 focus:ring-sport-green"
+                className="w-full p-3 border border-slate-dark rounded-md focus:outline-none focus:ring-2 focus:ring-indigo"
                 disabled={loading.venues}
               >
                 <option value="">Select a venue</option>
@@ -483,15 +477,15 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
                   <option key={venue.id} value={venue.id}>{venue.name}</option>
                 ))}
               </select>
-              {loading.venues && <p className="mt-1 text-xs text-sport-gray">Loading venues...</p>}
+              {loading.venues && <p className="mt-1 text-xs text-navy-light">Loading venues...</p>}
             </div>
             
             <div>
-              <label className="block text-sport-gray-dark mb-2 font-medium">Select Sport</label>
+              <label className="block text-navy-dark mb-2 font-medium">Select Sport</label>
               <select
                 value={selectedSport}
                 onChange={e => setSelectedSport(e.target.value)}
-                className="w-full p-3 border border-sport-gray-light rounded-md focus:outline-none focus:ring-2 focus:ring-sport-green"
+                className="w-full p-3 border border-slate-dark rounded-md focus:outline-none focus:ring-2 focus:ring-indigo"
                 disabled={loading.sports}
               >
                 <option value="">Select a sport</option>
@@ -499,11 +493,11 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
                   <option key={sport.id} value={sport.id}>{sport.name}</option>
                 ))}
               </select>
-              {loading.sports && <p className="mt-1 text-xs text-sport-gray">Loading sports...</p>}
+              {loading.sports && <p className="mt-1 text-xs text-navy-light">Loading sports...</p>}
             </div>
             
             <div>
-              <label className="block text-sport-gray-dark mb-2 font-medium">Select Court</label>
+              <label className="block text-navy-dark mb-2 font-medium">Select Court</label>
               <select
                 value={selectedCourt}
                 onChange={e => {
@@ -513,7 +507,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
                     setCourtRate(court.hourly_rate);
                   }
                 }}
-                className="w-full p-3 border border-sport-gray-light rounded-md focus:outline-none focus:ring-2 focus:ring-sport-green"
+                className="w-full p-3 border border-slate-dark rounded-md focus:outline-none focus:ring-2 focus:ring-indigo"
                 disabled={loading.courts || !selectedVenue || !selectedSport}
               >
                 <option value="">Select a court</option>
@@ -521,20 +515,20 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
                   <option key={court.id} value={court.id}>{court.name} - ${court.hourly_rate}/hr</option>
                 ))}
               </select>
-              {loading.courts && <p className="mt-1 text-xs text-sport-gray">Loading courts...</p>}
+              {loading.courts && <p className="mt-1 text-xs text-navy-light">Loading courts...</p>}
               {!loading.courts && courts.length === 0 && selectedVenue && selectedSport && (
                 <p className="mt-1 text-xs text-red-500">No courts available for this venue and sport combination.</p>
               )}
             </div>
             
             <div>
-              <label className="block text-sport-gray-dark mb-2 font-medium">Select Date</label>
+              <label className="block text-navy-dark mb-2 font-medium">Select Date</label>
               <input
                 type="date"
                 value={selectedDate}
                 onChange={e => setSelectedDate(e.target.value)}
                 min={new Date().toISOString().split('T')[0]}
-                className="w-full p-3 border border-sport-gray-light rounded-md focus:outline-none focus:ring-2 focus:ring-sport-green"
+                className="w-full p-3 border border-slate-dark rounded-md focus:outline-none focus:ring-2 focus:ring-indigo"
               />
             </div>
           </div>
@@ -544,18 +538,18 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
         {currentStep === 2 && (
           <div>
             <div className="mb-6">
-              <h3 className="text-xl font-semibold text-sport-gray-dark mb-2">Select Time Slots</h3>
-              <p className="text-sport-gray">Click on the available slots to select them.</p>
+              <h3 className="text-xl font-semibold text-navy-dark mb-2">Select Time Slots</h3>
+              <p className="text-navy-light">Click on the available slots to select them.</p>
             </div>
             
             <div className="mb-4">
-              <p className="font-medium text-sport-gray-dark">Selected Date: <span className="text-sport-green">{selectedDate}</span></p>
+              <p className="font-medium text-navy-dark">Selected Date: <span className="text-indigo">{selectedDate}</span></p>
             </div>
             
             {loading.availability ? (
               <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-sport-green mx-auto"></div>
-                <p className="mt-2 text-sport-gray">Loading availability...</p>
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo mx-auto"></div>
+                <p className="mt-2 text-navy-light">Loading availability...</p>
               </div>
             ) : (
               <>
@@ -569,13 +563,14 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
                           p-3 rounded-md cursor-pointer transition-all text-center
                           ${slot.is_available 
                             ? selectedSlots.includes(slotDisplay) 
-                              ? 'bg-sport-green text-white' 
-                              : 'border border-sport-green-light hover:bg-sport-green-light/10' 
-                            : 'bg-sport-gray-light text-sport-gray cursor-not-allowed'}
+                              ? 'bg-indigo text-white' 
+                              : 'border border-indigo-light hover:bg-indigo-light/10' 
+                            : 'bg-slate-dark text-navy-light cursor-not-allowed'}
                         `}
                         onClick={() => handleSlotClick(slot)}
                       >
-                        {slotDisplay}
+                        <div>{slotDisplay}</div>
+                        <div className="font-semibold">${parseFloat(slot.price).toFixed(2)}</div>
                       </div>
                     );
                   })}
@@ -583,32 +578,32 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
                 
                 {availableTimeSlots.length === 0 && (
                   <div className="text-center py-8">
-                    <p className="text-sport-gray">No available time slots found for this date.</p>
+                    <p className="text-navy-light">No available time slots found for this date.</p>
                   </div>
                 )}
                 
                 <div className="mt-4 flex items-center">
                   <div className="flex items-center mr-4">
-                    <div className="w-4 h-4 bg-sport-green rounded-sm mr-2"></div>
+                    <div className="w-4 h-4 bg-indigo rounded-sm mr-2"></div>
                     <span className="text-sm">Selected</span>
                   </div>
                   <div className="flex items-center mr-4">
-                    <div className="w-4 h-4 border border-sport-green-light rounded-sm mr-2"></div>
+                    <div className="w-4 h-4 border border-indigo-light rounded-sm mr-2"></div>
                     <span className="text-sm">Available</span>
                   </div>
                   <div className="flex items-center">
-                    <div className="w-4 h-4 bg-sport-gray-light rounded-sm mr-2"></div>
+                    <div className="w-4 h-4 bg-slate-dark rounded-sm mr-2"></div>
                     <span className="text-sm">Unavailable</span>
                   </div>
                 </div>
                 
                 {selectedSlots.length > 0 && (
-                  <div className="mt-6 p-4 bg-sport-gray-light rounded-md">
+                  <div className="mt-6 p-4 bg-slate rounded-md">
                     <h4 className="font-medium mb-2">Selected Slots:</h4>
                     <div className="flex flex-wrap gap-2">
                       {selectedSlots.sort().map(slot => (
-                        <span key={slot} className="bg-sport-green text-white px-2 py-1 rounded text-sm">
-                          {slot}
+                        <span key={slot} className="bg-indigo text-white px-2 py-1 rounded text-sm">
+                          {slot} - ${selectedSlotPrices[slot]?.toFixed(2)}
                         </span>
                       ))}
                     </div>
@@ -627,9 +622,9 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-6">
               <div>
-                <h3 className="text-xl font-semibold text-sport-gray-dark mb-6">Booking Details</h3>
+                <h3 className="text-xl font-semibold text-navy-dark mb-6">Booking Details</h3>
                 
-                <div className="bg-sport-gray-light rounded-md p-4 space-y-2">
+                <div className="bg-slate rounded-md p-4 space-y-2">
                   <p><span className="font-medium">Venue:</span> {venues.find(v => v.id === selectedVenue)?.name}</p>
                   <p><span className="font-medium">Sport:</span> {sports.find(s => s.id === selectedSport)?.name}</p>
                   <p><span className="font-medium">Court:</span> {courts.find(c => c.id === selectedCourt)?.name}</p>
@@ -639,8 +634,8 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
                     <p className="font-medium">Selected Slots:</p>
                     <div className="flex flex-wrap gap-2 mt-1">
                       {selectedSlots.sort().map(slot => (
-                        <span key={slot} className="bg-sport-green text-white px-2 py-1 rounded text-sm">
-                          {slot}
+                        <span key={slot} className="bg-indigo text-white px-2 py-1 rounded text-sm">
+                          {slot} - ${selectedSlotPrices[slot]?.toFixed(2)}
                         </span>
                       ))}
                     </div>
@@ -652,36 +647,36 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
             </div>
             
             <div className="space-y-6">
-              <h3 className="text-xl font-semibold text-sport-gray-dark mb-6">Your Information</h3>
+              <h3 className="text-xl font-semibold text-navy-dark mb-6">Your Information</h3>
               
               {user ? (
-                <div className="bg-sport-gray-light rounded-md p-4 space-y-2">
+                <div className="bg-slate rounded-md p-4 space-y-2">
                   <p><span className="font-medium">Booking as:</span> {name || user.email}</p>
                   <p><span className="font-medium">Account Email:</span> {user.email}</p>
                   {phone && <p><span className="font-medium">Phone:</span> {phone}</p>}
-                  <p className="text-sm text-sport-gray">You're signed in. Your booking will be linked to your account.</p>
+                  <p className="text-sm text-navy-light">You're signed in. Your booking will be linked to your account.</p>
                 </div>
               ) : (
                 <>
                   <div>
-                    <label className="block text-sport-gray-dark mb-2 font-medium">Full Name</label>
+                    <label className="block text-navy-dark mb-2 font-medium">Full Name</label>
                     <input
                       type="text"
                       value={name}
                       onChange={e => setName(e.target.value)}
                       placeholder="Enter your full name"
-                      className="w-full p-3 border border-sport-gray-light rounded-md focus:outline-none focus:ring-2 focus:ring-sport-green"
+                      className="w-full p-3 border border-slate-dark rounded-md focus:outline-none focus:ring-2 focus:ring-indigo"
                     />
                   </div>
                   
                   <div>
-                    <label className="block text-sport-gray-dark mb-2 font-medium">Phone Number</label>
+                    <label className="block text-navy-dark mb-2 font-medium">Phone Number</label>
                     <input
                       type="tel"
                       value={phone}
                       onChange={e => setPhone(e.target.value)}
                       placeholder="Enter your phone number"
-                      className="w-full p-3 border border-sport-gray-light rounded-md focus:outline-none focus:ring-2 focus:ring-sport-green"
+                      className="w-full p-3 border border-slate-dark rounded-md focus:outline-none focus:ring-2 focus:ring-indigo"
                     />
                   </div>
                   
@@ -691,7 +686,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
                     </p>
                     <a 
                       href="/register" 
-                      className="text-sport-green hover:underline text-sm block mt-1"
+                      className="text-indigo hover:underline text-sm block mt-1"
                       onClick={(e) => {
                         e.preventDefault();
                         onClose();
@@ -712,7 +707,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
           {currentStep > 1 ? (
             <button
               onClick={handlePreviousStep}
-              className="py-3 px-6 bg-sport-gray text-white rounded-md hover:bg-sport-gray-dark transition-colors"
+              className="py-3 px-6 bg-navy text-white rounded-md hover:bg-navy-dark transition-colors"
             >
               Previous
             </button>
@@ -723,7 +718,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
           {currentStep < 3 ? (
             <button
               onClick={handleNextStep}
-              className="py-3 px-6 bg-sport-green text-white rounded-md hover:bg-sport-green-dark transition-colors"
+              className="py-3 px-6 bg-indigo text-white rounded-md hover:bg-indigo-dark transition-colors"
             >
               Next
             </button>
@@ -731,7 +726,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
             <button
               onClick={handleBooking}
               disabled={loading.booking}
-              className="py-3 px-6 bg-sport-green text-white rounded-md hover:bg-sport-green-dark transition-colors flex items-center"
+              className="py-3 px-6 bg-indigo text-white rounded-md hover:bg-indigo-dark transition-colors flex items-center"
             >
               {loading.booking ? (
                 <>
@@ -777,7 +772,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
         .modal-header {
           font-size: 1.5rem;
           font-weight: 600;
-          color: #333;
+          color: #1E293B;
         }
         .animate-fade-in {
           animation: fadeIn 0.3s ease-out;

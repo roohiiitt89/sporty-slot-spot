@@ -66,9 +66,9 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				},
-				// New improved color scheme
+				// Updated color scheme
 				'navy': {
-					light: '#475569',
+					light: '#5A6B89',
 					DEFAULT: '#334155',
 					dark: '#1E293B'
 				},

@@ -105,12 +105,12 @@
   }
   
   ::-webkit-scrollbar-thumb {
-    background: rgba(108, 181, 45, 0.6);
+    background: rgba(99, 102, 241, 0.6);
     border-radius: 10px;
   }
   
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(108, 181, 45, 0.8);
+    background: rgba(99, 102, 241, 0.8);
   }
 }
 
@@ -165,15 +165,15 @@
   }
 
   .slot-available {
-    @apply border-sport-green-light text-sport-gray-dark hover:bg-sport-green-light hover:text-white;
+    @apply border-indigo-light text-navy-dark hover:bg-indigo-light hover:text-white;
   }
 
   .slot-selected {
-    @apply bg-sport-green text-white border-sport-green;
+    @apply bg-indigo text-white border-indigo;
   }
 
   .slot-unavailable {
-    @apply bg-sport-gray-light text-sport-gray opacity-50 cursor-not-allowed;
+    @apply bg-slate-dark text-slate-light opacity-50 cursor-not-allowed;
   }
 }
 
