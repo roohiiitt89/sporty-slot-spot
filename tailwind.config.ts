@@ -66,16 +66,21 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				},
-				// Custom colors for our app
-				'sport-green': {
-					light: '#8EE000',
-					DEFAULT: '#6CB52D',
-					dark: '#4A7B20'
+				// New improved color scheme
+				'navy': {
+					light: '#475569',
+					DEFAULT: '#334155',
+					dark: '#1E293B'
 				},
-				'sport-gray': {
-					light: '#F7F7F7',
-					DEFAULT: '#8E9196',
-					dark: '#333333'
+				'indigo': {
+					light: '#818CF8',
+					DEFAULT: '#6366F1',
+					dark: '#4F46E5'
+				},
+				'slate': {
+					light: '#F8FAFC',
+					DEFAULT: '#F1F5F9',
+					dark: '#E2E8F0'
 				}
 			},
 			borderRadius: {

@@ -54,7 +54,7 @@ const Dashboard: React.FC = () => {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-sport-green"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo"></div>
       </div>
     );
   }
@@ -69,13 +69,13 @@ const Dashboard: React.FC = () => {
   ];
 
   return (
-    <div className="bg-gray-100 min-h-screen">
+    <div className="bg-slate min-h-screen">
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row gap-6">
           {/* Sidebar */}
           <div className="w-full md:w-1/5">
             <div className="bg-white rounded-lg shadow-sm p-4">
-              <h2 className="font-bold text-xl mb-4 text-sport-gray-dark border-b pb-2">
+              <h2 className="font-bold text-xl mb-4 text-navy-dark border-b pb-2">
                 Admin Dashboard
               </h2>
               <nav className="space-y-1">
@@ -91,8 +91,8 @@ const Dashboard: React.FC = () => {
                       to={item.path}
                       className={`block px-4 py-2 rounded-md flex items-center transition-colors ${
                         isActive
-                          ? 'bg-sport-green text-white'
-                          : 'hover:bg-sport-gray-light'
+                          ? 'bg-indigo text-white'
+                          : 'hover:bg-slate-light'
                       }`}
                     >
                       {item.icon}
@@ -104,7 +104,7 @@ const Dashboard: React.FC = () => {
               <div className="mt-4 pt-4 border-t">
                 <Link 
                   to="/" 
-                  className="block px-4 py-2 text-sport-gray-dark hover:bg-sport-gray-light rounded-md"
+                  className="block px-4 py-2 text-navy-dark hover:bg-slate-light rounded-md"
                 >
                   Back to Site
                 </Link>
@@ -120,20 +120,20 @@ const Dashboard: React.FC = () => {
                   path="/"
                   element={
                     <div className="space-y-6">
-                      <h1 className="text-2xl font-bold text-sport-gray-dark">Welcome to Admin Dashboard</h1>
+                      <h1 className="text-2xl font-bold text-navy-dark">Welcome to Admin Dashboard</h1>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {navItems.slice(1).map((item) => (
                           <Link
                             key={item.path}
                             to={item.path}
-                            className="bg-white border border-sport-gray-light rounded-lg p-6 hover:shadow-md transition-shadow flex flex-col items-center text-center"
+                            className="bg-white border border-slate-light rounded-lg p-6 hover:shadow-md transition-shadow flex flex-col items-center text-center"
                           >
-                            <div className="w-12 h-12 bg-sport-green-light rounded-full flex items-center justify-center text-sport-green mb-4">
+                            <div className="w-12 h-12 bg-indigo-light rounded-full flex items-center justify-center text-indigo mb-4">
                               {item.icon}
                             </div>
                             <h3 className="text-lg font-semibold mb-1">{item.title}</h3>
-                            <p className="text-sport-gray text-sm">Manage {item.title.toLowerCase()}</p>
+                            <p className="text-navy text-sm">Manage {item.title.toLowerCase()}</p>
                           </Link>
                         ))}
                       </div>

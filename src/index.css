@@ -6,58 +6,58 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 220 33% 98%;
+    --foreground: 222 47% 11%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 222 47% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 222 47% 11%;
 
-    --primary: 142 72% 29%;
+    --primary: 226 84% 65%;
     --primary-foreground: 210 40% 98%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 214 32% 91%;
+    --secondary-foreground: 222 47% 11%;
 
-    --muted: 210 40% 96.1%;
+    --muted: 214 32% 91%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 142 72% 29%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 226 84% 65%;
+    --accent-foreground: 222 47% 11%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 142 72% 29%;
+    --ring: 226 84% 65%;
 
     --radius: 0.5rem;
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary: 226 84% 65%;
     --sidebar-primary-foreground: 0 0% 98%;
     --sidebar-accent: 240 4.8% 95.9%;
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-ring: 226 84% 65%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    --background: 222 47% 11%;
     --foreground: 210 40% 98%;
 
-    --card: 222.2 84% 4.9%;
+    --card: 222 47% 11%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 222.2 84% 4.9%;
+    --popover: 222 47% 11%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 142 70% 50%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 226 84% 65%;
+    --primary-foreground: 222 47% 11%;
 
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
@@ -65,8 +65,8 @@
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
 
-    --accent: 142 70% 50%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 226 84% 65%;
+    --accent-foreground: 222 47% 11%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
@@ -77,12 +77,12 @@
     
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary: 226 84% 65%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 240 3.7% 15.9%;
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-ring: 226 84% 65%;
   }
 }
 
@@ -96,7 +96,6 @@
     font-family: 'Inter', sans-serif;
   }
 
-  /* Custom scrollbar */
   ::-webkit-scrollbar {
     width: 8px;
   }
@@ -118,12 +117,12 @@
 /* Custom classes */
 @layer components {
   .nike-button {
-    @apply bg-sport-green text-white font-bold py-3 px-6 rounded-md transition-all duration-300 
-           hover:bg-sport-green-dark transform hover:scale-105 hover:shadow-lg;
+    @apply bg-indigo text-white font-bold py-3 px-6 rounded-md transition-all duration-300 
+           hover:bg-indigo-dark transform hover:scale-105 hover:shadow-lg;
   }
 
   .section-title {
-    @apply text-3xl md:text-4xl lg:text-5xl font-bold mb-8 text-sport-gray-dark;
+    @apply text-3xl md:text-4xl lg:text-5xl font-bold mb-8 text-navy-dark;
   }
   
   .card-hover {
@@ -154,7 +153,7 @@
   }
 
   .modal-header {
-    @apply text-2xl font-bold text-sport-gray-dark mb-4 pb-2 border-b border-gray-200;
+    @apply text-2xl font-bold text-navy-dark mb-4 pb-2 border-b border-gray-200;
   }
 
   .slot-grid {
