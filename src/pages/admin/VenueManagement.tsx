@@ -182,10 +182,15 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ userRole, adminVenues
         
         // If a regular admin created a venue, add them as an admin for that venue
         if (!isSuperAdmin && data && data.length > 0) {
+          const userId = (await supabase.auth.getUser()).data.user?.id;
+          if (!userId) {
+            throw new Error('User ID not available');
+          }
+          
           const { error: adminError } = await supabase
             .from('venue_admins')
             .insert({
-              user_id: supabase.auth.getUser(),
+              user_id: userId,
               venue_id: data[0].id
             });
           

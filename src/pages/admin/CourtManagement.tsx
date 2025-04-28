@@ -6,6 +6,7 @@ import { Plus, Edit, Trash2, CheckCircle, XCircle } from 'lucide-react';
 
 interface CourtManagementProps {
   userRole: string | null;
+  adminVenues?: Array<{ venue_id: string }>;
 }
 
 interface Venue {
@@ -29,7 +30,7 @@ interface Court {
   sport_name?: string;
 }
 
-const CourtManagement: React.FC<CourtManagementProps> = ({ userRole }) => {
+const CourtManagement: React.FC<CourtManagementProps> = ({ userRole, adminVenues = [] }) => {
   const [courts, setCourts] = useState<Court[]>([]);
   const [venues, setVenues] = useState<Venue[]>([]);
   const [sports, setSports] = useState<Sport[]>([]);
@@ -43,19 +44,25 @@ const CourtManagement: React.FC<CourtManagementProps> = ({ userRole }) => {
     is_active: true
   });
   const [isEditing, setIsEditing] = useState(false);
+  const isSuperAdmin = userRole === 'super_admin';
 
   useEffect(() => {
     fetchVenues();
     fetchSports();
     fetchCourts();
-  }, []);
+  }, [userRole, adminVenues]);
 
   const fetchVenues = async () => {
     try {
-      const { data, error } = await supabase
-        .from('venues')
-        .select('id, name')
-        .order('name');
+      let query = supabase.from('venues').select('id, name');
+      
+      // For regular admins, only fetch their assigned venues
+      if (userRole === 'admin' && adminVenues && adminVenues.length > 0) {
+        const venueIds = adminVenues.map(venue => venue.venue_id);
+        query = query.in('id', venueIds);
+      }
+      
+      const { data, error } = await query.order('name');
       
       if (error) throw error;
       
@@ -93,7 +100,7 @@ const CourtManagement: React.FC<CourtManagementProps> = ({ userRole }) => {
   const fetchCourts = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('courts')
         .select(`
           id, 
@@ -104,8 +111,15 @@ const CourtManagement: React.FC<CourtManagementProps> = ({ userRole }) => {
           is_active,
           venues:venue_id (name),
           sports:sport_id (name)
-        `)
-        .order('name');
+        `);
+      
+      // For regular admins, only fetch courts for their assigned venues
+      if (userRole === 'admin' && adminVenues && adminVenues.length > 0) {
+        const venueIds = adminVenues.map(venue => venue.venue_id);
+        query = query.in('venue_id', venueIds);
+      }
+      
+      const { data, error } = await query.order('name');
       
       if (error) throw error;
       
@@ -176,6 +190,19 @@ const CourtManagement: React.FC<CourtManagementProps> = ({ userRole }) => {
         variant: 'destructive',
       });
       return;
+    }
+    
+    // For normal admins, verify they have permission to add/edit courts for this venue
+    if (userRole === 'admin' && adminVenues) {
+      const hasPermission = adminVenues.some(v => v.venue_id === currentCourt.venue_id);
+      if (!hasPermission) {
+        toast({
+          title: 'Permission denied',
+          description: 'You do not have permission to manage courts for this venue.',
+          variant: 'destructive',
+        });
+        return;
+      }
     }
     
     try {

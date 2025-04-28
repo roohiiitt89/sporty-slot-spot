@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import { useAuth } from '@/context/AuthContext';
@@ -98,7 +99,12 @@ const Profile: React.FC = () => {
       
       if (error) throw error;
       
-      setBookings(data || []);
+      // Filter out any bookings with 'pending' status since our interface doesn't support it anymore
+      const filteredBookings = data?.filter(booking => 
+        booking.status === 'confirmed' || booking.status === 'cancelled' || booking.status === 'completed'
+      ) as Booking[];
+      
+      setBookings(filteredBookings || []);
     } catch (error) {
       console.error('Error fetching bookings:', error);
       toast({
