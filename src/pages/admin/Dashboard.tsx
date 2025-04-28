@@ -14,33 +14,30 @@ import BookingManagement from './BookingManagement';
 import TemplateSlotManagement from './TemplateSlotManagement';
 
 const Dashboard: React.FC = () => {
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
   const location = useLocation();
-  const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [adminVenues, setAdminVenues] = useState<Array<{ venue_id: string }>>([]);
 
   useEffect(() => {
-    const fetchUserRole = async () => {
+    const fetchUserRoleAndVenues = async () => {
       if (!user) return;
       
       try {
-        // Get user role from user_roles table
-        const { data: roleData, error: roleError } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id)
-          .single();
-        
-        if (roleError) throw roleError;
-        
-        if (roleData) {
-          setUserRole(roleData.role);
+        // For venue admins, fetch their assigned venues
+        if (userRole === 'admin') {
+          const { data: venueData, error: venueError } = await supabase
+            .rpc('get_admin_venues');
+          
+          if (venueError) throw venueError;
+          
+          setAdminVenues(venueData || []);
         }
       } catch (error) {
-        console.error('Error fetching user role:', error);
+        console.error('Error fetching user data:', error);
         toast({
           title: 'Error',
-          description: 'Failed to load user role information',
+          description: 'Failed to load admin data',
           variant: 'destructive',
         });
       } finally {
@@ -48,8 +45,8 @@ const Dashboard: React.FC = () => {
       }
     };
 
-    fetchUserRole();
-  }, [user]);
+    fetchUserRoleAndVenues();
+  }, [user, userRole]);
 
   if (loading) {
     return (
@@ -76,10 +73,15 @@ const Dashboard: React.FC = () => {
           <div className="w-full md:w-1/5">
             <div className="bg-white rounded-lg shadow-sm p-4">
               <h2 className="font-bold text-xl mb-4 text-navy-dark border-b pb-2">
-                Admin Dashboard
+                {userRole === 'super_admin' ? 'Super Admin Dashboard' : 'Venue Admin Dashboard'}
               </h2>
               <nav className="space-y-1">
                 {navItems.map((item) => {
+                  // For regular admins, hide certain options
+                  if (userRole === 'admin' && (item.path === '/admin/sports')) {
+                    return null;
+                  }
+                  
                   const isActive = 
                     item.exact 
                       ? location.pathname === item.path
@@ -120,42 +122,78 @@ const Dashboard: React.FC = () => {
                   path="/"
                   element={
                     <div className="space-y-6">
-                      <h1 className="text-2xl font-bold text-navy-dark">Welcome to Admin Dashboard</h1>
+                      <h1 className="text-2xl font-bold text-navy-dark">
+                        {userRole === 'super_admin' 
+                          ? 'Welcome to Super Admin Dashboard' 
+                          : 'Welcome to Venue Admin Dashboard'}
+                      </h1>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {navItems.slice(1).map((item) => (
-                          <Link
-                            key={item.path}
-                            to={item.path}
-                            className="bg-white border border-slate-light rounded-lg p-6 hover:shadow-md transition-shadow flex flex-col items-center text-center"
-                          >
-                            <div className="w-12 h-12 bg-indigo-light rounded-full flex items-center justify-center text-indigo mb-4">
-                              {item.icon}
-                            </div>
-                            <h3 className="text-lg font-semibold mb-1">{item.title}</h3>
-                            <p className="text-navy text-sm">Manage {item.title.toLowerCase()}</p>
-                          </Link>
-                        ))}
+                        {userRole === 'super_admin' ? (
+                          // Show all options for super admin
+                          navItems.slice(1).map((item) => (
+                            <Link
+                              key={item.path}
+                              to={item.path}
+                              className="bg-white border border-slate-light rounded-lg p-6 hover:shadow-md transition-shadow flex flex-col items-center text-center"
+                            >
+                              <div className="w-12 h-12 bg-indigo-light rounded-full flex items-center justify-center text-indigo mb-4">
+                                {item.icon}
+                              </div>
+                              <h3 className="text-lg font-semibold mb-1">{item.title}</h3>
+                              <p className="text-navy text-sm">Manage {item.title.toLowerCase()}</p>
+                            </Link>
+                          ))
+                        ) : (
+                          // Only show relevant options for venue admin
+                          navItems.slice(1)
+                            .filter(item => item.path !== '/admin/sports')
+                            .map((item) => (
+                              <Link
+                                key={item.path}
+                                to={item.path}
+                                className="bg-white border border-slate-light rounded-lg p-6 hover:shadow-md transition-shadow flex flex-col items-center text-center"
+                              >
+                                <div className="w-12 h-12 bg-indigo-light rounded-full flex items-center justify-center text-indigo mb-4">
+                                  {item.icon}
+                                </div>
+                                <h3 className="text-lg font-semibold mb-1">{item.title}</h3>
+                                <p className="text-navy text-sm">
+                                  {item.path === '/admin/venues' 
+                                    ? 'View your venues' 
+                                    : `Manage ${item.title.toLowerCase()}`}
+                                </p>
+                              </Link>
+                            ))
+                        )}
                       </div>
                       
                       <div className="mt-8 p-4 bg-blue-50 rounded-lg border border-blue-200 flex items-start">
                         <Info className="text-blue-500 mr-3 mt-1" />
                         <div>
-                          <h3 className="font-semibold text-blue-800 mb-1">Administrator Access</h3>
+                          <h3 className="font-semibold text-blue-800 mb-1">
+                            {userRole === 'super_admin' ? 'Super Administrator Access' : 'Venue Administrator Access'}
+                          </h3>
                           <p className="text-blue-700 text-sm">
-                            As an administrator, you have access to manage venues, sports, courts, and bookings. 
-                            Use the navigation menu to access different sections.
+                            {userRole === 'super_admin' 
+                              ? 'As a super administrator, you have full access to manage all venues, sports, courts, and bookings across the platform.'
+                              : `As a venue administrator, you can manage bookings and courts for your assigned venues.`}
                           </p>
+                          {userRole === 'admin' && adminVenues.length > 0 && (
+                            <p className="text-blue-700 text-sm mt-2">
+                              You are managing {adminVenues.length} venue{adminVenues.length !== 1 ? 's' : ''}.
+                            </p>
+                          )}
                         </div>
                       </div>
                     </div>
                   }
                 />
-                <Route path="/venues" element={<VenueManagement userRole={userRole} />} />
+                <Route path="/venues" element={<VenueManagement userRole={userRole} adminVenues={adminVenues} />} />
                 <Route path="/sports" element={<SportManagement userRole={userRole} />} />
-                <Route path="/courts" element={<CourtManagement userRole={userRole} />} />
-                <Route path="/bookings" element={<BookingManagement userRole={userRole} />} />
-                <Route path="/template-slots" element={<TemplateSlotManagement userRole={userRole} />} />
+                <Route path="/courts" element={<CourtManagement userRole={userRole} adminVenues={adminVenues} />} />
+                <Route path="/bookings" element={<BookingManagement userRole={userRole} adminVenues={adminVenues} />} />
+                <Route path="/template-slots" element={<TemplateSlotManagement userRole={userRole} adminVenues={adminVenues} />} />
               </Routes>
             </div>
           </div>

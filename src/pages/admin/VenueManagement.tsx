@@ -6,6 +6,7 @@ import { Plus, Edit, MapPin, Phone, Clock, Trash2, CheckCircle, XCircle } from '
 
 interface VenueManagementProps {
   userRole: string | null;
+  adminVenues?: Array<{ venue_id: string }>;
 }
 
 interface Venue {
@@ -20,7 +21,7 @@ interface Venue {
   is_active: boolean;
 }
 
-const VenueManagement: React.FC<VenueManagementProps> = ({ userRole }) => {
+const VenueManagement: React.FC<VenueManagementProps> = ({ userRole, adminVenues = [] }) => {
   const [venues, setVenues] = useState<Venue[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -35,18 +36,24 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ userRole }) => {
     is_active: true
   });
   const [isEditing, setIsEditing] = useState(false);
+  const isSuperAdmin = userRole === 'super_admin';
 
   useEffect(() => {
     fetchVenues();
-  }, []);
+  }, [userRole, adminVenues]);
 
   const fetchVenues = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('venues')
-        .select('*')
-        .order('name');
+      let query = supabase.from('venues').select('*');
+      
+      // For regular admins, only fetch their assigned venues
+      if (userRole === 'admin' && adminVenues && adminVenues.length > 0) {
+        const venueIds = adminVenues.map(venue => venue.venue_id);
+        query = query.in('id', venueIds);
+      }
+      
+      const { data, error } = await query.order('name');
       
       if (error) throw error;
       
@@ -121,6 +128,19 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ userRole }) => {
     
     try {
       if (isEditing && currentVenue.id) {
+        // For normal admins, verify they have permission to edit this venue
+        if (userRole === 'admin') {
+          const hasPermission = adminVenues?.some(v => v.venue_id === currentVenue.id);
+          if (!hasPermission) {
+            toast({
+              title: 'Permission denied',
+              description: 'You do not have permission to edit this venue.',
+              variant: 'destructive',
+            });
+            return;
+          }
+        }
+
         // Update existing venue
         const { error } = await supabase
           .from('venues')
@@ -142,9 +162,9 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ userRole }) => {
           title: 'Venue updated',
           description: `${currentVenue.name} has been updated successfully.`
         });
-      } else {
-        // Create new venue
-        const { error } = await supabase
+      } else if (isSuperAdmin) {
+        // Only super admins can create new venues
+        const { error, data } = await supabase
           .from('venues')
           .insert({
             name: currentVenue.name,
@@ -155,14 +175,34 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ userRole }) => {
             opening_hours: currentVenue.opening_hours,
             image_url: currentVenue.image_url,
             is_active: currentVenue.is_active
-          });
+          })
+          .select();
           
         if (error) throw error;
+        
+        // If a regular admin created a venue, add them as an admin for that venue
+        if (!isSuperAdmin && data && data.length > 0) {
+          const { error: adminError } = await supabase
+            .from('venue_admins')
+            .insert({
+              user_id: supabase.auth.getUser(),
+              venue_id: data[0].id
+            });
+          
+          if (adminError) throw adminError;
+        }
         
         toast({
           title: 'Venue created',
           description: `${currentVenue.name} has been created successfully.`
         });
+      } else {
+        toast({
+          title: 'Permission denied',
+          description: 'Only super admins can create new venues.',
+          variant: 'destructive',
+        });
+        return;
       }
       
       closeModal();
@@ -178,6 +218,19 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ userRole }) => {
   };
 
   const toggleVenueStatus = async (venue: Venue) => {
+    // For normal admins, verify they have permission
+    if (userRole === 'admin') {
+      const hasPermission = adminVenues?.some(v => v.venue_id === venue.id);
+      if (!hasPermission) {
+        toast({
+          title: 'Permission denied',
+          description: 'You do not have permission to modify this venue.',
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
     try {
       const { error } = await supabase
         .from('venues')
@@ -203,6 +256,16 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ userRole }) => {
   };
 
   const deleteVenue = async (venue: Venue) => {
+    // Only super admins can delete venues
+    if (!isSuperAdmin) {
+      toast({
+        title: 'Permission denied',
+        description: 'Only super administrators can delete venues.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     if (!confirm(`Are you sure you want to delete ${venue.name}? This will also delete all associated courts and bookings.`)) {
       return;
     }
@@ -235,13 +298,15 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ userRole }) => {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-semibold">Venue Management</h2>
-        <button
-          onClick={() => openModal()}
-          className="px-4 py-2 bg-sport-green text-white rounded-md hover:bg-sport-green-dark transition-colors flex items-center gap-2"
-        >
-          <Plus size={18} />
-          Add New Venue
-        </button>
+        {isSuperAdmin && (
+          <button
+            onClick={() => openModal()}
+            className="px-4 py-2 bg-sport-green text-white rounded-md hover:bg-sport-green-dark transition-colors flex items-center gap-2"
+          >
+            <Plus size={18} />
+            Add New Venue
+          </button>
+        )}
       </div>
       
       {loading ? (
@@ -250,13 +315,19 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ userRole }) => {
         </div>
       ) : venues.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <p className="text-gray-600 mb-4">No venues found</p>
-          <button
-            onClick={() => openModal()}
-            className="px-4 py-2 bg-sport-green text-white rounded-md hover:bg-sport-green-dark transition-colors"
-          >
-            Create Your First Venue
-          </button>
+          <p className="text-gray-600 mb-4">
+            {userRole === 'admin' 
+              ? "You don't have any venues assigned to you" 
+              : "No venues found"}
+          </p>
+          {isSuperAdmin && (
+            <button
+              onClick={() => openModal()}
+              className="px-4 py-2 bg-sport-green text-white rounded-md hover:bg-sport-green-dark transition-colors"
+            >
+              Create Your First Venue
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

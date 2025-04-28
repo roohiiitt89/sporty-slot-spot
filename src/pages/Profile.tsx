@@ -11,7 +11,7 @@ interface Booking {
   start_time: string;
   end_time: string;
   total_price: number;
-  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  status: 'confirmed' | 'cancelled' | 'completed';
   court: {
     name: string;
     venue: {
@@ -179,8 +179,6 @@ const Profile: React.FC = () => {
     switch (status) {
       case 'confirmed':
         return 'bg-green-100 text-green-800';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
       case 'cancelled':
         return 'bg-red-100 text-red-800';
       case 'completed':
@@ -398,7 +396,6 @@ const Profile: React.FC = () => {
                       <div className="space-y-6">
                         {bookings.map((booking) => {
                           const isPast = new Date(`${booking.booking_date} ${booking.end_time}`) < new Date();
-                          const canCancel = !isPast && (booking.status === 'pending' || booking.status === 'confirmed');
                           
                           return (
                             <div key={booking.id} className="bg-white border rounded-lg overflow-hidden shadow-sm">
@@ -413,16 +410,6 @@ const Profile: React.FC = () => {
                                     </div>
                                     <p className="text-gray-600 mt-1">{booking.court.name}</p>
                                   </div>
-                                  
-                                  {canCancel && (
-                                    <button
-                                      onClick={() => cancelBooking(booking.id)}
-                                      className="bg-red-50 text-red-600 px-4 py-2 rounded-md hover:bg-red-100 transition-colors inline-flex items-center"
-                                    >
-                                      <XCircle size={16} className="mr-1" />
-                                      Cancel Booking
-                                    </button>
-                                  )}
                                 </div>
                                 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">

@@ -41,7 +41,7 @@ const App = () => (
               <Route path="/bookings" element={<Bookings />} />
             </Route>
             
-            {/* Admin routes */}
+            {/* Admin routes - accessible to both admin and super_admin */}
             <Route element={<RouteGuard requireAuth={true} requiredRole="admin" />}>
               <Route path="/admin/*" element={<AdminDashboard />} />
             </Route>

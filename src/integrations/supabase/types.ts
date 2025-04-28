@@ -311,6 +311,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_admin_venues: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          venue_id: string
+        }[]
+      }
       get_available_slots: {
         Args: { p_court_id: string; p_date: string }
         Returns: {
