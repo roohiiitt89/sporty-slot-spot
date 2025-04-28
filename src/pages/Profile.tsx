@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
-import { LogOut, Edit, CheckCircle, XCircle, Calendar, User, Phone, Mail } from 'lucide-react';
+import { LogOut, Edit, Calendar, User, Phone, Mail } from 'lucide-react';
 
 interface Booking {
   id: string;
@@ -97,13 +96,17 @@ const Profile: React.FC = () => {
         .eq('user_id', user?.id)
         .order('booking_date', { ascending: false });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error details:', error);
+        throw error;
+      }
       
-      // Filter out any bookings with 'pending' status
+      // Filter out any bookings with unexpected status (if any)
       const validBookings = data?.filter(booking => 
         booking.status === 'confirmed' || booking.status === 'cancelled' || booking.status === 'completed'
       ) as Booking[];
       
+      console.log('Fetched bookings:', validBookings);
       setBookings(validBookings || []);
     } catch (error) {
       console.error('Error fetching bookings:', error);
@@ -149,36 +152,6 @@ const Profile: React.FC = () => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
-  };
-
-  const cancelBooking = async (bookingId: string) => {
-    if (!confirm('Are you sure you want to cancel this booking?')) {
-      return;
-    }
-    
-    try {
-      const { error } = await supabase
-        .from('bookings')
-        .update({ status: 'cancelled' })
-        .eq('id', bookingId)
-        .eq('user_id', user?.id);
-      
-      if (error) throw error;
-      
-      toast({
-        title: 'Booking cancelled',
-        description: 'Your booking has been cancelled successfully',
-      });
-      
-      fetchUserBookings(); // Refresh bookings list
-    } catch (error) {
-      console.error('Error cancelling booking:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to cancel booking',
-        variant: 'destructive',
-      });
-    }
   };
 
   const getStatusColor = (status: string) => {

@@ -57,6 +57,9 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
   const fetchBookings = async () => {
     setLoading(true);
     try {
+      console.log('Fetching bookings for role:', userRole);
+      console.log('Admin venues:', adminVenues);
+      
       let query = supabase
         .from('bookings')
         .select(`
@@ -96,60 +99,48 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
       // If admin (not super admin), filter to only show their venue bookings
       if (userRole === 'admin' && adminVenues.length > 0) {
         const venueIds = adminVenues.map(v => v.venue_id);
+        console.log('Filtering by venue IDs:', venueIds);
         
-        // We need to use a more complex query to filter by venue ID
-        // since venue ID is nested in the court relation
-        const { data: venueBookings, error: venueError } = await supabase
-          .from('bookings')
-          .select(`
-            id,
-            booking_date,
-            start_time,
-            end_time,
-            total_price,
-            status,
-            user_id,
-            guest_name,
-            guest_phone,
-            created_at,
-            court_id,
-            court:courts (
-              name,
-              venue_id,
-              venue:venues (
-                id,
-                name
-              ),
-              sport:sports (
-                name
-              )
-            ),
-            user:profiles (
-              full_name,
-              phone,
-              email
-            )
-          `)
-          .order('booking_date', { ascending: false });
+        const { data: courtIds, error: courtError } = await supabase
+          .from('courts')
+          .select('id')
+          .in('venue_id', venueIds);
           
-        if (venueError) throw venueError;
+        if (courtError) {
+          console.error('Error fetching court IDs:', courtError);
+          throw courtError;
+        }
         
-        // Filter bookings for admin venues only
-        const filteredBookings = venueBookings?.filter(booking => 
-          booking.court && venueIds.includes(booking.court.venue_id)
-        ) as Booking[];
-        
-        setBookings(filteredBookings || []);
-        setLoading(false);
-        return;
+        if (courtIds && courtIds.length > 0) {
+          const courtIdArray = courtIds.map(c => c.id);
+          console.log('Found court IDs:', courtIdArray);
+          query = query.in('court_id', courtIdArray);
+        } else {
+          console.log('No courts found for venues');
+          setBookings([]);
+          setLoading(false);
+          return;
+        }
       }
 
-      // For super_admin, get all bookings
+      console.log('Executing query...');
       const { data, error } = await query;
       
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
       
-      setBookings(data || []);
+      console.log('Got bookings data:', data);
+      
+      // Ensure we only work with valid status types for our interface
+      const validBookings = data?.filter(booking => 
+        booking.status === 'confirmed' || 
+        booking.status === 'cancelled' || 
+        booking.status === 'completed'
+      ) as unknown as Booking[];
+      
+      setBookings(validBookings || []);
     } catch (error) {
       console.error('Error fetching bookings:', error);
       toast({
