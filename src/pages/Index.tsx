@@ -153,7 +153,7 @@ const Index: React.FC = () => {
           playsInline
           className="hero-video"
         >
-          <source src="https://cdn.coverr.co/videos/coverr-people-playing-basketball-5028/1080p.mp4" type="video/mp4" />
+          <source src="https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/vedios//mixkit-one-on-one-in-a-soccer-game-43483-full-hd%20(1).mp4" type="video/mp4" />
           Your browser does not support the video tag.
         </video>
         <div className="hero-overlay dark-gradient-overlay"></div>
