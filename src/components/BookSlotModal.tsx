@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
@@ -35,7 +34,7 @@ interface TimeSlot {
   start_time: string;
   end_time: string;
   is_available: boolean;
-  price: string; // Added price field
+  price: string;
 }
 
 const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId }) => {
@@ -63,17 +62,14 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
   });
   const [courtRate, setCourtRate] = useState<number>(0);
 
-  // Fetch venues and sports on load
   useEffect(() => {
     fetchVenues();
     fetchSports();
     
-    // Set today's date as default
     const today = new Date();
     setSelectedDate(today.toISOString().split('T')[0]);
   }, []);
 
-  // Fetch courts when venue and sport are selected
   useEffect(() => {
     if (selectedVenue && selectedSport) {
       fetchCourts();
@@ -83,14 +79,12 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     }
   }, [selectedVenue, selectedSport]);
 
-  // Fetch availability when court and date are selected
   useEffect(() => {
     if (selectedCourt && selectedDate) {
       fetchAvailability();
     }
   }, [selectedCourt, selectedDate]);
 
-  // Pre-fill user info if logged in
   useEffect(() => {
     if (user) {
       const fetchUserProfile = async () => {
@@ -207,7 +201,6 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     
     setLoading(prev => ({ ...prev, availability: true }));
     try {
-      // Use the database function we created to get available slots
       const { data, error } = await supabase
         .rpc('get_available_slots', { 
           p_court_id: selectedCourt, 
@@ -218,9 +211,14 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
         throw error;
       }
       
-      setAvailableTimeSlots(data || []);
-      setSelectedSlots([]); // Reset selected slots when availability changes
-      setSelectedSlotPrices({}); // Reset selected slot prices
+      const slotsWithPrice = data?.map(slot => ({
+        ...slot,
+        price: slot.price || '0.00'
+      })) || [];
+      
+      setAvailableTimeSlots(slotsWithPrice);
+      setSelectedSlots([]);
+      setSelectedSlotPrices({});
     } catch (error) {
       console.error('Error fetching availability:', error);
       toast({
@@ -233,7 +231,6 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     }
   };
 
-  // Convert time from database (24-hour) to 12-hour format for display
   const formatTime = (time: string) => {
     const [hour, minute] = time.split(':').map(n => parseInt(n));
     const period = hour >= 12 ? 'PM' : 'AM';
@@ -241,7 +238,6 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     return `${displayHour}:${minute.toString().padStart(2, '0')} ${period}`;
   };
 
-  // Convert 12-hour format back to 24-hour format for database
   const convertTo24Hour = (time12h: string) => {
     const [time, modifier] = time12h.split(' ');
     let [hours, minutes] = time.split(':');
@@ -265,22 +261,18 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     if (selectedSlots.includes(slotDisplay)) {
       setSelectedSlots(selectedSlots.filter(s => s !== slotDisplay));
       
-      // Remove from selected slot prices
       const newSelectedSlotPrices = { ...selectedSlotPrices };
       delete newSelectedSlotPrices[slotDisplay];
       setSelectedSlotPrices(newSelectedSlotPrices);
     } else {
-      // Check if adding this slot maintains continuity
       const updatedSlots = [...selectedSlots, slotDisplay];
       
-      // Sort slots by start time
       const sortedSlots = updatedSlots.sort((a, b) => {
         const startTimeA = convertTo24Hour(a.split(' - ')[0]);
         const startTimeB = convertTo24Hour(b.split(' - ')[0]);
         return startTimeA.localeCompare(startTimeB);
       });
       
-      // Check if the slots are continuous
       let isContinuous = true;
       for (let i = 0; i < sortedSlots.length - 1; i++) {
         const currentEndTime = sortedSlots[i].split(' - ')[1];
@@ -303,7 +295,6 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       
       setSelectedSlots(sortedSlots);
       
-      // Add to selected slot prices
       setSelectedSlotPrices({
         ...selectedSlotPrices,
         [slotDisplay]: slotPrice
@@ -365,7 +356,6 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     setLoading(prev => ({ ...prev, booking: true }));
     
     try {
-      // Get the first and last selected slots to determine start and end time
       const sortedSlots = [...selectedSlots].sort((a, b) => {
         const startTimeA = convertTo24Hour(a.split(' - ')[0]);
         const startTimeB = convertTo24Hour(b.split(' - ')[0]);
@@ -375,12 +365,11 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       const startTime = convertTo24Hour(sortedSlots[0].split(' - ')[0]);
       const endTime = convertTo24Hour(sortedSlots[sortedSlots.length - 1].split(' - ')[1]);
       
-      // Create booking in database
       const { data, error } = await supabase
         .from('bookings')
         .insert({
           court_id: selectedCourt,
-          user_id: user?.id || null, // Link to user if logged in
+          user_id: user?.id || null,
           booking_date: selectedDate,
           start_time: startTime,
           end_time: endTime,
@@ -400,11 +389,9 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
         description: "You have successfully booked your slots.",
       });
       
-      // If user is logged in, navigate to profile/bookings
       if (user) {
         navigate('/profile');
       } else {
-        // If guest, go to home page
         navigate('/');
       }
       
@@ -434,7 +421,6 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
           </button>
         </div>
 
-        {/* Step indicators */}
         <div className="flex justify-center mb-8">
           <div className="flex items-center">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
@@ -461,7 +447,6 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
           </div>
         </div>
 
-        {/* Step 1: Select Sport, Venue, Court, Date */}
         {currentStep === 1 && (
           <div className="space-y-6">
             <div>
@@ -534,7 +519,6 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
           </div>
         )}
 
-        {/* Step 2: Select Time Slots */}
         {currentStep === 2 && (
           <div>
             <div className="mb-6">
@@ -617,7 +601,6 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
           </div>
         )}
 
-        {/* Step 3: Enter User Details */}
         {currentStep === 3 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-6">
@@ -702,7 +685,6 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
           </div>
         )}
 
-        {/* Navigation buttons */}
         <div className="mt-10 flex justify-between">
           {currentStep > 1 ? (
             <button
@@ -712,7 +694,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
               Previous
             </button>
           ) : (
-            <div></div> // Empty div to maintain flex spacing
+            <div></div>
           )}
           
           {currentStep < 3 ? (
@@ -744,7 +726,6 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
         </div>
       </div>
       
-      {/* Add custom CSS for modal styling */}
       <style>
         {`
         .modal-bg {

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
@@ -34,6 +33,7 @@ interface TemplateSlot {
   start_time: string;
   end_time: string;
   is_available: boolean;
+  price: string;
 }
 
 const TemplateSlotManagement: React.FC<TemplateSlotManagementProps> = ({ userRole }) => {
@@ -56,11 +56,11 @@ const TemplateSlotManagement: React.FC<TemplateSlotManagementProps> = ({ userRol
     day_of_week: 0,
     start_time: '09:00',
     end_time: '10:00',
-    is_available: true
+    is_available: true,
+    price: '0.00'
   });
   const [isEditing, setIsEditing] = useState(false);
 
-  // Day of week options
   const daysOfWeek = [
     { value: 0, label: 'Sunday' },
     { value: 1, label: 'Monday' },
@@ -189,7 +189,7 @@ const TemplateSlotManagement: React.FC<TemplateSlotManagementProps> = ({ userRol
     try {
       const { data, error } = await supabase
         .from('template_slots')
-        .select('id, court_id, day_of_week, start_time, end_time, is_available')
+        .select('id, court_id, day_of_week, start_time, end_time, is_available, price')
         .eq('court_id', selectedCourt)
         .order('day_of_week')
         .order('start_time');
@@ -250,7 +250,8 @@ const TemplateSlotManagement: React.FC<TemplateSlotManagementProps> = ({ userRol
         day_of_week: 0,
         start_time: '09:00',
         end_time: '10:00',
-        is_available: true
+        is_available: true,
+        price: '0.00'
       });
       setIsEditing(false);
     }
@@ -264,7 +265,7 @@ const TemplateSlotManagement: React.FC<TemplateSlotManagementProps> = ({ userRol
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!currentSlot.court_id || currentSlot.start_time === undefined || currentSlot.end_time === undefined) {
+    if (!currentSlot.court_id || currentSlot.start_time === undefined || currentSlot.end_time === undefined || currentSlot.price === undefined) {
       toast({
         title: 'Missing information',
         description: 'Please fill in all required fields.',
@@ -284,7 +285,8 @@ const TemplateSlotManagement: React.FC<TemplateSlotManagementProps> = ({ userRol
             day_of_week: currentSlot.day_of_week,
             start_time: currentSlot.start_time,
             end_time: currentSlot.end_time,
-            is_available: currentSlot.is_available
+            is_available: currentSlot.is_available,
+            price: currentSlot.price
           })
           .eq('id', currentSlot.id);
           
@@ -303,7 +305,8 @@ const TemplateSlotManagement: React.FC<TemplateSlotManagementProps> = ({ userRol
             day_of_week: currentSlot.day_of_week,
             start_time: currentSlot.start_time,
             end_time: currentSlot.end_time,
-            is_available: currentSlot.is_available
+            is_available: currentSlot.is_available,
+            price: currentSlot.price
           });
           
         if (error) throw error;
@@ -364,7 +367,16 @@ const TemplateSlotManagement: React.FC<TemplateSlotManagementProps> = ({ userRol
     
     setLoading(prev => ({ ...prev, slots: true }));
     try {
-      // Generate default slots
+      const { data: courtData, error: courtError } = await supabase
+        .from('courts')
+        .select('hourly_rate')
+        .eq('id', selectedCourt)
+        .single();
+        
+      if (courtError) throw courtError;
+      
+      const defaultPrice = courtData?.hourly_rate?.toString() || '0.00';
+      
       const slots = [];
       
       for (let day = 0; day < 7; day++) {
@@ -374,7 +386,8 @@ const TemplateSlotManagement: React.FC<TemplateSlotManagementProps> = ({ userRol
             day_of_week: day,
             start_time: `${hour}:00`,
             end_time: `${hour + 1}:00`,
-            is_available: true
+            is_available: true,
+            price: defaultPrice
           });
         }
       }
@@ -426,7 +439,6 @@ const TemplateSlotManagement: React.FC<TemplateSlotManagementProps> = ({ userRol
         </div>
       </div>
       
-      {/* Filters */}
       <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
@@ -556,7 +568,6 @@ const TemplateSlotManagement: React.FC<TemplateSlotManagementProps> = ({ userRol
         </div>
       )}
       
-      {/* Template Slot Form Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg max-w-md w-full">
@@ -604,6 +615,20 @@ const TemplateSlotManagement: React.FC<TemplateSlotManagementProps> = ({ userRol
                     type="time"
                     name="end_time"
                     value={currentSlot.end_time}
+                    onChange={handleChange}
+                    className="w-full p-2 border rounded-md"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Price *
+                  </label>
+                  <input
+                    type="text"
+                    name="price"
+                    value={currentSlot.price || '0.00'}
                     onChange={handleChange}
                     className="w-full p-2 border rounded-md"
                     required
