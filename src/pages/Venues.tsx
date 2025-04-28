@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { MapPin, Star, Filter, Search } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -34,7 +33,6 @@ const Venues: React.FC = () => {
   const [sports, setSports] = useState<Sport[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Parse URL query parameters
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const sportId = params.get('sport');
@@ -51,7 +49,6 @@ const Venues: React.FC = () => {
     try {
       setLoading(true);
       
-      // Get the sport filter from URL if it exists
       const params = new URLSearchParams(location.search);
       const sportId = params.get('sport');
       
@@ -67,9 +64,7 @@ const Venues: React.FC = () => {
         `)
         .eq('is_active', true);
       
-      // Apply sport filter if present
       if (sportId) {
-        // We need to find venues that have courts for this sport
         const { data: courtData, error: courtError } = await supabase
           .from('courts')
           .select('venue_id')
@@ -82,7 +77,6 @@ const Venues: React.FC = () => {
           const venueIds = courtData.map(court => court.venue_id);
           query = query.in('id', venueIds);
         } else {
-          // No courts for this sport
           setVenues([]);
           setLoading(false);
           return;
@@ -94,13 +88,12 @@ const Venues: React.FC = () => {
       if (error) throw error;
       
       if (data) {
-        // Add distance attribute (mock data for now)
         const venuesWithDistance = data.map(venue => ({
           ...venue,
-          distance: `${(Math.random() * 10).toFixed(1)} km`
+          distance: `${(Math.random() * 10).toFixed(1)} km`,
+          facilities: [] as string[]
         }));
         
-        // Get court data to determine facilities (sports available)
         for (const venue of venuesWithDistance) {
           const { data: courtsData, error: courtsError } = await supabase
             .from('courts')
@@ -114,7 +107,6 @@ const Venues: React.FC = () => {
             .eq('is_active', true);
             
           if (!courtsError && courtsData) {
-            // Extract unique sports as facilities
             const facilities = Array.from(
               new Set(courtsData.map(court => court.sports?.name || ''))
             ).filter(Boolean);
@@ -162,30 +154,24 @@ const Venues: React.FC = () => {
     setRatingFilter(0);
     setSearchTerm('');
     
-    // Also clear from URL
     navigate('/venues');
   };
 
   const applyFilters = () => {
     setIsFilterOpen(false);
     
-    // If there's one sport selected, update URL
     if (selectedSports.length === 1) {
       navigate(`/venues?sport=${selectedSports[0]}`);
     } else {
-      // For now, just close the filter panel
-      // In a real app, we might want to handle multiple sport filtering in the URL too
       fetchVenues();
     }
   };
 
   const filteredVenues = venues.filter(venue => {
-    // Apply search term filter
     const matchesSearch = venue.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          venue.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (venue.description && venue.description.toLowerCase().includes(searchTerm.toLowerCase()));
     
-    // Apply sports filter (if not already filtered at the database level)
     const matchesSport = selectedSports.length === 0 || 
                         (venue.facilities && venue.facilities.some(facility => 
                           sports
@@ -194,7 +180,6 @@ const Venues: React.FC = () => {
                             .includes(facility)
                         ));
     
-    // Apply rating filter
     const matchesRating = venue.rating >= ratingFilter;
     
     return matchesSearch && matchesSport && matchesRating;
@@ -204,7 +189,6 @@ const Venues: React.FC = () => {
     <div className="min-h-screen bg-sport-gray-light">
       <Header />
       
-      {/* Hero Section */}
       <div className="bg-sport-green pt-32 pb-12 md:pb-16">
         <div className="container mx-auto px-4">
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 text-center">Explore Venues</h1>
@@ -212,7 +196,6 @@ const Venues: React.FC = () => {
             Find the perfect sports venue for your next game or training session
           </p>
           
-          {/* Search Bar */}
           <div className="max-w-2xl mx-auto">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -234,7 +217,6 @@ const Venues: React.FC = () => {
               </button>
             </div>
             
-            {/* Filter Panel */}
             {isFilterOpen && (
               <div className="mt-4 bg-white p-6 rounded-md shadow-lg animate-fade-in">
                 <div className="mb-6">
@@ -295,7 +277,6 @@ const Venues: React.FC = () => {
         </div>
       </div>
       
-      {/* Venues Listing */}
       <div className="container mx-auto px-4 py-12">
         <div className="mb-6 flex justify-between items-center">
           <h2 className="text-2xl font-bold text-sport-gray-dark">
@@ -395,14 +376,12 @@ const Venues: React.FC = () => {
         )}
       </div>
       
-      {/* Footer */}
       <footer className="bg-sport-gray-dark text-white py-8">
         <div className="container mx-auto px-4 text-center">
           <p>&copy; 2025 SportySlot. All rights reserved.</p>
         </div>
       </footer>
       
-      {/* Book Slot Modal */}
       {isBookModalOpen && (
         <BookSlotModal onClose={() => setIsBookModalOpen(false)} />
       )}

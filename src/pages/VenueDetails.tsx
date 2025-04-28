@@ -30,6 +30,14 @@ interface Court {
   sport: Sport;
 }
 
+// Additional interface to match the actual Supabase response
+interface CourtWithSports {
+  id: string;
+  name: string;
+  sport_id: string;
+  sports: Sport;
+}
+
 const VenueDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -67,7 +75,16 @@ const VenueDetails: React.FC = () => {
           .eq('is_active', true);
 
         if (courtsError) throw courtsError;
-        setCourts(courtsData);
+        
+        // Transform the data to match the Court interface
+        const transformedCourts = courtsData.map((court: CourtWithSports) => ({
+          id: court.id,
+          name: court.name,
+          sport_id: court.sport_id,
+          sport: court.sports
+        }));
+        
+        setCourts(transformedCourts);
 
         // Extract unique sports from courts
         const uniqueSports = Array.from(
@@ -128,8 +145,8 @@ const VenueDetails: React.FC = () => {
       <div className="relative h-80 md:h-96">
         <div className="absolute inset-0">
           <img 
-            src={venue.image_url || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000'} 
-            alt={venue.name} 
+            src={venue?.image_url || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000'} 
+            alt={venue?.name} 
             className="w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-70"></div>
@@ -147,16 +164,16 @@ const VenueDetails: React.FC = () => {
             
             <div className="flex justify-between items-start">
               <div>
-                <h1 className="text-3xl md:text-4xl font-bold mb-2">{venue.name}</h1>
+                <h1 className="text-3xl md:text-4xl font-bold mb-2">{venue?.name}</h1>
                 <div className="flex items-center text-gray-300 mb-2">
                   <MapPin className="w-4 h-4 mr-1" />
-                  <span>{venue.location}</span>
+                  <span>{venue?.location}</span>
                 </div>
               </div>
               
               <div className="flex items-center bg-white/90 backdrop-blur-sm rounded-full px-3 py-1.5 text-navy-dark">
                 <Star className="h-5 w-5 text-yellow-500 fill-current mr-1" />
-                <span className="font-bold">{venue.rating?.toFixed(1) || '4.5'}</span>
+                <span className="font-bold">{venue?.rating?.toFixed(1) || '4.5'}</span>
               </div>
             </div>
           </div>
@@ -171,7 +188,7 @@ const VenueDetails: React.FC = () => {
               <CardContent className="p-6">
                 <h2 className="text-2xl font-bold text-sport-gray-dark mb-4">About This Venue</h2>
                 <p className="text-sport-gray-dark mb-6">
-                  {venue.description || 'This venue offers state-of-the-art facilities for multiple sports activities. Perfect for both casual play and professional training.'}
+                  {venue?.description || 'This venue offers state-of-the-art facilities for multiple sports activities. Perfect for both casual play and professional training.'}
                 </p>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -179,7 +196,7 @@ const VenueDetails: React.FC = () => {
                   <div>
                     <h3 className="font-semibold text-lg mb-2 text-sport-gray-dark">Opening Hours</h3>
                     <p className="text-sport-gray-dark">
-                      {venue.opening_hours || 'Monday - Friday: 6:00 AM - 10:00 PM\nSaturday - Sunday: 8:00 AM - 8:00 PM'}
+                      {venue?.opening_hours || 'Monday - Friday: 6:00 AM - 10:00 PM\nSaturday - Sunday: 8:00 AM - 8:00 PM'}
                     </p>
                   </div>
                   
@@ -187,7 +204,7 @@ const VenueDetails: React.FC = () => {
                   <div>
                     <h3 className="font-semibold text-lg mb-2 text-sport-gray-dark">Contact</h3>
                     <p className="text-sport-gray-dark">
-                      {venue.contact_number || 'Phone not available'}
+                      {venue?.contact_number || 'Phone not available'}
                     </p>
                   </div>
                 </div>
@@ -224,7 +241,7 @@ const VenueDetails: React.FC = () => {
                       <div key={court.id} className="border border-gray-200 rounded-lg p-4 hover:border-sport-green transition-colors">
                         <h3 className="font-semibold text-sport-gray-dark">{court.name}</h3>
                         <p className="text-sport-gray-dark text-sm">
-                          Sport: {court.sports?.name || 'N/A'}
+                          Sport: {court.sport?.name || 'N/A'}
                         </p>
                       </div>
                     ))}
