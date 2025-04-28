@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, User, Mail, Lock, Phone } from 'lucide-react';
 import Header from '../components/Header';
 import { toast } from '@/components/ui/use-toast';
+import { useAuth } from '@/context/AuthContext';
 
 const Register: React.FC = () => {
   const [name, setName] = useState('');
@@ -16,6 +17,7 @@ const Register: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   
   const navigate = useNavigate();
+  const { signUp } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,23 +42,29 @@ const Register: React.FC = () => {
     
     setIsLoading(true);
     
-    // Simulate API call
     try {
-      // In a real app, this would be an actual API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Register user with Supabase
+      const { error } = await signUp(email, password, { name, phone });
       
-      // Mock successful registration
-      toast({
-        title: "Registration successful",
-        description: "Welcome to SportySlot! You can now sign in with your credentials.",
-      });
-      
-      // Navigate to login page
-      navigate('/login');
-    } catch (error) {
+      if (error) {
+        toast({
+          title: "Registration failed",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Registration successful",
+          description: "Please check your email to verify your account.",
+        });
+        
+        // Navigate to verification page
+        navigate('/verify-email');
+      }
+    } catch (error: any) {
       toast({
         title: "Registration failed",
-        description: "There was an issue with your registration. Please try again.",
+        description: error.message || "There was an issue with your registration. Please try again.",
         variant: "destructive",
       });
     } finally {

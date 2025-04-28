@@ -1,9 +1,10 @@
 
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, User, Lock } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
 import Header from '../components/Header';
 import { toast } from '@/components/ui/use-toast';
+import { useAuth } from '@/context/AuthContext';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -11,7 +12,7 @@ const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   
-  const navigate = useNavigate();
+  const { signIn } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,23 +28,25 @@ const Login: React.FC = () => {
     
     setIsLoading(true);
     
-    // Simulate API call
     try {
-      // In a real app, this would be an actual API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const { error } = await signIn(email, password);
       
-      // Mock successful login
-      toast({
-        title: "Login successful",
-        description: "Welcome back to SportySlot!",
-      });
-      
-      // Navigate to dashboard or home
-      navigate('/');
-    } catch (error) {
+      if (error) {
+        toast({
+          title: "Login failed",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Login successful",
+          description: "Welcome back to SportySlot!",
+        });
+      }
+    } catch (error: any) {
       toast({
         title: "Login failed",
-        description: "Invalid email or password. Please try again.",
+        description: error.message || "There was an issue signing in. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -61,18 +64,18 @@ const Login: React.FC = () => {
             <div className="p-8">
               <div className="text-center mb-8">
                 <h1 className="text-3xl font-bold text-sport-gray-dark">Welcome Back</h1>
-                <p className="text-sport-gray mt-2">Sign in to continue to SportySlot</p>
+                <p className="text-sport-gray mt-2">Sign in to continue with SportySlot</p>
               </div>
               
               <form onSubmit={handleSubmit}>
-                <div className="space-y-6">
+                <div className="space-y-5">
                   <div>
                     <label htmlFor="email" className="block text-sm font-medium text-sport-gray-dark mb-1">
                       Email Address
                     </label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <User className="h-5 w-5 text-sport-gray" />
+                        <Mail className="h-5 w-5 text-sport-gray" />
                       </div>
                       <input
                         id="email"
@@ -134,7 +137,7 @@ const Login: React.FC = () => {
                     
                     <div className="text-sm">
                       <a href="#" className="font-medium text-sport-green hover:text-sport-green-dark">
-                        Forgot your password?
+                        Forgot password?
                       </a>
                     </div>
                   </div>
@@ -151,10 +154,10 @@ const Login: React.FC = () => {
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                           </svg>
-                          Signing in...
+                          Signing In...
                         </span>
                       ) : (
-                        'Sign in'
+                        'Sign In'
                       )}
                     </button>
                   </div>
