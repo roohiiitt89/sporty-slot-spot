@@ -2,6 +2,11 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
+import { Plus, Edit, MapPin, Phone, Clock, Trash2, CheckCircle, XCircle } from 'lucide-react';
+
+interface VenueManagementProps {
+  userRole: string | null;
+}
 
 interface Venue {
   id: string;
@@ -13,10 +18,6 @@ interface Venue {
   opening_hours: string | null;
   image_url: string | null;
   is_active: boolean;
-}
-
-interface VenueManagementProps {
-  userRole: string | null;
 }
 
 const VenueManagement: React.FC<VenueManagementProps> = ({ userRole }) => {
@@ -42,14 +43,10 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ userRole }) => {
   const fetchVenues = async () => {
     try {
       setLoading(true);
-      let query = supabase.from('venues').select('*');
-      
-      // Super admins see all venues, regular admins see only their assigned venues
-      if (userRole !== 'super_admin') {
-        query = query.eq('id', 'venue_id_placeholder'); // This would be replaced with actual logic to get assigned venues
-      }
-      
-      const { data, error } = await query.order('name');
+      const { data, error } = await supabase
+        .from('venues')
+        .select('*')
+        .order('name');
       
       if (error) throw error;
       
@@ -66,7 +63,7 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ userRole }) => {
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
     
     // Handle checkbox for is_active
@@ -76,7 +73,7 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ userRole }) => {
       return;
     }
     
-    // Handle number inputs
+    // Handle numeric inputs
     if (name === 'capacity') {
       setCurrentVenue({ ...currentVenue, [name]: value ? parseInt(value) : null });
       return;
@@ -116,7 +113,7 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ userRole }) => {
     if (!currentVenue.name || !currentVenue.location) {
       toast({
         title: 'Missing information',
-        description: 'Please fill in the required fields.',
+        description: 'Venue name and location are required.',
         variant: 'destructive',
       });
       return;
@@ -205,14 +202,44 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ userRole }) => {
     }
   };
 
+  const deleteVenue = async (venue: Venue) => {
+    if (!confirm(`Are you sure you want to delete ${venue.name}? This will also delete all associated courts and bookings.`)) {
+      return;
+    }
+    
+    try {
+      const { error } = await supabase
+        .from('venues')
+        .delete()
+        .eq('id', venue.id);
+        
+      if (error) throw error;
+      
+      toast({
+        title: 'Venue deleted',
+        description: `${venue.name} has been deleted.`
+      });
+      
+      fetchVenues();
+    } catch (error) {
+      console.error('Error deleting venue:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete venue. It may have associated courts or bookings.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-semibold">Venue Management</h2>
         <button
           onClick={() => openModal()}
-          className="px-4 py-2 bg-sport-green text-white rounded-md hover:bg-sport-green-dark transition-colors"
+          className="px-4 py-2 bg-sport-green text-white rounded-md hover:bg-sport-green-dark transition-colors flex items-center gap-2"
         >
+          <Plus size={18} />
           Add New Venue
         </button>
       </div>
@@ -232,67 +259,95 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ userRole }) => {
           </button>
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Venue Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {venues.map((venue) => (
-                <tr key={venue.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="font-medium text-gray-900">{venue.name}</div>
-                    {venue.capacity && <div className="text-sm text-gray-500">Capacity: {venue.capacity}</div>}
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-900">{venue.location}</div>
-                    {venue.opening_hours && <div className="text-xs text-gray-500">{venue.opening_hours}</div>}
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-900">{venue.contact_number || '-'}</div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span
-                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        venue.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                      }`}
-                    >
-                      {venue.is_active ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right text-sm font-medium">
-                    <button
-                      onClick={() => openModal(venue)}
-                      className="text-indigo-600 hover:text-indigo-900 mr-3"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => toggleVenueStatus(venue)}
-                      className={`${
-                        venue.is_active ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'
-                      }`}
-                    >
-                      {venue.is_active ? 'Deactivate' : 'Activate'}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {venues.map(venue => (
+            <div key={venue.id} className="bg-white border rounded-lg overflow-hidden shadow-sm">
+              {venue.image_url ? (
+                <div className="h-48 overflow-hidden">
+                  <img 
+                    src={venue.image_url} 
+                    alt={venue.name} 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="h-48 bg-gray-200 flex items-center justify-center">
+                  <span className="text-gray-400">{venue.name}</span>
+                </div>
+              )}
+              
+              <div className="p-4">
+                <div className="flex justify-between items-start">
+                  <h3 className="text-lg font-medium text-gray-900">{venue.name}</h3>
+                  <span
+                    className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                      venue.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    }`}
+                  >
+                    {venue.is_active ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+                
+                <div className="mt-2 space-y-2 text-sm text-gray-600">
+                  <div className="flex items-center">
+                    <MapPin size={16} className="flex-shrink-0 mr-1" />
+                    <span>{venue.location}</span>
+                  </div>
+                  
+                  {venue.contact_number && (
+                    <div className="flex items-center">
+                      <Phone size={16} className="flex-shrink-0 mr-1" />
+                      <span>{venue.contact_number}</span>
+                    </div>
+                  )}
+                  
+                  {venue.opening_hours && (
+                    <div className="flex items-center">
+                      <Clock size={16} className="flex-shrink-0 mr-1" />
+                      <span>{venue.opening_hours}</span>
+                    </div>
+                  )}
+                </div>
+                
+                {venue.description && (
+                  <p className="mt-3 text-sm text-gray-500 line-clamp-2">
+                    {venue.description}
+                  </p>
+                )}
+                
+                <div className="flex justify-end mt-4 space-x-2">
+                  <button
+                    onClick={() => openModal(venue)}
+                    className="text-blue-600 hover:text-blue-900"
+                    title="Edit"
+                  >
+                    <Edit size={18} />
+                  </button>
+                  <button
+                    onClick={() => toggleVenueStatus(venue)}
+                    className={venue.is_active ? "text-red-600 hover:text-red-900" : "text-green-600 hover:text-green-900"}
+                    title={venue.is_active ? "Deactivate" : "Activate"}
+                  >
+                    {venue.is_active ? <XCircle size={18} /> : <CheckCircle size={18} />}
+                  </button>
+                  <button
+                    onClick={() => deleteVenue(venue)}
+                    className="text-red-600 hover:text-red-900"
+                    title="Delete"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
       
       {/* Venue Form Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg max-w-lg w-full">
             <div className="px-6 py-4 border-b">
               <h3 className="text-xl font-semibold">{isEditing ? 'Edit Venue' : 'Add New Venue'}</h3>
             </div>
@@ -305,7 +360,7 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ userRole }) => {
                   <input
                     type="text"
                     name="name"
-                    value={currentVenue.name}
+                    value={currentVenue.name || ''}
                     onChange={handleChange}
                     className="w-full p-2 border rounded-md"
                     required
@@ -319,7 +374,7 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ userRole }) => {
                   <input
                     type="text"
                     name="location"
-                    value={currentVenue.location}
+                    value={currentVenue.location || ''}
                     onChange={handleChange}
                     className="w-full p-2 border rounded-md"
                     required
@@ -347,10 +402,10 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ userRole }) => {
                     <input
                       type="number"
                       name="capacity"
-                      value={currentVenue.capacity || ''}
+                      value={currentVenue.capacity === null ? '' : currentVenue.capacity}
                       onChange={handleChange}
                       className="w-full p-2 border rounded-md"
-                      min={0}
+                      min="1"
                     />
                   </div>
                   
@@ -359,7 +414,7 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ userRole }) => {
                       Contact Number
                     </label>
                     <input
-                      type="text"
+                      type="tel"
                       name="contact_number"
                       value={currentVenue.contact_number || ''}
                       onChange={handleChange}
@@ -377,8 +432,8 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ userRole }) => {
                     name="opening_hours"
                     value={currentVenue.opening_hours || ''}
                     onChange={handleChange}
+                    placeholder="e.g., Mon-Fri: 9 AM - 9 PM, Sat-Sun: 8 AM - 10 PM"
                     className="w-full p-2 border rounded-md"
-                    placeholder="e.g. Mon-Fri: 9AM-5PM"
                   />
                 </div>
                 
@@ -387,12 +442,12 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ userRole }) => {
                     Image URL
                   </label>
                   <input
-                    type="text"
+                    type="url"
                     name="image_url"
                     value={currentVenue.image_url || ''}
                     onChange={handleChange}
-                    className="w-full p-2 border rounded-md"
                     placeholder="https://example.com/image.jpg"
+                    className="w-full p-2 border rounded-md"
                   />
                 </div>
                 

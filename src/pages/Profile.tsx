@@ -1,393 +1,460 @@
 
-import React, { useEffect, useState } from 'react';
-import { User, Calendar, Clock, MapPin } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
+import { LogOut, Edit, CheckCircle, XCircle, Calendar, User, Phone, Mail } from 'lucide-react';
+
+interface Booking {
+  id: string;
+  booking_date: string;
+  start_time: string;
+  end_time: string;
+  total_price: number;
+  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  court: {
+    name: string;
+    venue: {
+      name: string;
+    };
+    sport: {
+      name: string;
+    };
+  };
+}
 
 interface UserProfile {
   id: string;
   full_name: string | null;
   email: string | null;
   phone: string | null;
-  role: string;
-}
-
-interface Booking {
-  id: string;
-  court: {
-    name: string;
-    venue: {
-      name: string;
-      location: string;
-    };
-    sport: {
-      name: string;
-    };
-  };
-  booking_date: string;
-  start_time: string;
-  end_time: string;
-  total_price: number;
-  status: string;
 }
 
 const Profile: React.FC = () => {
-  const { user } = useAuth();
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const { user, signOut, userRole } = useAuth();
+  const [activeTab, setActiveTab] = useState<'profile' | 'bookings'>('profile');
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [editedProfile, setEditedProfile] = useState<Partial<UserProfile>>({});
   const [loading, setLoading] = useState(true);
-  
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState({
+    full_name: '',
+    phone: '',
+  });
+
   useEffect(() => {
     if (user) {
       fetchUserProfile();
       fetchUserBookings();
     }
   }, [user]);
-  
+
   const fetchUserProfile = async () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, full_name, email, phone')
         .eq('id', user?.id)
         .single();
-        
-      if (error) {
-        throw error;
-      }
       
-      if (data) {
-        setUserProfile(data as UserProfile);
-        setEditedProfile(data);
-      }
-    } catch (error: any) {
-      console.error('Error fetching profile:', error.message);
+      if (error) throw error;
+      
+      setProfile(data);
+      setFormData({
+        full_name: data.full_name || '',
+        phone: data.phone || '',
+      });
+      
+    } catch (error) {
+      console.error('Error fetching profile:', error);
       toast({
         title: 'Error',
-        description: 'Failed to load your profile information.',
+        description: 'Failed to load user profile',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const fetchUserBookings = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('bookings')
+        .select(`
+          id, 
+          booking_date, 
+          start_time, 
+          end_time, 
+          total_price, 
+          status,
+          court:courts (
+            name,
+            venue:venues (name),
+            sport:sports (name)
+          )
+        `)
+        .eq('user_id', user?.id)
+        .order('booking_date', { ascending: false });
+      
+      if (error) throw error;
+      
+      setBookings(data || []);
+    } catch (error) {
+      console.error('Error fetching bookings:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load your bookings',
         variant: 'destructive',
       });
     } finally {
       setLoading(false);
     }
   };
-  
-  const fetchUserBookings = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('bookings')
-        .select(`
-          id,
-          booking_date,
-          start_time,
-          end_time,
-          total_price,
-          status,
-          court:court_id (
-            name,
-            venue:venue_id (
-              name,
-              location
-            ),
-            sport:sport_id (
-              name
-            )
-          )
-        `)
-        .eq('user_id', user?.id)
-        .order('booking_date', { ascending: false });
-        
-      if (error) {
-        throw error;
-      }
-      
-      if (data) {
-        setBookings(data as unknown as Booking[]);
-      }
-    } catch (error: any) {
-      console.error('Error fetching bookings:', error.message);
-      toast({
-        title: 'Error',
-        description: 'Failed to load your booking information.',
-        variant: 'destructive',
-      });
-    }
-  };
-  
-  const handleUpdateProfile = async () => {
+
+  const updateProfile = async () => {
     try {
       const { error } = await supabase
         .from('profiles')
         .update({
-          full_name: editedProfile.full_name,
-          phone: editedProfile.phone,
+          full_name: formData.full_name,
+          phone: formData.phone,
         })
         .eq('id', user?.id);
-        
-      if (error) {
-        throw error;
-      }
       
-      setUserProfile({
-        ...userProfile!,
-        full_name: editedProfile.full_name || userProfile?.full_name || null,
-        phone: editedProfile.phone || userProfile?.phone || null,
-      });
-      
-      setIsEditMode(false);
+      if (error) throw error;
       
       toast({
-        title: 'Profile Updated',
-        description: 'Your profile has been successfully updated.',
+        title: 'Profile updated',
+        description: 'Your profile has been updated successfully',
       });
-    } catch (error: any) {
-      console.error('Error updating profile:', error.message);
+      
+      setIsEditing(false);
+      fetchUserProfile(); // Refresh profile data
+    } catch (error) {
+      console.error('Error updating profile:', error);
       toast({
         title: 'Error',
-        description: 'Failed to update your profile.',
+        description: 'Failed to update profile',
         variant: 'destructive',
       });
     }
   };
-  
-  const formatDate = (dateString: string) => {
-    const options: Intl.DateTimeFormatOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString('en-US', options);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
   };
-  
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'confirmed':
-        return 'bg-sport-green text-white';
-      case 'pending':
-        return 'bg-yellow-500 text-white';
-      case 'cancelled':
-        return 'bg-red-500 text-white';
-      case 'completed':
-        return 'bg-blue-500 text-white';
-      default:
-        return 'bg-gray-500 text-white';
+
+  const cancelBooking = async (bookingId: string) => {
+    if (!confirm('Are you sure you want to cancel this booking?')) {
+      return;
+    }
+    
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ status: 'cancelled' })
+        .eq('id', bookingId)
+        .eq('user_id', user?.id);
+      
+      if (error) throw error;
+      
+      toast({
+        title: 'Booking cancelled',
+        description: 'Your booking has been cancelled successfully',
+      });
+      
+      fetchUserBookings(); // Refresh bookings list
+    } catch (error) {
+      console.error('Error cancelling booking:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to cancel booking',
+        variant: 'destructive',
+      });
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-sport-gray-light">
-        <Header />
-        <div className="container mx-auto px-4 pt-32 pb-12">
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-sport-green"></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'confirmed':
+        return 'bg-green-100 text-green-800';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800';
+      case 'completed':
+        return 'bg-blue-100 text-blue-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const formatTime = (timeStr: string) => {
+    const [hours, minutes] = timeStr.split(':');
+    const hour = parseInt(hours, 10);
+    const amPm = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minutes} ${amPm}`;
+  };
 
   return (
     <div className="min-h-screen bg-sport-gray-light">
       <Header />
       
-      {/* User Profile Section */}
-      <div className="bg-sport-green pt-32 pb-12">
+      <div className="pt-24 pb-16">
         <div className="container mx-auto px-4">
-          <h1 className="text-4xl font-bold text-white mb-4">My Profile</h1>
-          <p className="text-xl text-white opacity-90 mb-6">
-            Manage your account information and view your bookings
-          </p>
-        </div>
-      </div>
-      
-      <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left side - Profile info */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl shadow-md overflow-hidden">
-              <div className="p-6">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-semibold text-sport-gray-dark">Personal Information</h2>
-                  <button 
-                    onClick={() => isEditMode ? handleUpdateProfile() : setIsEditMode(true)}
-                    className="px-4 py-2 text-sm bg-sport-green text-white rounded-md hover:bg-sport-green-dark transition-colors"
+          <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
+            <div className="md:flex">
+              {/* Sidebar */}
+              <div className="md:w-1/4 bg-gray-50 p-6">
+                <div className="flex flex-col space-y-2">
+                  <h2 className="text-xl font-bold text-gray-800 mb-4">Your Account</h2>
+                  
+                  <button
+                    onClick={() => setActiveTab('profile')}
+                    className={`flex items-center space-x-2 p-2 rounded-md ${
+                      activeTab === 'profile' 
+                        ? 'bg-sport-green text-white' 
+                        : 'text-gray-700 hover:bg-gray-200'
+                    }`}
                   >
-                    {isEditMode ? 'Save Changes' : 'Edit Profile'}
+                    <User size={18} />
+                    <span>Profile</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => setActiveTab('bookings')}
+                    className={`flex items-center space-x-2 p-2 rounded-md ${
+                      activeTab === 'bookings' 
+                        ? 'bg-sport-green text-white' 
+                        : 'text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    <Calendar size={18} />
+                    <span>My Bookings</span>
+                  </button>
+                  
+                  {userRole && (userRole === 'admin' || userRole === 'super_admin') && (
+                    <a 
+                      href="/admin" 
+                      className="flex items-center space-x-2 p-2 rounded-md text-gray-700 hover:bg-gray-200"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                      </svg>
+                      <span>Admin Dashboard</span>
+                    </a>
+                  )}
+                  
+                  <button
+                    onClick={() => signOut()}
+                    className="flex items-center space-x-2 p-2 rounded-md text-red-600 hover:bg-red-50 mt-8"
+                  >
+                    <LogOut size={18} />
+                    <span>Sign Out</span>
                   </button>
                 </div>
-                
-                <div className="mb-8">
-                  <div className="w-20 h-20 bg-sport-gray-light rounded-full flex items-center justify-center mx-auto">
-                    <User className="h-10 w-10 text-sport-gray-dark" />
-                  </div>
-                  
-                  <div className="text-center mt-4">
-                    <h3 className="text-xl font-medium text-sport-gray-dark">{userProfile?.full_name}</h3>
-                    <span className="px-3 py-1 inline-block mt-2 rounded-full text-xs font-medium uppercase bg-sport-green bg-opacity-10 text-sport-green">
-                      {userProfile?.role}
-                    </span>
-                  </div>
-                </div>
-                
-                <div className="space-y-4">
-                  {isEditMode ? (
-                    <>
-                      <div>
-                        <label className="block text-sm font-medium text-sport-gray-dark mb-1">Full Name</label>
-                        <input
-                          type="text"
-                          value={editedProfile.full_name || ''}
-                          onChange={(e) => setEditedProfile({...editedProfile, full_name: e.target.value})}
-                          className="w-full p-3 border border-sport-gray-light rounded-md focus:outline-none focus:ring-2 focus:ring-sport-green"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-sport-gray-dark mb-1">Email Address</label>
-                        <input
-                          type="email"
-                          value={editedProfile.email || ''}
-                          disabled
-                          className="w-full p-3 border border-sport-gray-light rounded-md bg-gray-100"
-                        />
-                        <p className="mt-1 text-xs text-sport-gray">Email cannot be changed</p>
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-sport-gray-dark mb-1">Phone Number</label>
-                        <input
-                          type="tel"
-                          value={editedProfile.phone || ''}
-                          onChange={(e) => setEditedProfile({...editedProfile, phone: e.target.value})}
-                          className="w-full p-3 border border-sport-gray-light rounded-md focus:outline-none focus:ring-2 focus:ring-sport-green"
-                        />
-                      </div>
-                      
-                      <div className="pt-4 flex space-x-2">
-                        <button
-                          onClick={() => setIsEditMode(false)}
-                          className="px-4 py-2 flex-1 border border-sport-gray-light text-sport-gray-dark rounded-md hover:bg-sport-gray-light transition-colors"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={handleUpdateProfile}
-                          className="px-4 py-2 flex-1 bg-sport-green text-white rounded-md hover:bg-sport-green-dark transition-colors"
-                        >
-                          Save Changes
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div>
-                        <h4 className="text-sm text-sport-gray">Full Name</h4>
-                        <p className="text-sport-gray-dark font-medium">{userProfile?.full_name || 'Not set'}</p>
-                      </div>
-                      
-                      <div>
-                        <h4 className="text-sm text-sport-gray">Email Address</h4>
-                        <p className="text-sport-gray-dark font-medium">{userProfile?.email}</p>
-                      </div>
-                      
-                      <div>
-                        <h4 className="text-sm text-sport-gray">Phone Number</h4>
-                        <p className="text-sport-gray-dark font-medium">{userProfile?.phone || 'Not set'}</p>
-                      </div>
-                    </>
-                  )}
-                </div>
               </div>
-            </div>
-          </div>
-          
-          {/* Right side - Bookings */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-xl shadow-md overflow-hidden">
-              <div className="p-6">
-                <h2 className="text-2xl font-semibold text-sport-gray-dark mb-6">My Bookings</h2>
-                
-                {bookings.length === 0 ? (
-                  <div className="py-8 text-center">
-                    <Calendar className="h-12 w-12 text-sport-gray mx-auto mb-4" />
-                    <h3 className="text-xl font-medium text-sport-gray-dark mb-2">No bookings yet</h3>
-                    <p className="text-sport-gray mb-6">You haven't made any bookings yet.</p>
-                    <a
-                      href="/venues"
-                      className="px-6 py-3 bg-sport-green text-white rounded-md hover:bg-sport-green-dark transition-colors inline-block"
-                    >
-                      Book a Venue
-                    </a>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {bookings.map((booking) => (
-                      <div
-                        key={booking.id}
-                        className="border border-sport-gray-light rounded-lg p-4 hover:border-sport-green transition-colors"
-                      >
-                        <div className="flex flex-wrap justify-between items-start gap-2 mb-3">
-                          <div>
-                            <h3 className="font-bold text-lg text-sport-gray-dark">{booking.court.sport.name} - {booking.court.name}</h3>
-                            <p className="text-sport-gray">{booking.court.venue.name}</p>
-                          </div>
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>
-                            {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-                          </span>
+              
+              {/* Main content */}
+              <div className="md:w-3/4 p-6">
+                {activeTab === 'profile' && (
+                  <div>
+                    <div className="flex justify-between items-center mb-6">
+                      <h2 className="text-2xl font-bold text-gray-800">Your Profile</h2>
+                      {!isEditing && (
+                        <button
+                          onClick={() => setIsEditing(true)}
+                          className="flex items-center space-x-1 text-sport-green hover:text-sport-green-dark"
+                        >
+                          <Edit size={18} />
+                          <span>Edit Profile</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {isEditing ? (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                          <input
+                            type="text"
+                            name="full_name"
+                            value={formData.full_name}
+                            onChange={handleInputChange}
+                            className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sport-green"
+                          />
                         </div>
                         
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-2">
-                          <div className="flex items-center text-sport-gray">
-                            <Calendar className="w-4 h-4 mr-2" />
-                            <span>{formatDate(booking.booking_date)}</span>
-                          </div>
-                          <div className="flex items-center text-sport-gray">
-                            <Clock className="w-4 h-4 mr-2" />
-                            <span>{booking.start_time} - {booking.end_time}</span>
-                          </div>
-                          <div className="flex items-center text-sport-gray">
-                            <MapPin className="w-4 h-4 mr-2" />
-                            <span>{booking.court.venue.location}</span>
-                          </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                          <input
+                            type="email"
+                            value={user?.email || ''}
+                            disabled
+                            className="w-full p-3 border border-gray-300 rounded-md bg-gray-50"
+                          />
+                          <p className="mt-1 text-xs text-gray-500">Email cannot be changed</p>
                         </div>
                         
-                        <div className="mt-3 flex justify-between items-center">
-                          <p className="font-medium text-sport-gray-dark">${booking.total_price.toFixed(2)}</p>
-                          
-                          {booking.status === 'pending' && (
-                            <button 
-                              className="px-4 py-2 text-sm border border-red-500 text-red-500 rounded-md hover:bg-red-500 hover:text-white transition-colors"
-                              onClick={async () => {
-                                try {
-                                  const { error } = await supabase
-                                    .from('bookings')
-                                    .update({ status: 'cancelled' })
-                                    .eq('id', booking.id);
-                                    
-                                  if (error) throw error;
-                                  
-                                  fetchUserBookings();
-                                  
-                                  toast({
-                                    title: "Booking cancelled",
-                                    description: "Your booking has been cancelled successfully.",
-                                  });
-                                } catch (error: any) {
-                                  toast({
-                                    title: "Error",
-                                    description: "Failed to cancel the booking. Please try again.",
-                                    variant: "destructive",
-                                  });
-                                }
-                              }}
-                            >
-                              Cancel Booking
-                            </button>
-                          )}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                          <input
+                            type="tel"
+                            name="phone"
+                            value={formData.phone}
+                            onChange={handleInputChange}
+                            className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sport-green"
+                          />
+                        </div>
+                        
+                        <div className="flex space-x-3 pt-4">
+                          <button
+                            onClick={updateProfile}
+                            className="px-6 py-2 bg-sport-green text-white rounded-md hover:bg-sport-green-dark transition-colors"
+                          >
+                            Save Changes
+                          </button>
+                          <button
+                            onClick={() => {
+                              setIsEditing(false);
+                              setFormData({
+                                full_name: profile?.full_name || '',
+                                phone: profile?.phone || '',
+                              });
+                            }}
+                            className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-100 transition-colors"
+                          >
+                            Cancel
+                          </button>
                         </div>
                       </div>
-                    ))}
+                    ) : (
+                      <div className="bg-gray-50 p-6 rounded-lg">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="space-y-4">
+                            <div>
+                              <div className="flex items-center space-x-2">
+                                <User className="text-sport-green" size={20} />
+                                <h3 className="text-sm font-medium text-gray-500">Full Name</h3>
+                              </div>
+                              <p className="mt-1 text-lg">{profile?.full_name || 'Not provided'}</p>
+                            </div>
+                            
+                            <div>
+                              <div className="flex items-center space-x-2">
+                                <Mail className="text-sport-green" size={20} />
+                                <h3 className="text-sm font-medium text-gray-500">Email</h3>
+                              </div>
+                              <p className="mt-1 text-lg">{user?.email}</p>
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-4">
+                            <div>
+                              <div className="flex items-center space-x-2">
+                                <Phone className="text-sport-green" size={20} />
+                                <h3 className="text-sm font-medium text-gray-500">Phone Number</h3>
+                              </div>
+                              <p className="mt-1 text-lg">{profile?.phone || 'Not provided'}</p>
+                            </div>
+                            
+                            <div>
+                              <div className="flex items-center space-x-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-sport-green" viewBox="0 0 20 20" fill="currentColor">
+                                  <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                                </svg>
+                                <h3 className="text-sm font-medium text-gray-500">Account Type</h3>
+                              </div>
+                              <p className="mt-1 text-lg capitalize">{userRole || 'User'}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'bookings' && (
+                  <div>
+                    <div className="flex justify-between items-center mb-6">
+                      <h2 className="text-2xl font-bold text-gray-800">Your Bookings</h2>
+                    </div>
+                    
+                    {loading ? (
+                      <div className="flex justify-center items-center h-64">
+                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-sport-green"></div>
+                      </div>
+                    ) : bookings.length === 0 ? (
+                      <div className="text-center py-12 bg-gray-50 rounded-lg">
+                        <p className="text-gray-600 mb-4">You don't have any bookings yet</p>
+                        <a 
+                          href="/venues" 
+                          className="px-6 py-3 bg-sport-green text-white rounded-md hover:bg-sport-green-dark transition-colors inline-block"
+                        >
+                          Browse Venues
+                        </a>
+                      </div>
+                    ) : (
+                      <div className="space-y-6">
+                        {bookings.map((booking) => {
+                          const isPast = new Date(`${booking.booking_date} ${booking.end_time}`) < new Date();
+                          const canCancel = !isPast && (booking.status === 'pending' || booking.status === 'confirmed');
+                          
+                          return (
+                            <div key={booking.id} className="bg-white border rounded-lg overflow-hidden shadow-sm">
+                              <div className="p-4 md:p-6">
+                                <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+                                  <div className="mb-4 md:mb-0">
+                                    <div className="flex flex-col md:flex-row md:items-center md:space-x-4">
+                                      <h3 className="text-lg font-medium text-gray-900">{booking.court.sport.name} at {booking.court.venue.name}</h3>
+                                      <span className={`inline-flex px-2 py-1 mt-2 md:mt-0 text-xs font-semibold rounded-full ${getStatusColor(booking.status)}`}>
+                                        {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                                      </span>
+                                    </div>
+                                    <p className="text-gray-600 mt-1">{booking.court.name}</p>
+                                  </div>
+                                  
+                                  {canCancel && (
+                                    <button
+                                      onClick={() => cancelBooking(booking.id)}
+                                      className="bg-red-50 text-red-600 px-4 py-2 rounded-md hover:bg-red-100 transition-colors inline-flex items-center"
+                                    >
+                                      <XCircle size={16} className="mr-1" />
+                                      Cancel Booking
+                                    </button>
+                                  )}
+                                </div>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                                  <div className="bg-gray-50 px-3 py-2 rounded-md">
+                                    <p className="text-xs text-gray-500">Date</p>
+                                    <p className="font-medium">{new Date(booking.booking_date).toLocaleDateString('en-US', { 
+                                      weekday: 'short', 
+                                      year: 'numeric', 
+                                      month: 'short', 
+                                      day: 'numeric' 
+                                    })}</p>
+                                  </div>
+                                  
+                                  <div className="bg-gray-50 px-3 py-2 rounded-md">
+                                    <p className="text-xs text-gray-500">Time</p>
+                                    <p className="font-medium">{formatTime(booking.start_time)} - {formatTime(booking.end_time)}</p>
+                                  </div>
+                                  
+                                  <div className="bg-gray-50 px-3 py-2 rounded-md">
+                                    <p className="text-xs text-gray-500">Price</p>
+                                    <p className="font-medium">${booking.total_price.toFixed(2)}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -396,9 +463,9 @@ const Profile: React.FC = () => {
         </div>
       </div>
       
-      <footer className="bg-sport-gray-dark text-white py-8">
+      <footer className="bg-white py-6">
         <div className="container mx-auto px-4 text-center">
-          <p>&copy; 2025 SportySlot. All rights reserved.</p>
+          <p className="text-sport-gray">&copy; 2025 SportySlot. All rights reserved.</p>
         </div>
       </footer>
     </div>

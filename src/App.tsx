@@ -38,6 +38,10 @@ const App = () => (
             <Route element={<RouteGuard requireAuth={true} />}>
               <Route path="/profile" element={<Profile />} />
               <Route path="/bookings" element={<Bookings />} />
+            </Route>
+            
+            {/* Admin routes */}
+            <Route element={<RouteGuard requireAuth={true} requiredRole="admin" />}>
               <Route path="/admin/*" element={<AdminDashboard />} />
             </Route>
 

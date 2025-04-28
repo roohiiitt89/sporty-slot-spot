@@ -27,6 +27,7 @@ interface Court {
   name: string;
   venue_id: string;
   sport_id: string;
+  hourly_rate: number;
 }
 
 interface Booking {
@@ -90,17 +91,25 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     booking: false
   });
   const [existingBookings, setExistingBookings] = useState<Booking[]>([]);
+  const [courtRate, setCourtRate] = useState<number>(0);
 
   // Fetch venues and sports on load
   useEffect(() => {
     fetchVenues();
     fetchSports();
+    
+    // Set today's date as default
+    const today = new Date();
+    setSelectedDate(today.toISOString().split('T')[0]);
   }, []);
 
   // Fetch courts when venue and sport are selected
   useEffect(() => {
     if (selectedVenue && selectedSport) {
       fetchCourts();
+    } else {
+      setCourts([]);
+      setSelectedCourt('');
     }
   }, [selectedVenue, selectedSport]);
 
@@ -194,7 +203,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     try {
       const { data, error } = await supabase
         .from('courts')
-        .select('id, name, venue_id, sport_id')
+        .select('id, name, venue_id, sport_id, hourly_rate')
         .eq('venue_id', selectedVenue)
         .eq('sport_id', selectedSport)
         .eq('is_active', true);
@@ -206,6 +215,10 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       setCourts(data || []);
       if (data && data.length > 0) {
         setSelectedCourt(data[0].id);
+        setCourtRate(data[0].hourly_rate);
+      } else {
+        setSelectedCourt('');
+        setCourtRate(0);
       }
     } catch (error) {
       console.error('Error fetching courts:', error);
@@ -305,10 +318,8 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
   };
 
   const calculateTotalPrice = () => {
-    // In a real app, this would get pricing from the database
-    // For now, use a simple hourly rate of $25
-    const hourlyRate = 25;
-    return (selectedSlots.length / 2) * hourlyRate; // 2 slots = 1 hour
+    // Use the court's hourly rate from the database
+    return (selectedSlots.length / 2) * courtRate; // 2 slots = 1 hour
   };
 
   const handleNextStep = () => {
@@ -508,13 +519,19 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
               <label className="block text-sport-gray-dark mb-2 font-medium">Select Court</label>
               <select
                 value={selectedCourt}
-                onChange={e => setSelectedCourt(e.target.value)}
+                onChange={e => {
+                  setSelectedCourt(e.target.value);
+                  const court = courts.find(c => c.id === e.target.value);
+                  if (court) {
+                    setCourtRate(court.hourly_rate);
+                  }
+                }}
                 className="w-full p-3 border border-sport-gray-light rounded-md focus:outline-none focus:ring-2 focus:ring-sport-green"
                 disabled={loading.courts || !selectedVenue || !selectedSport}
               >
                 <option value="">Select a court</option>
                 {courts.map(court => (
-                  <option key={court.id} value={court.id}>{court.name}</option>
+                  <option key={court.id} value={court.id}>{court.name} - ${court.hourly_rate}/hr</option>
                 ))}
               </select>
               {loading.courts && <p className="mt-1 text-xs text-sport-gray">Loading courts...</p>}
@@ -737,7 +754,8 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       </div>
       
       {/* Add some custom CSS to handle modal styling */}
-      <style jsx>{`
+      <style jsx>
+        {`
         .modal-bg {
           position: fixed;
           top: 0;
@@ -796,7 +814,8 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
           color: #9ca3af; /* sport-gray */
           cursor: not-allowed;
         }
-      `}</style>
+        `}
+      </style>
     </div>
   );
 };
