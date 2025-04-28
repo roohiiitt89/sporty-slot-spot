@@ -2,58 +2,76 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
-import { Check, X, Filter } from 'lucide-react';
+import { 
+  Check, AlertCircle, XCircle, Search, ChevronDown, Filter, DownloadIcon 
+} from 'lucide-react';
+import type { Database } from '@/integrations/supabase/types';
+
+// Define the booking status type to match our enum
+type BookingStatus = Database['public']['Enums']['booking_status'];
 
 interface BookingManagementProps {
   userRole: string | null;
 }
 
+interface Court {
+  id: string;
+  name: string;
+  venue: {
+    name: string;
+  };
+  sport: {
+    name: string;
+  };
+}
+
+interface Profile {
+  full_name: string;
+  phone: string;
+  email: string;
+}
+
 interface Booking {
   id: string;
   court_id: string;
-  user_id: string | null;
+  user_id: string;
   booking_date: string;
   start_time: string;
   end_time: string;
   total_price: number;
-  guest_name: string | null;
-  guest_phone: string | null;
-  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  guest_name: string;
+  guest_phone: string;
+  status: BookingStatus;
   created_at: string;
-  court: {
-    name: string;
-    venue: {
-      name: string;
-    };
-    sport: {
-      name: string;
-    };
-  };
-  profile?: {
-    full_name: string;
-    phone: string;
-    email: string;
-  };
+  court: Court;
+  profile: Profile;
 }
+
+const statusOptions: { value: BookingStatus; label: string; color: string }[] = [
+  { value: 'pending', label: 'Pending', color: 'bg-yellow-500' },
+  { value: 'confirmed', label: 'Confirmed', color: 'bg-green-500' },
+  { value: 'cancelled', label: 'Cancelled', color: 'bg-red-500' },
+  { value: 'completed', label: 'Completed', color: 'bg-blue-500' }
+];
 
 const BookingManagement: React.FC<BookingManagementProps> = ({ userRole }) => {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({
-    status: 'all',
-    dateRange: 'upcoming',
-    search: '',
-    showFilterPanel: false
-  });
-
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<BookingStatus | ''>('');
+  const [dateFilter, setDateFilter] = useState('');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isBookingDetailOpen, setIsBookingDetailOpen] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  
   useEffect(() => {
     fetchBookings();
-  }, [filters.status, filters.dateRange]);
+  }, []);
 
   const fetchBookings = async () => {
     setLoading(true);
     try {
-      let query = supabase
+      const { data, error } = await supabase
         .from('bookings')
         .select(`
           id, 
@@ -67,47 +85,21 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole }) => {
           guest_phone, 
           status, 
           created_at,
-          court:courts (
-            name, 
-            venue:venues (name),
-            sport:sports (name)
+          court:court_id (
+            id, 
+            name,
+            venue:venue_id (name),
+            sport:sport_id (name)
           ),
-          profile:profiles (full_name, phone, email)
-        `);
+          profile:user_id (full_name, phone, email)
+        `)
+        .order('booking_date', { ascending: false });
       
-      // Apply status filter
-      if (filters.status !== 'all') {
-        query = query.eq('status', filters.status);
+      if (error) {
+        throw error;
       }
       
-      // Apply date range filter
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const todayStr = today.toISOString().split('T')[0];
-      
-      if (filters.dateRange === 'upcoming') {
-        query = query.gte('booking_date', todayStr);
-      } else if (filters.dateRange === 'past') {
-        query = query.lt('booking_date', todayStr);
-      } else if (filters.dateRange === 'today') {
-        query = query.eq('booking_date', todayStr);
-      }
-      
-      // Sort by most recent first for past bookings, and closest date first for upcoming
-      if (filters.dateRange === 'past') {
-        query = query.order('booking_date', { ascending: false });
-      } else {
-        query = query.order('booking_date', { ascending: true });
-      }
-      
-      // Add additional sorting by time
-      query = query.order('start_time', { ascending: true });
-      
-      const { data, error } = await query;
-      
-      if (error) throw error;
-      
-      setBookings(data as Booking[] || []);
+      setBookings(data as unknown as Booking[]);
     } catch (error) {
       console.error('Error fetching bookings:', error);
       toast({
@@ -120,22 +112,31 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole }) => {
     }
   };
 
-  const updateBookingStatus = async (bookingId: string, newStatus: 'pending' | 'confirmed' | 'cancelled' | 'completed') => {
+  const updateBookingStatus = async (id: string, status: BookingStatus) => {
     try {
       const { error } = await supabase
         .from('bookings')
-        .update({ status: newStatus })
-        .eq('id', bookingId);
+        .update({ status })
+        .eq('id', id);
       
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
+      
+      setBookings(prevBookings => 
+        prevBookings.map(booking => 
+          booking.id === id ? { ...booking, status } : booking
+        )
+      );
+      
+      if (selectedBooking && selectedBooking.id === id) {
+        setSelectedBooking({ ...selectedBooking, status });
+      }
       
       toast({
         title: 'Status updated',
-        description: `Booking status has been updated to ${newStatus}.`
+        description: `Booking status has been updated to ${status}`,
       });
-      
-      // Refresh the bookings list
-      fetchBookings();
     } catch (error) {
       console.error('Error updating booking status:', error);
       toast({
@@ -146,206 +147,400 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole }) => {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'confirmed':
-        return 'bg-green-100 text-green-800';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800';
-      case 'completed':
-        return 'bg-blue-100 text-blue-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
+  const openBookingDetail = (booking: Booking) => {
+    setSelectedBooking(booking);
+    setIsBookingDetailOpen(true);
   };
 
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFilters({ ...filters, search: e.target.value });
+  const closeBookingDetail = () => {
+    setIsBookingDetailOpen(false);
   };
 
-  const handleFilterChange = (filter: string, value: string) => {
-    setFilters({ ...filters, [filter]: value });
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    });
   };
-
-  const toggleFilterPanel = () => {
-    setFilters({ ...filters, showFilterPanel: !filters.showFilterPanel });
-  };
-
-  // Filter bookings by search term
-  const filteredBookings = bookings.filter(booking => {
-    if (!filters.search) return true;
-    
-    const searchLower = filters.search.toLowerCase();
-    const courtName = booking.court?.name?.toLowerCase() || '';
-    const venueName = booking.court?.venue?.name?.toLowerCase() || '';
-    const sportName = booking.court?.sport?.name?.toLowerCase() || '';
-    const userName = booking.profile?.full_name?.toLowerCase() || booking.guest_name?.toLowerCase() || '';
-    const date = booking.booking_date;
-    
-    return (
-      courtName.includes(searchLower) ||
-      venueName.includes(searchLower) ||
-      sportName.includes(searchLower) ||
-      userName.includes(searchLower) ||
-      date.includes(searchLower)
-    );
-  });
 
   const formatTime = (timeStr: string) => {
+    // Formats a time string like "14:00:00" to "2:00 PM"
     const [hours, minutes] = timeStr.split(':');
     const hour = parseInt(hours, 10);
-    const amPm = hour >= 12 ? 'PM' : 'AM';
-    const hour12 = hour % 12 || 12;
-    return `${hour12}:${minutes} ${amPm}`;
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const formattedHour = hour % 12 || 12;
+    return `${formattedHour}:${minutes} ${ampm}`;
+  };
+
+  const getStatusBadge = (status: BookingStatus) => {
+    const statusOption = statusOptions.find(option => option.value === status);
+    return (
+      <span className={`px-2 py-1 rounded-full text-white text-xs ${statusOption?.color}`}>
+        {statusOption?.label}
+      </span>
+    );
+  };
+
+  // Filter bookings based on search, status, and date filters
+  const filteredBookings = bookings.filter(booking => {
+    const matchesSearch = 
+      (booking.guest_name?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
+      (booking.profile?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
+      (booking.profile?.email?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
+      (booking.court?.venue?.name?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
+      (booking.court?.name?.toLowerCase().includes(searchTerm.toLowerCase()) || false);
+    
+    const matchesStatus = statusFilter ? booking.status === statusFilter : true;
+    const matchesDate = dateFilter ? booking.booking_date === dateFilter : true;
+    
+    return matchesSearch && matchesStatus && matchesDate;
+  });
+
+  const exportBookingsToCSV = () => {
+    const headers = [
+      'Booking ID', 
+      'Court', 
+      'Venue', 
+      'Sport',
+      'Date', 
+      'Time', 
+      'Customer', 
+      'Contact', 
+      'Price',
+      'Status'
+    ];
+    
+    const csvData = filteredBookings.map(booking => {
+      const name = booking.user_id ? booking.profile?.full_name : booking.guest_name;
+      const contact = booking.user_id ? booking.profile?.email : booking.guest_phone;
+      
+      return [
+        booking.id,
+        booking.court?.name || 'Unknown',
+        booking.court?.venue?.name || 'Unknown',
+        booking.court?.sport?.name || 'Unknown',
+        booking.booking_date,
+        `${formatTime(booking.start_time)} - ${formatTime(booking.end_time)}`,
+        name || 'Unknown',
+        contact || 'None',
+        `$${booking.total_price.toFixed(2)}`,
+        booking.status
+      ];
+    });
+    
+    const csvContent = [
+      headers.join(','),
+      ...csvData.map(row => row.join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `bookings_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-semibold">Booking Management</h2>
-        <button
-          onClick={toggleFilterPanel}
-          className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors flex items-center gap-2"
-        >
-          <Filter size={18} />
-          Filter & Search
-        </button>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => exportBookingsToCSV()}
+            className="px-4 py-2 bg-sport-gray-dark text-white rounded-md hover:bg-black transition-colors flex items-center gap-2"
+          >
+            <DownloadIcon size={16} />
+            Export
+          </button>
+        </div>
       </div>
       
-      {/* Filter Panel */}
-      {filters.showFilterPanel && (
-        <div className="bg-white p-4 rounded-lg shadow-sm border mb-6 animate-fade-in">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Search and filters */}
+      <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
+        <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
+          <div className="relative flex-grow">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-sport-gray" size={18} />
+            <input
+              type="text"
+              placeholder="Search bookings..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 pr-4 py-2 border rounded-md w-full"
+            />
+          </div>
+          
+          <button
+            onClick={() => setIsFilterOpen(!isFilterOpen)}
+            className="flex items-center px-4 py-2 bg-sport-gray-light text-sport-gray-dark rounded-md hover:bg-sport-gray transition-colors"
+          >
+            <Filter size={18} className="mr-2" />
+            Filter
+            <ChevronDown size={16} className={`ml-2 transform transition-transform ${isFilterOpen ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+        
+        {isFilterOpen && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 pt-4 border-t">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Status
+              </label>
               <select
-                value={filters.status}
-                onChange={(e) => handleFilterChange('status', e.target.value)}
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as BookingStatus | '')}
                 className="w-full p-2 border rounded-md"
               >
-                <option value="all">All Statuses</option>
-                <option value="pending">Pending</option>
-                <option value="confirmed">Confirmed</option>
-                <option value="cancelled">Cancelled</option>
-                <option value="completed">Completed</option>
+                <option value="">All Statuses</option>
+                {statusOptions.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </div>
+            
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Date Range</label>
-              <select
-                value={filters.dateRange}
-                onChange={(e) => handleFilterChange('dateRange', e.target.value)}
-                className="w-full p-2 border rounded-md"
-              >
-                <option value="upcoming">Upcoming</option>
-                <option value="past">Past</option>
-                <option value="today">Today</option>
-                <option value="all">All Dates</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Booking Date
+              </label>
               <input
-                type="text"
-                value={filters.search}
-                onChange={handleSearch}
-                placeholder="Search by name, venue, etc."
+                type="date"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
                 className="w-full p-2 border rounded-md"
               />
             </div>
+            
+            <div className="flex items-end">
+              <button
+                onClick={() => {
+                  setStatusFilter('');
+                  setDateFilter('');
+                  setSearchTerm('');
+                }}
+                className="px-4 py-2 border text-sport-gray-dark rounded-md hover:bg-sport-gray-light transition-colors"
+              >
+                Clear Filters
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
       
+      {/* Bookings table */}
       {loading ? (
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-sport-green"></div>
         </div>
       ) : filteredBookings.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <p className="text-gray-600">No bookings found</p>
-          <p className="text-gray-500 mt-2">Try adjusting your filters</p>
+          <p className="text-gray-600">No bookings found matching your filters</p>
         </div>
       ) : (
         <div className="overflow-x-auto">
           <table className="min-w-full bg-white rounded-lg overflow-hidden">
             <thead className="bg-gray-100">
               <tr>
-                <th className="py-3 px-4 text-left font-medium text-gray-600">Booking ID</th>
-                <th className="py-3 px-4 text-left font-medium text-gray-600">Date</th>
-                <th className="py-3 px-4 text-left font-medium text-gray-600">Time</th>
-                <th className="py-3 px-4 text-left font-medium text-gray-600">Venue</th>
                 <th className="py-3 px-4 text-left font-medium text-gray-600">Court</th>
-                <th className="py-3 px-4 text-left font-medium text-gray-600">User</th>
+                <th className="py-3 px-4 text-left font-medium text-gray-600">Date & Time</th>
+                <th className="py-3 px-4 text-left font-medium text-gray-600">Customer</th>
                 <th className="py-3 px-4 text-left font-medium text-gray-600">Price</th>
                 <th className="py-3 px-4 text-left font-medium text-gray-600">Status</th>
                 <th className="py-3 px-4 text-right font-medium text-gray-600">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {filteredBookings.map(booking => (
-                <tr key={booking.id} className="hover:bg-gray-50">
-                  <td className="py-3 px-4 font-mono text-sm">{booking.id.split('-')[0]}</td>
-                  <td className="py-3 px-4">{new Date(booking.booking_date).toLocaleDateString()}</td>
-                  <td className="py-3 px-4">{formatTime(booking.start_time)} - {formatTime(booking.end_time)}</td>
-                  <td className="py-3 px-4">{booking.court?.venue?.name}</td>
-                  <td className="py-3 px-4">{booking.court?.name}</td>
-                  <td className="py-3 px-4">
-                    {booking.profile?.full_name || booking.guest_name || 'Anonymous'}
-                    <div className="text-xs text-gray-500">
-                      {booking.profile?.email || booking.guest_phone || ''}
-                    </div>
-                  </td>
-                  <td className="py-3 px-4">${booking.total_price.toFixed(2)}</td>
-                  <td className="py-3 px-4">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(booking.status)}`}>
-                      {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-right space-x-1">
-                    {booking.status === 'pending' && (
-                      <>
-                        <button
-                          onClick={() => updateBookingStatus(booking.id, 'confirmed')}
-                          className="text-green-600 hover:text-green-800 p-1"
-                          title="Confirm Booking"
-                        >
-                          <Check size={18} />
-                        </button>
-                        <button
-                          onClick={() => updateBookingStatus(booking.id, 'cancelled')}
-                          className="text-red-600 hover:text-red-800 p-1"
-                          title="Cancel Booking"
-                        >
-                          <X size={18} />
-                        </button>
-                      </>
-                    )}
-                    {booking.status === 'confirmed' && (
-                      <>
-                        <button
-                          onClick={() => updateBookingStatus(booking.id, 'completed')}
-                          className="text-blue-600 hover:text-blue-800 p-1"
-                          title="Mark as Completed"
-                        >
-                          <Check size={18} />
-                        </button>
-                        <button
-                          onClick={() => updateBookingStatus(booking.id, 'cancelled')}
-                          className="text-red-600 hover:text-red-800 p-1"
-                          title="Cancel Booking"
-                        >
-                          <X size={18} />
-                        </button>
-                      </>
-                    )}
-                  </td>
-                </tr>
-              ))}
+              {filteredBookings.map(booking => {
+                const name = booking.user_id 
+                  ? (booking.profile?.full_name || 'Unknown User') 
+                  : (booking.guest_name || 'Guest');
+                
+                return (
+                  <tr 
+                    key={booking.id} 
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={() => openBookingDetail(booking)}
+                  >
+                    <td className="py-3 px-4">
+                      <div>
+                        <p className="font-medium">{booking.court?.name || 'Unknown'}</p>
+                        <p className="text-xs text-sport-gray">{booking.court?.venue?.name || 'Unknown Venue'}</p>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div>
+                        <p className="font-medium">{formatDate(booking.booking_date)}</p>
+                        <p className="text-xs text-sport-gray">
+                          {formatTime(booking.start_time)} - {formatTime(booking.end_time)}
+                        </p>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div>
+                        <p className="font-medium">{name}</p>
+                        <p className="text-xs text-sport-gray">
+                          {booking.user_id 
+                            ? booking.profile?.email || 'No email' 
+                            : booking.guest_phone || 'No phone'}
+                        </p>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 font-medium">${booking.total_price.toFixed(2)}</td>
+                    <td className="py-3 px-4">
+                      {getStatusBadge(booking.status)}
+                    </td>
+                    <td className="py-3 px-4 text-right space-x-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const nextStatus: BookingStatus = booking.status === 'pending' ? 'confirmed' : 'completed';
+                          updateBookingStatus(booking.id, nextStatus);
+                        }}
+                        className={`text-green-600 hover:text-green-900 ${
+                          booking.status !== 'pending' && booking.status !== 'confirmed' ? 'hidden' : ''
+                        }`}
+                        title={booking.status === 'pending' ? 'Confirm' : 'Complete'}
+                      >
+                        <Check size={18} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          updateBookingStatus(booking.id, 'cancelled');
+                        }}
+                        className={`text-red-600 hover:text-red-900 ${
+                          booking.status !== 'pending' && booking.status !== 'confirmed' ? 'hidden' : ''
+                        }`}
+                        title="Cancel"
+                      >
+                        <XCircle size={18} />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
+        </div>
+      )}
+      
+      {/* Booking Detail Modal */}
+      {isBookingDetailOpen && selectedBooking && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-2xl w-full">
+            <div className="px-6 py-4 border-b flex justify-between items-center">
+              <h3 className="text-xl font-semibold">Booking Details</h3>
+              <button 
+                onClick={closeBookingDetail}
+                className="text-sport-gray-dark hover:text-sport-green transition-colors"
+              >
+                <XCircle size={24} />
+              </button>
+            </div>
+            
+            <div className="px-6 py-4 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">Booking Reference</h4>
+                  <p className="font-mono">{selectedBooking.id}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">Status</h4>
+                  <div className="mt-1">{getStatusBadge(selectedBooking.status)}</div>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">Court</h4>
+                  <p>{selectedBooking.court?.name || 'Unknown'}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">Venue</h4>
+                  <p>{selectedBooking.court?.venue?.name || 'Unknown'}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">Sport</h4>
+                  <p>{selectedBooking.court?.sport?.name || 'Unknown'}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">Date</h4>
+                  <p>{formatDate(selectedBooking.booking_date)}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">Time</h4>
+                  <p>{formatTime(selectedBooking.start_time)} - {formatTime(selectedBooking.end_time)}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">Price</h4>
+                  <p>${selectedBooking.total_price.toFixed(2)}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">Booked On</h4>
+                  <p>{formatDate(selectedBooking.created_at)}</p>
+                </div>
+              </div>
+              
+              <div className="border-t pt-4 mt-4">
+                <h4 className="text-sm font-medium text-gray-500 mb-2">Customer Information</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <h5 className="text-xs text-gray-500">Name</h5>
+                    <p>{selectedBooking.user_id 
+                      ? (selectedBooking.profile?.full_name || 'Unknown User') 
+                      : (selectedBooking.guest_name || 'Guest')}
+                    </p>
+                  </div>
+                  <div>
+                    <h5 className="text-xs text-gray-500">Contact</h5>
+                    <p>{selectedBooking.user_id 
+                      ? selectedBooking.profile?.email || 'No email'
+                      : selectedBooking.guest_phone || 'No phone'}
+                    </p>
+                  </div>
+                  {selectedBooking.user_id && selectedBooking.profile?.phone && (
+                    <div>
+                      <h5 className="text-xs text-gray-500">Phone</h5>
+                      <p>{selectedBooking.profile.phone}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            <div className="px-6 py-4 border-t bg-gray-50 flex justify-end space-x-2">
+              {(selectedBooking.status === 'pending' || selectedBooking.status === 'confirmed') && (
+                <>
+                  <button
+                    onClick={() => {
+                      const nextStatus: BookingStatus = selectedBooking.status === 'pending' ? 'confirmed' : 'completed';
+                      updateBookingStatus(selectedBooking.id, nextStatus);
+                    }}
+                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center"
+                  >
+                    <Check size={16} className="mr-1" />
+                    {selectedBooking.status === 'pending' ? 'Confirm Booking' : 'Mark Completed'}
+                  </button>
+                  <button
+                    onClick={() => updateBookingStatus(selectedBooking.id, 'cancelled')}
+                    className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors flex items-center"
+                  >
+                    <XCircle size={16} className="mr-1" />
+                    Cancel Booking
+                  </button>
+                </>
+              )}
+              <button
+                onClick={closeBookingDetail}
+                className="px-4 py-2 border text-gray-700 rounded-md hover:bg-gray-100 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

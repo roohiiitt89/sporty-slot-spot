@@ -1,10 +1,11 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { format } from 'date-fns';
 
 interface BookSlotModalProps {
   onClose: () => void;
@@ -30,43 +31,11 @@ interface Court {
   hourly_rate: number;
 }
 
-interface Booking {
-  court_id: string;
-  booking_date: string;
+interface TimeSlot {
   start_time: string;
   end_time: string;
+  is_available: boolean;
 }
-
-// Generate time slots from 5 AM to 12 AM
-const generateTimeSlots = () => {
-  const slots = [];
-  for (let hour = 5; hour <= 23; hour++) {
-    const hourFormatted = hour % 12 === 0 ? 12 : hour % 12;
-    const period = hour < 12 ? 'AM' : 'PM';
-    slots.push(`${hourFormatted}:00 ${period}`);
-    slots.push(`${hourFormatted}:30 ${period}`);
-  }
-  // Add 12 AM
-  slots.push('12:00 AM');
-  return slots;
-};
-
-const timeSlots = generateTimeSlots();
-
-// Convert 12-hour format to 24-hour format for database
-const convertTo24Hour = (time12h: string) => {
-  const [time, modifier] = time12h.split(' ');
-  let [hours, minutes] = time.split(':');
-  let hoursNum = parseInt(hours, 10);
-  
-  if (hours === '12') {
-    hoursNum = modifier === 'PM' ? 12 : 0;
-  } else if (modifier === 'PM') {
-    hoursNum += 12;
-  }
-  
-  return `${hoursNum.toString().padStart(2, '0')}:${minutes}`;
-};
 
 const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId }) => {
   const { user } = useAuth();
@@ -79,7 +48,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
   const [selectedCourt, setSelectedCourt] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
-  const [slotAvailability, setSlotAvailability] = useState<Record<string, 'available' | 'booked'>>({});
+  const [availableTimeSlots, setAvailableTimeSlots] = useState<TimeSlot[]>([]);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [currentStep, setCurrentStep] = useState(1);
@@ -90,7 +59,6 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     availability: false,
     booking: false
   });
-  const [existingBookings, setExistingBookings] = useState<Booking[]>([]);
   const [courtRate, setCourtRate] = useState<number>(0);
 
   // Fetch venues and sports on load
@@ -237,35 +205,18 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     
     setLoading(prev => ({ ...prev, availability: true }));
     try {
-      // Fetch existing bookings for the selected court and date
+      // Use the database function we created to get available slots
       const { data, error } = await supabase
-        .from('bookings')
-        .select('court_id, booking_date, start_time, end_time')
-        .eq('court_id', selectedCourt)
-        .eq('booking_date', selectedDate)
-        .in('status', ['pending', 'confirmed']);
-        
+        .rpc('get_available_slots', { 
+          p_court_id: selectedCourt, 
+          p_date: selectedDate 
+        });
+      
       if (error) {
         throw error;
       }
       
-      setExistingBookings(data || []);
-      
-      // Determine availability for each time slot
-      const availability: Record<string, 'available' | 'booked'> = {};
-      
-      timeSlots.forEach(slot => {
-        const slotTime = convertTo24Hour(slot);
-        const isBooked = (data || []).some(booking => {
-          const bookingStart = booking.start_time;
-          const bookingEnd = booking.end_time;
-          return slotTime >= bookingStart && slotTime < bookingEnd;
-        });
-        
-        availability[slot] = isBooked ? 'booked' : 'available';
-      });
-      
-      setSlotAvailability(availability);
+      setAvailableTimeSlots(data || []);
       setSelectedSlots([]); // Reset selected slots when availability changes
     } catch (error) {
       console.error('Error fetching availability:', error);
@@ -279,26 +230,54 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     }
   };
 
-  const handleSlotClick = (slot: string) => {
-    if (slotAvailability[slot] === 'booked') return;
+  // Convert time from database (24-hour) to 12-hour format for display
+  const formatTime = (time: string) => {
+    const [hour, minute] = time.split(':').map(n => parseInt(n));
+    const period = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 === 0 ? 12 : hour % 12;
+    return `${displayHour}:${minute.toString().padStart(2, '0')} ${period}`;
+  };
+
+  // Convert 12-hour format back to 24-hour format for database
+  const convertTo24Hour = (time12h: string) => {
+    const [time, modifier] = time12h.split(' ');
+    let [hours, minutes] = time.split(':');
+    let hoursNum = parseInt(hours, 10);
     
-    if (selectedSlots.includes(slot)) {
-      setSelectedSlots(selectedSlots.filter(s => s !== slot));
+    if (hours === '12') {
+      hoursNum = modifier === 'PM' ? 12 : 0;
+    } else if (modifier === 'PM') {
+      hoursNum += 12;
+    }
+    
+    return `${hoursNum.toString().padStart(2, '0')}:${minutes}`;
+  };
+
+  const handleSlotClick = (slot: TimeSlot) => {
+    if (!slot.is_available) return;
+    
+    const slotDisplay = `${formatTime(slot.start_time)} - ${formatTime(slot.end_time)}`;
+    
+    if (selectedSlots.includes(slotDisplay)) {
+      setSelectedSlots(selectedSlots.filter(s => s !== slotDisplay));
     } else {
-      // Check if slots are continuous
-      const newSelectedSlots = [...selectedSlots, slot].sort((a, b) => {
-        const timeA = convertTo24Hour(a);
-        const timeB = convertTo24Hour(b);
-        return timeA.localeCompare(timeB);
+      // Check if adding this slot maintains continuity
+      const updatedSlots = [...selectedSlots, slotDisplay];
+      
+      // Sort slots by start time
+      const sortedSlots = updatedSlots.sort((a, b) => {
+        const startTimeA = convertTo24Hour(a.split(' - ')[0]);
+        const startTimeB = convertTo24Hour(b.split(' - ')[0]);
+        return startTimeA.localeCompare(startTimeB);
       });
       
       // Check if the slots are continuous
       let isContinuous = true;
-      for (let i = 0; i < newSelectedSlots.length - 1; i++) {
-        const currentSlotIndex = timeSlots.indexOf(newSelectedSlots[i]);
-        const nextSlotIndex = timeSlots.indexOf(newSelectedSlots[i + 1]);
+      for (let i = 0; i < sortedSlots.length - 1; i++) {
+        const currentEndTime = sortedSlots[i].split(' - ')[1];
+        const nextStartTime = sortedSlots[i + 1].split(' - ')[0];
         
-        if (nextSlotIndex - currentSlotIndex !== 1) {
+        if (convertTo24Hour(currentEndTime) !== convertTo24Hour(nextStartTime)) {
           isContinuous = false;
           break;
         }
@@ -313,13 +292,33 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
         return;
       }
       
-      setSelectedSlots(newSelectedSlots);
+      setSelectedSlots(sortedSlots);
     }
   };
 
   const calculateTotalPrice = () => {
-    // Use the court's hourly rate from the database
-    return (selectedSlots.length / 2) * courtRate; // 2 slots = 1 hour
+    if (selectedSlots.length === 0) return 0;
+    
+    // Calculate total hours by finding the difference between the first and last slot
+    const sortedSlots = [...selectedSlots].sort((a, b) => {
+      const startTimeA = convertTo24Hour(a.split(' - ')[0]);
+      const startTimeB = convertTo24Hour(b.split(' - ')[0]);
+      return startTimeA.localeCompare(startTimeB);
+    });
+    
+    const firstStart = convertTo24Hour(sortedSlots[0].split(' - ')[0]);
+    const lastEnd = convertTo24Hour(sortedSlots[sortedSlots.length - 1].split(' - ')[1]);
+    
+    // Parse hours and minutes
+    const [firstHour, firstMinute] = firstStart.split(':').map(n => parseInt(n));
+    const [lastHour, lastMinute] = lastEnd.split(':').map(n => parseInt(n));
+    
+    // Calculate duration in hours
+    const hoursDiff = lastHour - firstHour;
+    const minutesDiff = lastMinute - firstMinute;
+    const totalHours = hoursDiff + (minutesDiff / 60);
+    
+    return totalHours * courtRate;
   };
 
   const handleNextStep = () => {
@@ -372,27 +371,15 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     setLoading(prev => ({ ...prev, booking: true }));
     
     try {
-      // Calculate start and end times from selected slots
+      // Get the first and last selected slots to determine start and end time
       const sortedSlots = [...selectedSlots].sort((a, b) => {
-        const timeA = convertTo24Hour(a);
-        const timeB = convertTo24Hour(b);
-        return timeA.localeCompare(timeB);
+        const startTimeA = convertTo24Hour(a.split(' - ')[0]);
+        const startTimeB = convertTo24Hour(b.split(' - ')[0]);
+        return startTimeA.localeCompare(startTimeB);
       });
       
-      const startTime = convertTo24Hour(sortedSlots[0]);
-      const endTime = convertTo24Hour(sortedSlots[sortedSlots.length - 1]);
-      
-      // Add 30 minutes to the last slot to get the end time
-      const lastEndTimeParts = endTime.split(':');
-      let endHour = parseInt(lastEndTimeParts[0], 10);
-      let endMinute = parseInt(lastEndTimeParts[1], 10) + 30;
-      
-      if (endMinute >= 60) {
-        endMinute -= 60;
-        endHour = (endHour + 1) % 24;
-      }
-      
-      const finalEndTime = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
+      const startTime = convertTo24Hour(sortedSlots[0].split(' - ')[0]);
+      const endTime = convertTo24Hour(sortedSlots[sortedSlots.length - 1].split(' - ')[1]);
       
       // Create booking in database
       const { data, error } = await supabase
@@ -402,7 +389,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
           user_id: user?.id || null, // Link to user if logged in
           booking_date: selectedDate,
           start_time: startTime,
-          end_time: finalEndTime,
+          end_time: endTime,
           total_price: calculateTotalPrice(),
           guest_name: user ? null : name,
           guest_phone: user ? null : phone,
@@ -423,7 +410,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       if (user) {
         navigate('/profile');
       } else {
-        // If guest, maybe show a confirmation screen
+        // If guest, go to home page
         navigate('/');
       }
       
@@ -572,24 +559,33 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
-                  {timeSlots.map(slot => (
-                    <div
-                      key={slot}
-                      className={`
-                        slot-item
-                        ${slotAvailability[slot] === 'available' 
-                          ? selectedSlots.includes(slot) 
-                            ? 'slot-selected' 
-                            : 'slot-available' 
-                          : 'slot-unavailable'}
-                      `}
-                      onClick={() => handleSlotClick(slot)}
-                    >
-                      {slot}
-                    </div>
-                  ))}
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                  {availableTimeSlots.map((slot, index) => {
+                    const slotDisplay = `${formatTime(slot.start_time)} - ${formatTime(slot.end_time)}`;
+                    return (
+                      <div
+                        key={`${slot.start_time}-${slot.end_time}`}
+                        className={`
+                          p-3 rounded-md cursor-pointer transition-all text-center
+                          ${slot.is_available 
+                            ? selectedSlots.includes(slotDisplay) 
+                              ? 'bg-sport-green text-white' 
+                              : 'border border-sport-green-light hover:bg-sport-green-light/10' 
+                            : 'bg-sport-gray-light text-sport-gray cursor-not-allowed'}
+                        `}
+                        onClick={() => handleSlotClick(slot)}
+                      >
+                        {slotDisplay}
+                      </div>
+                    );
+                  })}
                 </div>
+                
+                {availableTimeSlots.length === 0 && (
+                  <div className="text-center py-8">
+                    <p className="text-sport-gray">No available time slots found for this date.</p>
+                  </div>
+                )}
                 
                 <div className="mt-4 flex items-center">
                   <div className="flex items-center mr-4">
@@ -753,8 +749,8 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
         </div>
       </div>
       
-      {/* Add some custom CSS to handle modal styling */}
-      <style jsx>
+      {/* Add custom CSS for modal styling */}
+      <style>
         {`
         .modal-bg {
           position: fixed;
@@ -789,30 +785,6 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(20px); }
           to { opacity: 1; transform: translateY(0); }
-        }
-        .slot-item {
-          padding: 0.5rem;
-          font-size: 0.8rem;
-          text-align: center;
-          border-radius: 0.25rem;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-        .slot-available {
-          border: 1px solid #4ade80; /* sport-green-light */
-          color: #333;
-        }
-        .slot-available:hover {
-          background-color: rgba(74, 222, 128, 0.1);
-        }
-        .slot-selected {
-          background-color: #16a34a; /* sport-green */
-          color: white;
-        }
-        .slot-unavailable {
-          background-color: #e5e7eb; /* sport-gray-light */
-          color: #9ca3af; /* sport-gray */
-          cursor: not-allowed;
         }
         `}
       </style>
