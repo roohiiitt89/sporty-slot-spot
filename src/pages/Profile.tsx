@@ -99,12 +99,12 @@ const Profile: React.FC = () => {
       
       if (error) throw error;
       
-      // Filter out any bookings with 'pending' status since our interface doesn't support it anymore
-      const filteredBookings = data?.filter(booking => 
+      // Filter out any bookings with 'pending' status
+      const validBookings = data?.filter(booking => 
         booking.status === 'confirmed' || booking.status === 'cancelled' || booking.status === 'completed'
       ) as Booking[];
       
-      setBookings(filteredBookings || []);
+      setBookings(validBookings || []);
     } catch (error) {
       console.error('Error fetching bookings:', error);
       toast({
