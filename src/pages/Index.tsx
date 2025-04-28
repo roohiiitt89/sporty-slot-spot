@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Calendar, MapPin, Clock, User, ChevronRight, Activity } from 'lucide-react';
@@ -65,11 +64,11 @@ const featuredSports = [
 ];
 
 const sportsQuotes = [
-  '"The more difficult the victory, the greater the happiness in winning." — Pelé',
-  '"You miss 100% of the shots you don't take." — Wayne Gretzky',
-  '"Champions keep playing until they get it right." — Billie Jean King',
-  '"It ain't over till it's over." — Yogi Berra',
-  '"The difference between the impossible and the possible lies in a person's determination." — Tommy Lasorda',
+  "\"The more difficult the victory, the greater the happiness in winning.\" — Pelé",
+  "\"You miss 100% of the shots you don't take.\" — Wayne Gretzky",
+  "\"Champions keep playing until they get it right.\" — Billie Jean King",
+  "\"It ain't over till it's over.\" — Yogi Berra",
+  "\"The difference between the impossible and the possible lies in a person's determination.\" — Tommy Lasorda",
 ];
 
 const Index: React.FC = () => {
@@ -82,14 +81,12 @@ const Index: React.FC = () => {
     quotes: false
   });
 
-  // References for section observers
   const venuesRef = useRef<HTMLDivElement>(null);
   const sportsRef = useRef<HTMLDivElement>(null);
   const forYouRef = useRef<HTMLDivElement>(null);
   const quotesRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Rotate through quotes
     const quoteInterval = setInterval(() => {
       setActiveQuoteIndex(prev => (prev + 1) % sportsQuotes.length);
     }, 5000);
@@ -98,7 +95,6 @@ const Index: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // Intersection Observer for animations
     const observerOptions = {
       threshold: 0.2,
     };
@@ -129,7 +125,6 @@ const Index: React.FC = () => {
     <div className="min-h-screen">
       <Header />
       
-      {/* Hero Section with Video Background */}
       <section className="hero-section">
         <video 
           autoPlay 
@@ -164,7 +159,6 @@ const Index: React.FC = () => {
         </div>
       </section>
 
-      {/* Featured Venues Section */}
       <section 
         id="venues" 
         ref={venuesRef}
@@ -216,7 +210,6 @@ const Index: React.FC = () => {
         </div>
       </section>
 
-      {/* Featured Sports Section */}
       <section 
         id="sports" 
         ref={sportsRef}
@@ -260,7 +253,6 @@ const Index: React.FC = () => {
         </div>
       </section>
 
-      {/* For You Section */}
       <section 
         id="forYou" 
         ref={forYouRef}
@@ -314,7 +306,6 @@ const Index: React.FC = () => {
         </div>
       </section>
 
-      {/* Sports Quotes Section */}
       <section 
         id="quotes" 
         ref={quotesRef}
@@ -338,7 +329,6 @@ const Index: React.FC = () => {
         </div>
       </section>
 
-      {/* Footer */}
       <footer className="bg-sport-gray-dark text-white py-12">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
@@ -392,7 +382,6 @@ const Index: React.FC = () => {
         </div>
       </footer>
 
-      {/* Book Slot Modal */}
       {isBookModalOpen && (
         <BookSlotModal onClose={() => setIsBookModalOpen(false)} />
       )}
