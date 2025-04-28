@@ -1,8 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Calendar, MapPin, Clock, User, ChevronRight, Activity } from 'lucide-react';
+import { ArrowRight, Calendar, MapPin, Clock, User, ChevronRight, Activity, Star } from 'lucide-react';
 import Header from '../components/Header';
 import BookSlotModal from '../components/BookSlotModal';
+import { 
+  Carousel, 
+  CarouselContent, 
+  CarouselItem, 
+  CarouselNext, 
+  CarouselPrevious 
+} from "@/components/ui/carousel";
 
 // Mock data (would come from API in production)
 const featuredVenues = [
@@ -64,7 +71,7 @@ const featuredSports = [
 ];
 
 const sportsQuotes = [
-  "\"The more difficult the victory, the greater the happiness in winning.\" — Pelé",
+  "\"The more difficult the victory, the greater the happiness in winning.\" ��� Pelé",
   "\"You miss 100% of the shots you don't take.\" — Wayne Gretzky",
   "\"Champions keep playing until they get it right.\" — Billie Jean King",
   "\"It ain't over till it's over.\" — Yogi Berra",
@@ -162,50 +169,66 @@ const Index: React.FC = () => {
       <section 
         id="venues" 
         ref={venuesRef}
-        className="py-16 bg-sport-gray-light"
+        className="py-16 bg-gradient-to-b from-sport-gray-light to-white"
       >
         <div className="container mx-auto px-4">
           <div className={`flex justify-between items-center mb-10 ${visibleSections.venues ? 'animate-reveal' : 'opacity-0'}`}>
-            <h2 className="section-title">Featured Venues</h2>
-            <Link to="/venues" className="text-sport-green font-semibold flex items-center hover:text-sport-green-dark transition-colors">
-              View All <ChevronRight className="ml-1 w-5 h-5" />
+            <h2 className="section-title relative">
+              Featured Venues
+              <span className="absolute -bottom-2 left-0 w-20 h-1 bg-sport-green-light"></span>
+            </h2>
+            <Link to="/venues" className="text-sport-green font-semibold flex items-center group hover:text-sport-green-dark transition-colors">
+              View All <ChevronRight className="ml-1 w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Link>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {featuredVenues.map((venue, index) => (
-              <div 
-                key={venue.id}
-                className={`venue-card ${visibleSections.venues ? 'animate-reveal' : 'opacity-0'}`}
-                style={{ animationDelay: `${0.1 * (index + 1)}s` }}
-              >
-                <div className="h-48 overflow-hidden">
-                  <img 
-                    src={venue.image} 
-                    alt={venue.name} 
-                    className="w-full h-full object-cover transform transition-transform duration-500 hover:scale-110"
-                  />
-                </div>
-                <div className="p-4">
-                  <div className="flex justify-between items-start">
-                    <h3 className="text-xl font-bold text-sport-gray-dark">{venue.name}</h3>
-                    <span className="bg-sport-green text-white px-2 py-1 rounded text-xs font-semibold">
-                      {venue.rating}★
-                    </span>
-                  </div>
-                  <div className="flex items-center text-sport-gray mt-2">
-                    <MapPin className="w-4 h-4 mr-1" />
-                    <span>{venue.location}</span>
-                  </div>
-                  <button 
-                    onClick={() => setIsBookModalOpen(true)} 
-                    className="mt-4 w-full py-2 bg-sport-green text-white rounded font-semibold hover:bg-sport-green-dark transition-colors"
-                  >
-                    Book Now
-                  </button>
-                </div>
+          <div className={`${visibleSections.venues ? 'animate-reveal' : 'opacity-0'}`}>
+            <Carousel className="w-full">
+              <CarouselContent className="-ml-2 md:-ml-4">
+                {featuredVenues.map((venue, index) => (
+                  <CarouselItem key={venue.id} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/4">
+                    <div 
+                      className="venue-card group h-full"
+                      style={{ animationDelay: `${0.1 * (index + 1)}s` }}
+                    >
+                      <div className="h-56 overflow-hidden relative">
+                        <img 
+                          src={venue.image} 
+                          alt={venue.name} 
+                          className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-110"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-0 group-hover:opacity-50 transition-opacity"></div>
+                        <span className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center text-sm font-semibold text-sport-gray-dark">
+                          <Star className="h-4 w-4 text-yellow-500 fill-current mr-1" />
+                          {venue.rating}
+                        </span>
+                      </div>
+                      <div className="p-4 bg-white relative">
+                        <div className="flex justify-between items-start">
+                          <h3 className="text-xl font-bold text-sport-gray-dark group-hover:text-sport-green transition-colors">
+                            {venue.name}
+                          </h3>
+                        </div>
+                        <div className="flex items-center text-sport-gray mt-2">
+                          <MapPin className="w-4 h-4 mr-1" />
+                          <span>{venue.location}</span>
+                        </div>
+                        <button 
+                          onClick={() => setIsBookModalOpen(true)} 
+                          className="mt-4 w-full py-2 bg-sport-green text-white rounded-md font-semibold hover:bg-sport-green-dark transition-colors transform transition-transform group-hover:scale-105"
+                        >
+                          Book Now
+                        </button>
+                      </div>
+                    </div>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              <div className="flex justify-end mt-6 gap-2">
+                <CarouselPrevious className="relative inset-0 translate-y-0 bg-sport-gray-light hover:bg-sport-green hover:text-white" />
+                <CarouselNext className="relative inset-0 translate-y-0 bg-sport-gray-light hover:bg-sport-green hover:text-white" />
               </div>
-            ))}
+            </Carousel>
           </div>
         </div>
       </section>
@@ -213,42 +236,62 @@ const Index: React.FC = () => {
       <section 
         id="sports" 
         ref={sportsRef}
-        className="py-16 bg-white"
+        className="py-16 bg-gradient-to-b from-white to-sport-gray-light"
       >
         <div className="container mx-auto px-4">
           <div className={`flex justify-between items-center mb-10 ${visibleSections.sports ? 'animate-reveal' : 'opacity-0'}`}>
-            <h2 className="section-title">Featured Sports</h2>
-            <Link to="/sports" className="text-sport-green font-semibold flex items-center hover:text-sport-green-dark transition-colors">
-              View All <ChevronRight className="ml-1 w-5 h-5" />
+            <h2 className="section-title relative">
+              Featured Sports
+              <span className="absolute -bottom-2 left-0 w-20 h-1 bg-sport-green-light"></span>
+            </h2>
+            <Link to="/sports" className="text-sport-green font-semibold flex items-center group hover:text-sport-green-dark transition-colors">
+              View All <ChevronRight className="ml-1 w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Link>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {featuredSports.map((sport, index) => (
-              <div 
-                key={sport.id} 
-                className={`sport-card ${visibleSections.sports ? 'animate-reveal' : 'opacity-0'}`}
-                style={{ animationDelay: `${0.1 * (index + 1)}s` }}
-              >
-                <div className="h-48 overflow-hidden">
-                  <img 
-                    src={sport.image} 
-                    alt={sport.name} 
-                    className="w-full h-full object-cover transform transition-transform duration-500 hover:scale-110"
-                  />
-                </div>
-                <div className="p-4">
-                  <h3 className="text-xl font-bold text-sport-gray-dark">{sport.name}</h3>
-                  <p className="text-sport-gray mt-2">{sport.description}</p>
-                  <button 
-                    onClick={() => setIsBookModalOpen(true)} 
-                    className="mt-4 w-full py-2 bg-sport-green text-white rounded font-semibold hover:bg-sport-green-dark transition-colors"
-                  >
-                    Find Venues
-                  </button>
-                </div>
+          <div className={`${visibleSections.sports ? 'animate-reveal' : 'opacity-0'}`}>
+            <Carousel className="w-full">
+              <CarouselContent className="-ml-2 md:-ml-4">
+                {featuredSports.map((sport, index) => (
+                  <CarouselItem key={sport.id} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/4">
+                    <div 
+                      className="sport-card group h-full"
+                      style={{ animationDelay: `${0.1 * (index + 1)}s` }}
+                    >
+                      <div className="h-56 overflow-hidden relative">
+                        <img 
+                          src={sport.image} 
+                          alt={sport.name} 
+                          className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-110"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-0 group-hover:opacity-50 transition-opacity"></div>
+                        <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button 
+                            onClick={() => setIsBookModalOpen(true)} 
+                            className="bg-sport-green text-white px-6 py-2 rounded-md transform translate-y-4 group-hover:translate-y-0 transition-all duration-300"
+                          >
+                            Find Venues
+                          </button>
+                        </div>
+                      </div>
+                      <div className="p-4 bg-white">
+                        <h3 className="text-xl font-bold text-sport-gray-dark group-hover:text-sport-green transition-colors">
+                          {sport.name}
+                        </h3>
+                        <p className="text-sport-gray mt-2">{sport.description}</p>
+                        <div className="mt-4 h-1 w-full bg-sport-gray-light overflow-hidden">
+                          <div className="h-full bg-sport-green transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-500"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              <div className="flex justify-end mt-6 gap-2">
+                <CarouselPrevious className="relative inset-0 translate-y-0 bg-sport-gray-light hover:bg-sport-green hover:text-white" />
+                <CarouselNext className="relative inset-0 translate-y-0 bg-sport-gray-light hover:bg-sport-green hover:text-white" />
               </div>
-            ))}
+            </Carousel>
           </div>
         </div>
       </section>
