@@ -211,10 +211,28 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
         throw error;
       }
       
-      const slotsWithPrice = data?.map(slot => ({
-        ...slot,
-        price: slot.price || '0.00'
-      })) || [];
+      const { data: templateSlots, error: templateError } = await supabase
+        .from('template_slots')
+        .select('start_time, end_time, price')
+        .eq('court_id', selectedCourt);
+        
+      if (templateError) {
+        throw templateError;
+      }
+      
+      const priceMap: Record<string, string> = {};
+      templateSlots?.forEach(slot => {
+        const key = `${slot.start_time}-${slot.end_time}`;
+        priceMap[key] = slot.price;
+      });
+      
+      const slotsWithPrice = data?.map(slot => {
+        const key = `${slot.start_time}-${slot.end_time}`;
+        return {
+          ...slot,
+          price: priceMap[key] || courtRate.toString()
+        };
+      }) || [];
       
       setAvailableTimeSlots(slotsWithPrice);
       setSelectedSlots([]);
