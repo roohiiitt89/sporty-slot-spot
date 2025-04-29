@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
-import { Check, X, Calendar, BookCheck, BookX } from 'lucide-react';
+import { Check, Calendar, BookCheck, BookX } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -38,11 +38,6 @@ interface Booking {
       name: string;
     };
   };
-  user: {
-    full_name: string | null;
-    phone: string | null;
-    email: string | null;
-  } | null;
 }
 
 const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVenues }) => {
@@ -82,11 +77,6 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
             sport:sports (
               name
             )
-          ),
-          user:profiles (
-            full_name,
-            phone,
-            email
           )
         `)
         .order('booking_date', { ascending: false });
@@ -281,19 +271,13 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
                     </div>
                   </TableCell>
                   <TableCell>
-                    {booking.user ? (
-                      <div>
-                        <p className="font-medium">{booking.user.full_name || 'Unnamed User'}</p>
-                        <p className="text-xs text-gray-500">{booking.user.email}</p>
-                        <p className="text-xs text-gray-500">{booking.user.phone || 'No phone'}</p>
-                      </div>
-                    ) : booking.guest_name ? (
+                    {booking.guest_name ? (
                       <div>
                         <p className="font-medium">{booking.guest_name} (Guest)</p>
                         <p className="text-xs text-gray-500">{booking.guest_phone || 'No phone'}</p>
                       </div>
                     ) : (
-                      <p className="text-gray-500">No user information</p>
+                      <p className="text-gray-500">User ID: {booking.user_id || 'No user information'}</p>
                     )}
                   </TableCell>
                   <TableCell>₹{booking.total_price.toFixed(2)}</TableCell>
@@ -315,15 +299,6 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
                           title="Mark as Confirmed"
                         >
                           <Check size={18} />
-                        </button>
-                      )}
-                      {booking.status !== 'cancelled' && (
-                        <button
-                          onClick={() => updateBookingStatus(booking.id, 'cancelled')}
-                          className="p-1 text-red-600 hover:bg-red-50 rounded"
-                          title="Mark as Cancelled"
-                        >
-                          <X size={18} />
                         </button>
                       )}
                       {(booking.status === 'confirmed' || booking.status === 'cancelled') && (
