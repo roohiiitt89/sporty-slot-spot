@@ -62,8 +62,47 @@ export type Database = {
           },
         ]
       }
+      court_groups: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "court_groups_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       courts: {
         Row: {
+          court_group_id: string | null
           created_at: string
           hourly_rate: number
           id: string
@@ -74,6 +113,7 @@ export type Database = {
           venue_id: string
         }
         Insert: {
+          court_group_id?: string | null
           created_at?: string
           hourly_rate?: number
           id?: string
@@ -84,6 +124,7 @@ export type Database = {
           venue_id: string
         }
         Update: {
+          court_group_id?: string | null
           created_at?: string
           hourly_rate?: number
           id?: string
@@ -94,6 +135,13 @@ export type Database = {
           venue_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "courts_court_group_id_fkey"
+            columns: ["court_group_id"]
+            isOneToOne: false
+            referencedRelation: "court_groups"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "courts_sport_id_fkey"
             columns: ["sport_id"]

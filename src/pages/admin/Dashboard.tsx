@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -63,7 +62,7 @@ const Dashboard: React.FC = () => {
     { path: '/admin/analytics', icon: <BarChart className="mr-2" />, title: 'Analytics' },
     { path: '/admin/venues', icon: <Map className="mr-2" />, title: 'Venues' },
     { path: '/admin/sports', icon: <Dumbbell className="mr-2" />, title: 'Sports' },
-    { path: '/admin/courts', icon: <ShieldCheckIcon className="mr-2" />, title: 'Courts' },
+    { path: '/admin/courts', icon: <ShieldCheckIcon className="mr-2" />, title: 'Courts & Groups' },
     { path: '/admin/bookings', icon: <Calendar className="mr-2" />, title: 'Bookings' },
     { path: '/admin/template-slots', icon: <Calendar className="mr-2" />, title: 'Template Slots' },
     { path: '/admin/sport-display-names', icon: <Dumbbell className="mr-2" />, title: 'Sport Display Names' },

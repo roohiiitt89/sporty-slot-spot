@@ -28,6 +28,7 @@ interface Court {
   name: string;
   venue_id: string;
   sport_id: string;
+  court_group_id: string | null;
   hourly_rate: number;
 }
 
@@ -240,7 +241,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     try {
       const { data, error } = await supabase
         .from('courts')
-        .select('id, name, venue_id, sport_id, hourly_rate')
+        .select('id, name, venue_id, sport_id, court_group_id, hourly_rate')
         .eq('venue_id', selectedVenue)
         .eq('sport_id', selectedSport)
         .eq('is_active', true);
@@ -274,6 +275,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     
     setLoading(prev => ({ ...prev, availability: true }));
     try {
+      // This function automatically checks for conflicts with other courts in the same group
       const { data, error } = await supabase
         .rpc('get_available_slots', { 
           p_court_id: selectedCourt, 
@@ -617,6 +619,11 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
               {loading.courts && <p className="mt-1 text-xs text-gray-500">Loading courts...</p>}
               {!loading.courts && courts.length === 0 && selectedVenue && selectedSport && (
                 <p className="mt-1 text-xs text-red-500">No courts available for this venue and sport combination.</p>
+              )}
+              {selectedCourt && courts.find(c => c.id === selectedCourt)?.court_group_id && (
+                <p className="mt-1 text-xs text-blue-600">
+                  Note: This court shares physical space with other sports. Bookings on one will affect availability on others.
+                </p>
               )}
             </div>
             
