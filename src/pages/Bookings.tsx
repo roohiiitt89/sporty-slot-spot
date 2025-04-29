@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import { useAuth } from '@/context/AuthContext';
@@ -108,7 +107,17 @@ const Bookings: React.FC = () => {
     }
   };
 
-  const cancelBooking = async (bookingId: string) => {
+  const cancelBooking = async (bookingId: string, status: string) => {
+    // Only allow cancellation if the booking is currently confirmed
+    if (status !== 'confirmed') {
+      toast({
+        title: "Cannot cancel",
+        description: "Only confirmed bookings can be cancelled",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     if (!confirm('Are you sure you want to cancel this booking?')) {
       return;
     }
@@ -123,17 +132,17 @@ const Bookings: React.FC = () => {
       if (error) throw error;
       
       toast({
-        title: 'Booking cancelled',
-        description: 'Your booking has been cancelled successfully',
+        title: "Booking cancelled",
+        description: "Your booking has been cancelled successfully",
       });
       
       fetchBookings(); // Refresh bookings list
     } catch (error) {
       console.error('Error cancelling booking:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to cancel booking',
-        variant: 'destructive',
+        title: "Error",
+        description: "Failed to cancel booking",
+        variant: "destructive",
       });
     }
   };
@@ -237,13 +246,16 @@ const Bookings: React.FC = () => {
                           
                           {/* Actions Column */}
                           <div className="p-4 md:p-6 md:w-1/5 bg-gray-50 flex flex-row md:flex-col items-center justify-between md:justify-center">
-                            <p className="font-bold text-lg text-sport-gray-dark">${booking.total_price.toFixed(2)}</p>
-                            <button
-                              onClick={() => cancelBooking(booking.id)}
-                              className="px-4 py-2 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors text-sm"
-                            >
-                              Cancel
-                            </button>
+                            <p className="font-bold text-lg text-sport-gray-dark">₹{booking.total_price.toFixed(2)}</p>
+                            {/* Only show cancel button for confirmed bookings */}
+                            {booking.status === 'confirmed' && (
+                              <button
+                                onClick={() => cancelBooking(booking.id, booking.status)}
+                                className="px-4 py-2 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors text-sm"
+                              >
+                                Cancel
+                              </button>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -287,7 +299,7 @@ const Bookings: React.FC = () => {
                                     {formatTime(booking.start_time)} - {formatTime(booking.end_time)}
                                   </td>
                                   <td className="py-3 px-4">
-                                    ${booking.total_price.toFixed(2)}
+                                    ₹{booking.total_price.toFixed(2)}
                                   </td>
                                   <td className="py-3 px-4">
                                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(booking.status)}`}>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
@@ -409,7 +408,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
           total_price: calculateTotalPrice(),
           guest_name: null, // No guest bookings allowed
           guest_phone: null, // No guest bookings allowed
-          status: 'pending'
+          status: 'confirmed' // Changed from 'pending' to 'confirmed'
         })
         .select();
         
