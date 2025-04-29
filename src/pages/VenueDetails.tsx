@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MapPin, Star, ArrowLeft } from 'lucide-react';
@@ -6,6 +5,8 @@ import { supabase } from '@/integrations/supabase/client';
 import Header from '../components/Header';
 import BookSlotModal from '../components/BookSlotModal';
 import { Card, CardContent } from "@/components/ui/card";
+import SportDisplayName from '@/components/SportDisplayName';
+import { getVenueSportDisplayNames } from '@/utils/sportDisplayNames';
 
 interface Venue {
   id: string;
@@ -46,6 +47,7 @@ const VenueDetails: React.FC = () => {
   const [sports, setSports] = useState<Sport[]>([]);
   const [loading, setLoading] = useState(true);
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
+  const [sportDisplayNames, setSportDisplayNames] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const fetchVenueDetails = async () => {
@@ -61,6 +63,10 @@ const VenueDetails: React.FC = () => {
 
         if (venueError) throw venueError;
         setVenue(venueData);
+
+        // Fetch custom sport display names for this venue
+        const customNames = await getVenueSportDisplayNames(id);
+        setSportDisplayNames(customNames);
 
         // Fetch courts for this venue with related sports
         const { data: courtsData, error: courtsError } = await supabase
@@ -220,7 +226,15 @@ const VenueDetails: React.FC = () => {
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                     {sports.map(sport => (
                       <div key={sport.id} className="bg-navy-light text-white p-4 rounded-lg text-center hover:bg-sport-green transition-colors">
-                        <h3 className="font-semibold">{sport.name}</h3>
+                        <h3 className="font-semibold">
+                          {id && (
+                            <SportDisplayName 
+                              venueId={id} 
+                              sportId={sport.id} 
+                              defaultName={sport.name} 
+                            />
+                          )}
+                        </h3>
                       </div>
                     ))}
                   </div>
@@ -241,7 +255,13 @@ const VenueDetails: React.FC = () => {
                       <div key={court.id} className="border border-gray-200 rounded-lg p-4 hover:border-sport-green transition-colors">
                         <h3 className="font-semibold text-sport-gray-dark">{court.name}</h3>
                         <p className="text-sport-gray-dark text-sm">
-                          Sport: {court.sport?.name || 'N/A'}
+                          Sport: {id && (
+                            <SportDisplayName
+                              venueId={id}
+                              sportId={court.sport_id}
+                              defaultName={court.sport?.name || 'N/A'}
+                            />
+                          )}
                         </p>
                       </div>
                     ))}

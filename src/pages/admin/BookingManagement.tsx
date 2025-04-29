@@ -11,6 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import SportDisplayName from '@/components/SportDisplayName';
 
 interface BookingManagementProps {
   userRole: string | null;
@@ -29,12 +30,14 @@ interface Booking {
   guest_phone: string | null;
   created_at: string;
   court: {
+    id: string;
     name: string;
     venue: {
       id: string;
       name: string;
     };
     sport: {
+      id: string;
       name: string;
     };
   };
@@ -69,12 +72,14 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
           guest_phone,
           created_at,
           court:courts (
+            id,
             name,
             venue:venues (
               id,
               name
             ),
             sport:sports (
+              id,
               name
             )
           )
@@ -252,7 +257,7 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
               <TableRow>
                 <TableHead>Booking Date</TableHead>
                 <TableHead>Time</TableHead>
-                <TableHead>Venue / Court</TableHead>
+                <TableHead>Venue / Court / Sport</TableHead>
                 <TableHead>User</TableHead>
                 <TableHead>Price</TableHead>
                 <TableHead>Status</TableHead>
@@ -267,7 +272,14 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
                   <TableCell>
                     <div>
                       <p className="font-medium">{booking.court.venue.name}</p>
-                      <p className="text-sm text-gray-500">{booking.court.name} ({booking.court.sport.name})</p>
+                      <p className="text-sm text-gray-500">
+                        {booking.court.name} / {' '}
+                        <SportDisplayName 
+                          venueId={booking.court.venue.id}
+                          sportId={booking.court.sport.id}
+                          defaultName={booking.court.sport.name}
+                        />
+                      </p>
                     </div>
                   </TableCell>
                   <TableCell>

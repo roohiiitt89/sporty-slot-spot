@@ -261,6 +261,48 @@ export type Database = {
           },
         ]
       }
+      venue_sport_display_names: {
+        Row: {
+          created_at: string
+          display_name: string
+          id: string
+          sport_id: string
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name: string
+          id?: string
+          sport_id: string
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string
+          id?: string
+          sport_id?: string
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_sport_display_names_sport_id_fkey"
+            columns: ["sport_id"]
+            isOneToOne: false
+            referencedRelation: "sports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "venue_sport_display_names_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       venues: {
         Row: {
           capacity: number | null

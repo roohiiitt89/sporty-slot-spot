@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -12,6 +11,7 @@ import SportManagement from './SportManagement';
 import CourtManagement from './CourtManagement';
 import BookingManagement from './BookingManagement';
 import TemplateSlotManagement from './TemplateSlotManagement';
+import SportDisplayNames from './SportDisplayNames';
 
 const Dashboard: React.FC = () => {
   const { user, userRole } = useAuth();
@@ -63,6 +63,7 @@ const Dashboard: React.FC = () => {
     { path: '/admin/courts', icon: <ShieldCheckIcon className="mr-2" />, title: 'Courts' },
     { path: '/admin/bookings', icon: <Calendar className="mr-2" />, title: 'Bookings' },
     { path: '/admin/template-slots', icon: <Calendar className="mr-2" />, title: 'Template Slots' },
+    { path: '/admin/sport-display-names', icon: <Dumbbell className="mr-2" />, title: 'Sport Display Names' },
   ];
 
   return (
@@ -194,6 +195,7 @@ const Dashboard: React.FC = () => {
                 <Route path="/courts" element={<CourtManagement userRole={userRole} adminVenues={adminVenues} />} />
                 <Route path="/bookings" element={<BookingManagement userRole={userRole} adminVenues={adminVenues} />} />
                 <Route path="/template-slots" element={<TemplateSlotManagement userRole={userRole} adminVenues={adminVenues} />} />
+                <Route path="/sport-display-names" element={<SportDisplayNames userRole={userRole} adminVenues={adminVenues} />} />
               </Routes>
             </div>
           </div>
