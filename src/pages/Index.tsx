@@ -27,13 +27,7 @@ interface Sport {
   image_url: string;
 }
 
-const sportsQuotes = [
-  '"The more difficult the victory, the greater the happiness in winning." — Pelé',
-  '"You miss 100% of the shots you don't take." — Wayne Gretzky',
-  '"Champions keep playing until they get it right." — Billie Jean King',
-  '"It ain't over till it's over." — Yogi Berra',
-  '"The difference between the impossible and the possible lies in a person's determination." — Tommy Lasorda',
-];
+
 
 const Index: React.FC = () => {
   const navigate = useNavigate();
