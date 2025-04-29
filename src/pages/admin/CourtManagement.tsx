@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
@@ -25,6 +24,7 @@ interface CourtGroup {
   venue_id: string;
   description: string | null;
   is_active: boolean;
+  venues?: { name: string }; // Added the venues property
 }
 
 interface Court {
