@@ -391,7 +391,6 @@ const Index: React.FC = () => {
         <div className="container mx-auto px-4 relative z-10">
           <h2 className={`section-title text-center text-white ${visibleSections.quotes ? 'animate-reveal' : 'opacity-0'}`}>
             Want To Register For A Tournament?
-
           </h2>
           
           <div className="max-w-4xl mx-auto mt-10">
