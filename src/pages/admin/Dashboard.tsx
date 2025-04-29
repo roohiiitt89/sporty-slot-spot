@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
-import { LayoutGrid, Users, Calendar, Map, Dumbbell, ShieldCheckIcon, Info } from 'lucide-react';
+import { LayoutGrid, Users, Calendar, Map, Dumbbell, ShieldCheckIcon, Info, BarChart } from 'lucide-react';
 
 // Admin pages
 import VenueManagement from './VenueManagement';
@@ -12,6 +13,7 @@ import CourtManagement from './CourtManagement';
 import BookingManagement from './BookingManagement';
 import TemplateSlotManagement from './TemplateSlotManagement';
 import SportDisplayNames from './SportDisplayNames';
+import AnalyticsDashboard from './AnalyticsDashboard';
 
 const Dashboard: React.FC = () => {
   const { user, userRole } = useAuth();
@@ -58,6 +60,7 @@ const Dashboard: React.FC = () => {
 
   const navItems = [
     { path: '/admin', icon: <LayoutGrid className="mr-2" />, title: 'Dashboard', exact: true },
+    { path: '/admin/analytics', icon: <BarChart className="mr-2" />, title: 'Analytics' },
     { path: '/admin/venues', icon: <Map className="mr-2" />, title: 'Venues' },
     { path: '/admin/sports', icon: <Dumbbell className="mr-2" />, title: 'Sports' },
     { path: '/admin/courts', icon: <ShieldCheckIcon className="mr-2" />, title: 'Courts' },
@@ -196,6 +199,7 @@ const Dashboard: React.FC = () => {
                 <Route path="/bookings" element={<BookingManagement userRole={userRole} adminVenues={adminVenues} />} />
                 <Route path="/template-slots" element={<TemplateSlotManagement userRole={userRole} adminVenues={adminVenues} />} />
                 <Route path="/sport-display-names" element={<SportDisplayNames userRole={userRole} adminVenues={adminVenues} />} />
+                <Route path="/analytics" element={<AnalyticsDashboard />} />
               </Routes>
             </div>
           </div>

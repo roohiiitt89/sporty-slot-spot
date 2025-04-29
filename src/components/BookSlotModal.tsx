@@ -82,7 +82,12 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     
     const today = new Date();
     setSelectedDate(today.toISOString().split('T')[0]);
-  }, []);
+
+    // If a venue ID was passed, ensure it's selected
+    if (venueId) {
+      setSelectedVenue(venueId);
+    }
+  }, [venueId]);
 
   useEffect(() => {
     if (selectedVenue) {
@@ -553,7 +558,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
                 value={selectedVenue}
                 onChange={e => setSelectedVenue(e.target.value)}
                 className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sport-green bg-white"
-                disabled={loading.venues}
+                disabled={loading.venues || !!venueId}
               >
                 <option value="">Select a venue</option>
                 {venues.map(venue => (

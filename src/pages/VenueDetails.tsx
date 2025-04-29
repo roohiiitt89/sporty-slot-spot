@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MapPin, Star, ArrowLeft } from 'lucide-react';
@@ -299,9 +300,12 @@ const VenueDetails: React.FC = () => {
         </div>
       </footer>
       
-      {/* Book Slot Modal */}
+      {/* Book Slot Modal - Pass the current venue ID */}
       {isBookModalOpen && (
-        <BookSlotModal onClose={() => setIsBookModalOpen(false)} />
+        <BookSlotModal 
+          onClose={() => setIsBookModalOpen(false)} 
+          venueId={id} 
+        />
       )}
     </div>
   );
