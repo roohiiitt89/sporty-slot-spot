@@ -390,8 +390,7 @@ const Index: React.FC = () => {
         <div className="absolute inset-0 pattern-dots pattern-opacity-10"></div>
         <div className="container mx-auto px-4 relative z-10">
           <h2 className={`section-title text-center text-white ${visibleSections.quotes ? 'animate-reveal' : 'opacity-0'}`}>
-            Want To Register a tournament?
-            contact= +91 88888-88888
+            Want To Register For A Tournament?\n contact= +91 88888-88888
 
           </h2>
           
