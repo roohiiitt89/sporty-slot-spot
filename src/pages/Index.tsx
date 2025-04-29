@@ -27,12 +27,47 @@ interface Sport {
   image_url: string;
 }
 
-const sportsQuotes = [
-  "\"The more difficult the victory, the greater the happiness in winning.\" — Pelé",
-  "\"You miss 100% of the shots you don't take.\" — Wayne Gretzky",
-  "\"Champions keep playing until they get it right.\" — Billie Jean King",
-  "\"It ain't over till it's over.\" — Yogi Berra",
-  "\"The difference between the impossible and the possible lies in a person's determination.\" — Tommy Lasorda",
+const QUOTES = [
+  {
+    text: "You miss 100% of the shots you don't take.",
+    author: "Wayne Gretzky"
+  },
+  {
+    text: "The more I practice, the luckier I get.",
+    author: "Gary Player"
+  },
+  {
+    text: "Do not let what you cannot do interfere with what you can do.",
+    author: "John Wooden"
+  },
+  {
+    text: "You can't put a limit on anything. The more you dream, the farther you get.",
+    author: "Michael Phelps"
+  },
+  {
+    text: "The only way to prove that you’re a good sport is to lose",
+    author: "Ernie Banks"
+  },
+  {
+    text:"The more difficult the victory, the greater the happiness in winning.",
+    author: "Pelé"
+  },
+  {
+    text: "Hard work beats talent when talent doesn't work hard.",
+    author: "Tim Notke"
+  },
+  {
+    text: "Champions keep playing until they get it right.",
+    author: "Billie Jean King"
+  },
+  {
+    text: "I hated every minute of training, but I said, 'Don't quit.'",
+    author: "Muhammad Ali"
+  },
+  {
+    text: "Winning means you're willing to go longer, work harder.",
+    author: "Vince Lombardi"
+  }
 ];
 
 const Index: React.FC = () => {
