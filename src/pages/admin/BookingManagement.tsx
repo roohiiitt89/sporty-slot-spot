@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
-import { Check, Calendar, BookCheck, BookX } from 'lucide-react';
+import { Check, Calendar, BookCheck, BookX, Ban } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -299,6 +299,15 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
                           title="Mark as Confirmed"
                         >
                           <Check size={18} />
+                        </button>
+                      )}
+                      {booking.status === 'confirmed' && (
+                        <button
+                          onClick={() => updateBookingStatus(booking.id, 'cancelled')}
+                          className="p-1 text-red-600 hover:bg-red-50 rounded"
+                          title="Cancel Booking"
+                        >
+                          <Ban size={18} />
                         </button>
                       )}
                       {(booking.status === 'confirmed' || booking.status === 'cancelled') && (
