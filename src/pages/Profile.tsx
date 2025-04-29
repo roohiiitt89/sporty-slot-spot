@@ -1,9 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { LogOut, Edit, Calendar, User, Phone, Mail } from 'lucide-react';
+import SportDisplayName from '@/components/SportDisplayName';
 
 interface Booking {
   id: string;
@@ -16,9 +18,11 @@ interface Booking {
     name: string;
     venue: {
       name: string;
+      id: string;
     };
     sport: {
       name: string;
+      id: string;
     };
   };
 }
@@ -89,8 +93,8 @@ const Profile: React.FC = () => {
           status,
           court:courts (
             name,
-            venue:venues (name),
-            sport:sports (name)
+            venue:venues (name, id),
+            sport:sports (name, id)
           )
         `)
         .eq('user_id', user?.id)
@@ -382,7 +386,13 @@ const Profile: React.FC = () => {
                                 <div className="flex flex-col md:flex-row md:items-center md:justify-between">
                                   <div className="mb-4 md:mb-0">
                                     <div className="flex flex-col md:flex-row md:items-center md:space-x-4">
-                                      <h3 className="text-lg font-medium text-gray-900">{booking.court.sport.name} at {booking.court.venue.name}</h3>
+                                      <h3 className="text-lg font-medium text-gray-900">
+                                        <SportDisplayName
+                                          venueId={booking.court.venue.id}
+                                          sportId={booking.court.sport.id}
+                                          defaultName={booking.court.sport.name}
+                                        /> at {booking.court.venue.name}
+                                      </h3>
                                       <span className={`inline-flex px-2 py-1 mt-2 md:mt-0 text-xs font-semibold rounded-full ${getStatusColor(booking.status)}`}>
                                         {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                                       </span>

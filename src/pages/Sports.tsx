@@ -1,83 +1,96 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Filter } from 'lucide-react';
 import Header from '../components/Header';
 import { Link } from 'react-router-dom';
 import BookSlotModal from '../components/BookSlotModal';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/components/ui/use-toast';
 
-// Mock sports data (would come from API in production)
-const sportsData = [
-  {
-    id: 1,
-    name: 'Basketball',
-    description: 'Fast-paced indoor court game played by two teams',
-    image: 'https://images.unsplash.com/photo-1518063319789-7217e6706b04?q=80&w=1000',
-    venues: 6,
-    popularity: 'High'
-  },
-  {
-    id: 2,
-    name: 'Tennis',
-    description: 'Racket sport played on a rectangular court',
-    image: 'https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?q=80&w=1000',
-    venues: 8,
-    popularity: 'Medium'
-  },
-  {
-    id: 3,
-    name: 'Football',
-    description: 'Team sport played with a spherical ball',
-    image: 'https://images.unsplash.com/photo-1517466787929-bc90951d0974?q=80&w=1000',
-    venues: 10,
-    popularity: 'High'
-  },
-  {
-    id: 4,
-    name: 'Swimming',
-    description: 'Water-based sport in lanes for speed and technique',
-    image: 'https://images.unsplash.com/photo-1600965962351-9a42dd4deb86?q=80&w=1000',
-    venues: 5,
-    popularity: 'Medium'
-  },
-  {
-    id: 5,
-    name: 'Volleyball',
-    description: 'Team sport where two teams hit a ball over a net',
-    image: 'https://images.unsplash.com/photo-1562552052-2d02ff8d6eb5?q=80&w=1000',
-    venues: 7,
-    popularity: 'Medium'
-  },
-  {
-    id: 6,
-    name: 'Badminton',
-    description: 'Racket sport played using rackets to hit a shuttlecock across a net',
-    image: 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?q=80&w=1000',
-    venues: 6,
-    popularity: 'Low'
-  },
-  {
-    id: 7,
-    name: 'Table Tennis',
-    description: 'Fast indoor sport played on a hard table divided by a net',
-    image: 'https://images.unsplash.com/photo-1534158914592-062992fbe900?q=80&w=1000',
-    venues: 4,
-    popularity: 'Low'
-  },
-  {
-    id: 8,
-    name: 'Cricket',
-    description: 'Bat-and-ball game played between two teams on a cricket field',
-    image: 'https://images.unsplash.com/photo-1531415074968-036ba1b575da?q=80&w=1000',
-    venues: 3,
-    popularity: 'Medium'
-  }
-];
+interface Sport {
+  id: string;
+  name: string;
+  description: string;
+  image_url: string;
+  popularity?: string;
+  venues_count?: number;
+}
 
 const Sports: React.FC = () => {
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
+  const [selectedSportId, setSelectedSportId] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [popularityFilter, setPopularityFilter] = useState<string[]>([]);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [sports, setSports] = useState<Sport[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchSports();
+  }, []);
+
+  const fetchSports = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch sports from database
+      const { data: sportsData, error: sportsError } = await supabase
+        .from('sports')
+        .select('id, name, description, image_url')
+        .eq('is_active', true);
+      
+      if (sportsError) throw sportsError;
+      
+      if (sportsData) {
+        // For each sport, get the count of venues that offer it
+        const sportsWithVenueCounts = await Promise.all(sportsData.map(async (sport) => {
+          try {
+            const { data: courts, error: courtsError } = await supabase
+              .from('courts')
+              .select('venue_id')
+              .eq('sport_id', sport.id)
+              .eq('is_active', true);
+              
+            if (courtsError) throw courtsError;
+            
+            // Get unique venue IDs
+            const uniqueVenueIds = new Set();
+            courts?.forEach(court => uniqueVenueIds.add(court.venue_id));
+            
+            // Assign a popularity based on venue count
+            let popularity = 'Low';
+            const venueCount = uniqueVenueIds.size;
+            if (venueCount > 8) popularity = 'High';
+            else if (venueCount > 4) popularity = 'Medium';
+            
+            return {
+              ...sport,
+              venues_count: venueCount,
+              popularity
+            };
+          } catch (error) {
+            console.error(`Error getting venues for sport ${sport.id}:`, error);
+            return {
+              ...sport,
+              venues_count: 0,
+              popularity: 'Low'
+            };
+          }
+        }));
+        
+        setSports(sportsWithVenueCounts);
+      }
+    } catch (error) {
+      console.error('Error fetching sports:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load sports data',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const togglePopularityFilter = (popularity: string) => {
     if (popularityFilter.includes(popularity)) {
@@ -89,16 +102,22 @@ const Sports: React.FC = () => {
 
   const clearFilters = () => {
     setPopularityFilter([]);
+    setSearchTerm('');
   };
 
-  const filteredSports = sportsData.filter(sport => {
+  const handleBookNow = (sportId: string) => {
+    setSelectedSportId(sportId);
+    setIsBookModalOpen(true);
+  };
+
+  const filteredSports = sports.filter(sport => {
     // Apply search term filter
     const matchesSearch = sport.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         sport.description.toLowerCase().includes(searchTerm.toLowerCase());
+                         (sport.description && sport.description.toLowerCase().includes(searchTerm.toLowerCase()));
     
     // Apply popularity filter
     const matchesPopularity = popularityFilter.length === 0 || 
-                             popularityFilter.includes(sport.popularity);
+                             popularityFilter.includes(sport.popularity || 'Low');
     
     return matchesSearch && matchesPopularity;
   });
@@ -185,7 +204,11 @@ const Sports: React.FC = () => {
           <h2 className="text-2xl font-bold text-sport-gray-dark">{filteredSports.length} Sports Available</h2>
         </div>
         
-        {filteredSports.length === 0 ? (
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-sport-green"></div>
+          </div>
+        ) : filteredSports.length === 0 ? (
           <div className="text-center py-16">
             <h3 className="text-2xl font-semibold text-sport-gray-dark mb-2">No sports found</h3>
             <p className="text-sport-gray mb-6">Try adjusting your filters or search term</p>
@@ -205,13 +228,13 @@ const Sports: React.FC = () => {
               >
                 <div className="h-48 relative overflow-hidden">
                   <img 
-                    src={sport.image} 
+                    src={sport.image_url || 'https://images.unsplash.com/photo-1518063319789-7217e6706b04?q=80&w=1000'} 
                     alt={sport.name} 
                     className="w-full h-full object-cover transform transition-transform duration-500 hover:scale-110"
                   />
                   <div className="absolute top-2 right-2 bg-white px-2 py-1 rounded-md shadow">
                     <span className="font-medium text-sport-gray-dark">
-                      {sport.venues} venues
+                      {sport.venues_count || 0} venues
                     </span>
                   </div>
                 </div>
@@ -230,17 +253,17 @@ const Sports: React.FC = () => {
                     </span>
                   </div>
                   
-                  <p className="text-sport-gray-dark mb-4">{sport.description}</p>
+                  <p className="text-sport-gray-dark mb-4">{sport.description || 'No description available'}</p>
                   
                   <div className="flex space-x-2">
                     <button
-                      onClick={() => setIsBookModalOpen(true)}
+                      onClick={() => handleBookNow(sport.id)}
                       className="flex-1 py-2 bg-sport-green text-white rounded-md font-semibold hover:bg-sport-green-dark transition-colors"
                     >
                       Book Now
                     </button>
                     <Link
-                      to="/venues"
+                      to={`/venues?sport=${sport.id}`}
                       className="flex-1 py-2 border border-sport-green text-sport-green rounded-md font-semibold text-center hover:bg-sport-green-light hover:text-white transition-colors"
                     >
                       Find Venues
@@ -262,7 +285,10 @@ const Sports: React.FC = () => {
       
       {/* Book Slot Modal */}
       {isBookModalOpen && (
-        <BookSlotModal onClose={() => setIsBookModalOpen(false)} />
+        <BookSlotModal 
+          onClose={() => setIsBookModalOpen(false)} 
+          sportId={selectedSportId}
+        />
       )}
     </div>
   );

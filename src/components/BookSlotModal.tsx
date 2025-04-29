@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
+import SportDisplayName from './SportDisplayName';
 
 interface BookSlotModalProps {
   onClose: () => void;
@@ -42,6 +43,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
   const navigate = useNavigate();
   const [venues, setVenues] = useState<Venue[]>([]);
   const [sports, setSports] = useState<Sport[]>([]);
+  const [venueSports, setVenueSports] = useState<Sport[]>([]);
   const [courts, setCourts] = useState<Court[]>([]);
   const [selectedVenue, setSelectedVenue] = useState(venueId || '');
   const [selectedSport, setSelectedSport] = useState(sportId || '');
@@ -81,6 +83,15 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     const today = new Date();
     setSelectedDate(today.toISOString().split('T')[0]);
   }, []);
+
+  useEffect(() => {
+    if (selectedVenue) {
+      fetchVenueSports(selectedVenue);
+    } else {
+      setVenueSports([]);
+      setSelectedSport('');
+    }
+  }, [selectedVenue]);
 
   useEffect(() => {
     if (selectedVenue && selectedSport) {
@@ -171,6 +182,51 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       });
     } finally {
       setLoading(prev => ({ ...prev, sports: false }));
+    }
+  };
+
+  const fetchVenueSports = async (venueId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('courts')
+        .select(`
+          sport_id,
+          sports:sport_id (id, name)
+        `)
+        .eq('venue_id', venueId)
+        .eq('is_active', true);
+        
+      if (error) {
+        throw error;
+      }
+      
+      if (data) {
+        // Extract unique sports from courts
+        const uniqueSportsMap = new Map();
+        data.forEach(item => {
+          if (item.sports && !uniqueSportsMap.has(item.sports.id)) {
+            uniqueSportsMap.set(item.sports.id, item.sports);
+          }
+        });
+        
+        const uniqueSports = Array.from(uniqueSportsMap.values()) as Sport[];
+        setVenueSports(uniqueSports);
+        
+        // If there's only one sport, select it automatically
+        if (uniqueSports.length === 1) {
+          setSelectedSport(uniqueSports[0].id);
+        } 
+        // If sportId is provided and exists in the venue sports, select it
+        else if (sportId && uniqueSports.some(sport => sport.id === sportId)) {
+          setSelectedSport(sportId);
+        }
+        // Otherwise clear the selection
+        else if (!sportId || !uniqueSports.some(sport => sport.id === sportId)) {
+          setSelectedSport('');
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching venue sports:', error);
     }
   };
 
@@ -295,6 +351,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       delete newSelectedSlotPrices[slotDisplay];
       setSelectedSlotPrices(newSelectedSlotPrices);
     } else {
+      // Add the slot without checking for continuity
       const updatedSlots = [...selectedSlots, slotDisplay];
       
       const sortedSlots = updatedSlots.sort((a, b) => {
@@ -302,26 +359,6 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
         const startTimeB = convertTo24Hour(b.split(' - ')[0]);
         return startTimeA.localeCompare(startTimeB);
       });
-      
-      let isContinuous = true;
-      for (let i = 0; i < sortedSlots.length - 1; i++) {
-        const currentEndTime = sortedSlots[i].split(' - ')[1];
-        const nextStartTime = sortedSlots[i + 1].split(' - ')[0];
-        
-        if (convertTo24Hour(currentEndTime) !== convertTo24Hour(nextStartTime)) {
-          isContinuous = false;
-          break;
-        }
-      }
-      
-      if (!isContinuous) {
-        toast({
-          title: "Invalid Selection",
-          description: "Please select continuous time slots only.",
-          variant: "destructive",
-        });
-        return;
-      }
       
       setSelectedSlots(sortedSlots);
       
@@ -394,26 +431,55 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
         return startTimeA.localeCompare(startTimeB);
       });
       
-      const startTime = convertTo24Hour(sortedSlots[0].split(' - ')[0]);
-      const endTime = convertTo24Hour(sortedSlots[sortedSlots.length - 1].split(' - ')[1]);
+      // Since slots can now be non-continuous, we need to create separate bookings for each slot
+      // But let's first identify continuous blocks to minimize the number of bookings
       
-      const { data, error } = await supabase
-        .from('bookings')
-        .insert({
-          court_id: selectedCourt,
-          user_id: user.id, // Always use logged-in user's ID
-          booking_date: selectedDate,
-          start_time: startTime,
-          end_time: endTime,
-          total_price: calculateTotalPrice(),
-          guest_name: null, // No guest bookings allowed
-          guest_phone: null, // No guest bookings allowed
-          status: 'confirmed' // Changed from 'pending' to 'confirmed'
-        })
-        .select();
+      const bookingBlocks = [];
+      let currentBlock = [sortedSlots[0]];
+      
+      for (let i = 1; i < sortedSlots.length; i++) {
+        const currentSlotEnd = convertTo24Hour(currentBlock[currentBlock.length - 1].split(' - ')[1]);
+        const nextSlotStart = convertTo24Hour(sortedSlots[i].split(' - ')[0]);
         
-      if (error) {
-        throw error;
+        if (currentSlotEnd === nextSlotStart) {
+          // Continuous slot, add to current block
+          currentBlock.push(sortedSlots[i]);
+        } else {
+          // Non-continuous, start a new block
+          bookingBlocks.push([...currentBlock]);
+          currentBlock = [sortedSlots[i]];
+        }
+      }
+      
+      // Add the last block
+      bookingBlocks.push(currentBlock);
+      
+      // Create a booking for each continuous block
+      for (const block of bookingBlocks) {
+        const startTime = convertTo24Hour(block[0].split(' - ')[0]);
+        const endTime = convertTo24Hour(block[block.length - 1].split(' - ')[1]);
+        
+        // Calculate price for this block
+        const blockPrice = block.reduce((total, slot) => {
+          return total + selectedSlotPrices[slot];
+        }, 0);
+        
+        const { data, error } = await supabase
+          .from('bookings')
+          .insert({
+            court_id: selectedCourt,
+            user_id: user.id,
+            booking_date: selectedDate,
+            start_time: startTime,
+            end_time: endTime,
+            total_price: blockPrice,
+            status: 'confirmed'
+          })
+          .select();
+          
+        if (error) {
+          throw error;
+        }
       }
       
       toast({
@@ -503,14 +569,25 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
                 value={selectedSport}
                 onChange={e => setSelectedSport(e.target.value)}
                 className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sport-green bg-white"
-                disabled={loading.sports}
+                disabled={!selectedVenue || venueSports.length === 0}
               >
                 <option value="">Select a sport</option>
-                {sports.map(sport => (
-                  <option key={sport.id} value={sport.id}>{sport.name}</option>
+                {venueSports.map(sport => (
+                  <option key={sport.id} value={sport.id}>
+                    {selectedVenue ? (
+                      <SportDisplayName
+                        venueId={selectedVenue}
+                        sportId={sport.id}
+                        defaultName={sport.name}
+                      />
+                    ) : (
+                      sport.name
+                    )}
+                  </option>
                 ))}
               </select>
-              {loading.sports && <p className="mt-1 text-xs text-gray-500">Loading sports...</p>}
+              {!selectedVenue && <p className="mt-1 text-xs text-gray-500">Please select a venue first</p>}
+              {selectedVenue && venueSports.length === 0 && <p className="mt-1 text-xs text-gray-500">No sports available for this venue</p>}
             </div>
             
             <div>
@@ -555,7 +632,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
           <div>
             <div className="mb-6">
               <h3 className="text-xl font-semibold text-gray-800 mb-2">Select Time Slots</h3>
-              <p className="text-gray-600">Click on the available slots to select them.</p>
+              <p className="text-gray-600">Click on the available slots to select them. You can select multiple slots, they don't need to be continuous.</p>
             </div>
             
             <div className="mb-4">
@@ -641,7 +718,15 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
                 
                 <div className="bg-gray-50 rounded-md p-4 space-y-3 border border-gray-200">
                   <p><span className="font-medium">Venue:</span> {venues.find(v => v.id === selectedVenue)?.name}</p>
-                  <p><span className="font-medium">Sport:</span> {sports.find(s => s.id === selectedSport)?.name}</p>
+                  <p>
+                    <span className="font-medium">Sport:</span> {selectedVenue && selectedSport && (
+                      <SportDisplayName 
+                        venueId={selectedVenue}
+                        sportId={selectedSport}
+                        defaultName={sports.find(s => s.id === selectedSport)?.name || ''}
+                      />
+                    )}
+                  </p>
                   <p><span className="font-medium">Court:</span> {courts.find(c => c.id === selectedCourt)?.name}</p>
                   <p><span className="font-medium">Date:</span> {selectedDate}</p>
                   
