@@ -91,8 +91,10 @@ export const useChallengeMode = () => {
         return [];
       }
 
-      setTeamMembers(data);
-      return data;
+      // Cast the data to the correct type
+      const typedMembers = data as unknown as TeamMember[];
+      setTeamMembers(typedMembers);
+      return typedMembers;
     } catch (error) {
       console.error('Error in fetchTeamMembers:', error);
       return [];
@@ -124,12 +126,16 @@ export const useChallengeMode = () => {
     if (!user) return null;
 
     try {
+      // Generate a slug from the name
+      const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      
       // Create the team
       const { data: teamData, error: teamError } = await supabase
         .from('teams')
         .insert({
           name,
           description,
+          slug,
           creator_id: user.id
         })
         .select()

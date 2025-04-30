@@ -33,6 +33,10 @@ export interface TeamMember {
   user_id: string;
   role: 'creator' | 'member';
   joined_at: string;
+  profiles?: {
+    full_name: string | null;
+    email: string | null;
+  };
 }
 
 export interface TeamChallenge {

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useChallengeMode } from '@/hooks/use-challenge-mode';
@@ -123,7 +122,11 @@ export const ProfileCard = () => {
         <span className="text-gray-400">XP Progress</span>
         <span className="text-gray-300">{playerProfile.xp} / {nextLevelXp}</span>
       </div>
-      <Progress value={progressPercentage} className="h-2 mb-4 bg-gray-700" indicatorClassName="bg-gradient-to-r from-emerald-500 to-teal-600" />
+      <Progress 
+        value={progressPercentage} 
+        className="h-2 mb-4 bg-gray-700"
+        indicatorClassName="bg-gradient-to-r from-emerald-500 to-teal-600" 
+      />
       
       <div className="grid grid-cols-3 gap-3 text-center">
         <div className="bg-gray-900/50 border border-gray-700 rounded-lg p-2">
