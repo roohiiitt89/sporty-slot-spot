@@ -1,9 +1,12 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Calendar, MapPin, Clock, User, ChevronRight, Activity, Star } from 'lucide-react';
 import Header from '../components/Header';
 import BookSlotModal from '../components/BookSlotModal';
+import { EnterChallengeButton } from '@/components/challenge/EnterChallengeButton';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/context/AuthContext';
 import { 
   Carousel, 
   CarouselContent, 
@@ -60,6 +63,7 @@ const athletesBenefits = [
 
 const Index: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
   const [activeQuoteIndex, setActiveQuoteIndex] = useState(0);
   const [visibleSections, setVisibleSections] = useState({
@@ -168,7 +172,7 @@ const Index: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-card text-card-foreground">
+    <div className="min-h-screen bg-navy-dark text-card-foreground">
       <Header />
       
       <section className="hero-section">
@@ -202,6 +206,9 @@ const Index: React.FC = () => {
               Browse Venues
             </Link>
           </div>
+          
+          {/* EnterChallengeButton placed below the main CTA buttons */}
+          <EnterChallengeButton />
         </div>
       </section>
 
@@ -563,4 +570,8 @@ const Index: React.FC = () => {
       {isBookModalOpen && (
         <BookSlotModal onClose={() => setIsBookModalOpen(false)} />
       )}
+    </div>
+  );
+};
 
+export default Index;
