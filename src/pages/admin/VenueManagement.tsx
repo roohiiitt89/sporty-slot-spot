@@ -301,12 +301,12 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ userRole, adminVenues
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
         <h2 className="text-xl font-semibold">Venue Management</h2>
         {isSuperAdmin && (
           <button
             onClick={() => openModal()}
-            className="px-4 py-2 bg-sport-green text-white rounded-md hover:bg-sport-green-dark transition-colors flex items-center gap-2"
+            className="w-full sm:w-auto px-4 py-2 bg-sport-green text-white rounded-md hover:bg-sport-green-dark transition-colors flex items-center justify-center gap-2"
           >
             <Plus size={18} />
             Add New Venue
@@ -337,7 +337,7 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ userRole, adminVenues
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {venues.map(venue => (
-            <div key={venue.id} className="bg-white border rounded-lg overflow-hidden shadow-sm">
+            <div key={venue.id} className="bg-white border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
               {venue.image_url ? (
                 <div className="h-48 overflow-hidden">
                   <img 
@@ -420,11 +420,11 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ userRole, adminVenues
         </div>
       )}
       
-      {/* Venue Form Modal */}
+      {/* Venue Form Modal - Updated to be more mobile friendly */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-lg w-full">
-            <div className="px-6 py-4 border-b">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="px-6 py-4 border-b sticky top-0 bg-white z-10">
               <h3 className="text-xl font-semibold">{isEditing ? 'Edit Venue' : 'Add New Venue'}</h3>
             </div>
             <form onSubmit={handleSubmit}>
@@ -541,17 +541,17 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ userRole, adminVenues
                 </div>
               </div>
               
-              <div className="px-6 py-4 border-t bg-gray-50 flex justify-end space-x-3">
+              <div className="px-6 py-4 border-t bg-gray-50 flex flex-col sm:flex-row sm:justify-end gap-3">
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="px-4 py-2 border text-gray-700 rounded-md hover:bg-gray-100 transition-colors"
+                  className="px-4 py-2 border text-gray-700 rounded-md hover:bg-gray-100 transition-colors w-full sm:w-auto"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-sport-green text-white rounded-md hover:bg-sport-green-dark transition-colors"
+                  className="px-4 py-2 bg-sport-green text-white rounded-md hover:bg-sport-green-dark transition-colors w-full sm:w-auto"
                 >
                   {isEditing ? 'Update Venue' : 'Create Venue'}
                 </button>

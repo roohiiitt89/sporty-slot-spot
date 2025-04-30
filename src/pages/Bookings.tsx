@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import { useAuth } from '@/context/AuthContext';
@@ -45,7 +46,7 @@ const Bookings: React.FC = () => {
       today.setHours(0, 0, 0, 0);
       const todayStr = today.toISOString().split('T')[0];
       
-      // Fetch upcoming bookings
+      // Fetch upcoming bookings - Changed to descending order
       const { data: upcomingData, error: upcomingError } = await supabase
         .from('bookings')
         .select(`
@@ -64,12 +65,12 @@ const Bookings: React.FC = () => {
         .eq('user_id', user?.id)
         .gte('booking_date', todayStr)
         .in('status', ['pending', 'confirmed'])
-        .order('booking_date', { ascending: true })
+        .order('booking_date', { ascending: false }) // Changed to descending
         .order('start_time', { ascending: true });
       
       if (upcomingError) throw upcomingError;
       
-      // Fetch past bookings
+      // Fetch past bookings - Changed to descending order for dates
       const { data: pastData, error: pastError } = await supabase
         .from('bookings')
         .select(`
@@ -87,7 +88,7 @@ const Bookings: React.FC = () => {
         `)
         .eq('user_id', user?.id)
         .or(`booking_date.lt.${todayStr},status.eq.cancelled,status.eq.completed`)
-        .order('booking_date', { ascending: false })
+        .order('booking_date', { ascending: false }) // Already descending
         .order('start_time', { ascending: true })
         .limit(5);
       
@@ -107,45 +108,7 @@ const Bookings: React.FC = () => {
     }
   };
 
-  const cancelBooking = async (bookingId: string, status: string) => {
-    // Only allow cancellation if the booking is currently confirmed
-    if (status !== 'confirmed') {
-      toast({
-        title: "Cannot cancel",
-        description: "Only confirmed bookings can be cancelled",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (!confirm('Are you sure you want to cancel this booking?')) {
-      return;
-    }
-    
-    try {
-      const { error } = await supabase
-        .from('bookings')
-        .update({ status: 'cancelled' })
-        .eq('id', bookingId)
-        .eq('user_id', user?.id);
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Booking cancelled",
-        description: "Your booking has been cancelled successfully",
-      });
-      
-      fetchBookings(); // Refresh bookings list
-    } catch (error) {
-      console.error('Error cancelling booking:', error);
-      toast({
-        title: "Error",
-        description: "Failed to cancel booking",
-        variant: "destructive",
-      });
-    }
-  };
+  // Removed cancelBooking function since users should no longer be able to cancel bookings
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -244,18 +207,10 @@ const Bookings: React.FC = () => {
                             </div>
                           </div>
                           
-                          {/* Actions Column */}
+                          {/* Price Column - Removed cancel button */}
                           <div className="p-4 md:p-6 md:w-1/5 bg-gray-50 flex flex-row md:flex-col items-center justify-between md:justify-center">
                             <p className="font-bold text-lg text-sport-gray-dark">₹{booking.total_price.toFixed(2)}</p>
-                            {/* Only show cancel button for confirmed bookings */}
-                            {booking.status === 'confirmed' && (
-                              <button
-                                onClick={() => cancelBooking(booking.id, booking.status)}
-                                className="px-4 py-2 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors text-sm"
-                              >
-                                Cancel
-                              </button>
-                            )}
+                            {/* Cancel button removed */}
                           </div>
                         </div>
                       ))}

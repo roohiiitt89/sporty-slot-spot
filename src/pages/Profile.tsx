@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import { useAuth } from '@/context/AuthContext';
@@ -98,7 +97,8 @@ const Profile: React.FC = () => {
           )
         `)
         .eq('user_id', user?.id)
-        .order('booking_date', { ascending: false });
+        .order('booking_date', { ascending: false })
+        .order('start_time', { ascending: true });
       
       if (error) {
         console.error('Supabase error details:', error);
@@ -238,7 +238,7 @@ const Profile: React.FC = () => {
               </div>
               
               <div className="md:w-3/4 p-6">
-                {activeTab === 'profile' && (
+                {activeTab === 'profile' ? (
                   <div>
                     <div className="flex justify-between items-center mb-6">
                       <h2 className="text-2xl font-bold text-gray-800">Your Profile</h2>
@@ -353,79 +353,70 @@ const Profile: React.FC = () => {
                       </div>
                     )}
                   </div>
-                )}
-
-                {activeTab === 'bookings' && (
+                ) : (
                   <div>
                     <div className="flex justify-between items-center mb-6">
-                      <h2 className="text-2xl font-bold text-gray-800">Your Bookings</h2>
+                      <h2 className="text-2xl font-bold text-gray-800">My Bookings</h2>
                     </div>
                     
                     {loading ? (
-                      <div className="flex justify-center items-center h-64">
-                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-sport-green"></div>
+                      <div className="flex justify-center py-8">
+                        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-sport-green"></div>
                       </div>
                     ) : bookings.length === 0 ? (
-                      <div className="text-center py-12 bg-gray-50 rounded-lg">
-                        <p className="text-gray-600 mb-4">You don't have any bookings yet</p>
+                      <div className="bg-gray-50 rounded-lg p-8 text-center">
+                        <h3 className="text-xl font-semibold text-gray-700 mb-4">No Bookings Found</h3>
+                        <p className="text-gray-500 mb-6">You haven't made any bookings yet.</p>
                         <a 
                           href="/venues" 
-                          className="px-6 py-3 bg-sport-green text-white rounded-md hover:bg-sport-green-dark transition-colors inline-block"
+                          className="inline-block px-6 py-3 bg-sport-green text-white rounded-md hover:bg-sport-green-dark transition-colors"
                         >
                           Browse Venues
                         </a>
                       </div>
                     ) : (
-                      <div className="space-y-6">
-                        {bookings.map((booking) => {
-                          const isPast = new Date(`${booking.booking_date} ${booking.end_time}`) < new Date();
-                          
-                          return (
-                            <div key={booking.id} className="bg-white border rounded-lg overflow-hidden shadow-sm">
-                              <div className="p-4 md:p-6">
-                                <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-                                  <div className="mb-4 md:mb-0">
-                                    <div className="flex flex-col md:flex-row md:items-center md:space-x-4">
-                                      <h3 className="text-lg font-medium text-gray-900">
-                                        <SportDisplayName
-                                          venueId={booking.court.venue.id}
-                                          sportId={booking.court.sport.id}
-                                          defaultName={booking.court.sport.name}
-                                        /> at {booking.court.venue.name}
-                                      </h3>
-                                      <span className={`inline-flex px-2 py-1 mt-2 md:mt-0 text-xs font-semibold rounded-full ${getStatusColor(booking.status)}`}>
-                                        {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-                                      </span>
-                                    </div>
-                                    <p className="text-gray-600 mt-1">{booking.court.name}</p>
-                                  </div>
+                      <div className="space-y-4">
+                        {bookings.map(booking => (
+                          <div key={booking.id} className="border border-gray-200 rounded-lg overflow-hidden">
+                            <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+                              <div className="flex items-center">
+                                <Calendar className="text-gray-500 mr-2" size={18} />
+                                <span className="font-medium">{new Date(booking.booking_date).toLocaleDateString()}</span>
+                              </div>
+                              <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(booking.status)}`}>
+                                {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                              </span>
+                            </div>
+                            
+                            <div className="p-4">
+                              <div className="flex flex-col md:flex-row md:justify-between md:items-center">
+                                <div>
+                                  <h3 className="text-lg font-semibold text-gray-800">{booking.court.venue.name}</h3>
+                                  <p className="text-gray-600">{booking.court.name} - <SportDisplayName sportId={booking.court.sport.id} /></p>
                                 </div>
-                                
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-                                  <div className="bg-gray-50 px-3 py-2 rounded-md">
-                                    <p className="text-xs text-gray-500">Date</p>
-                                    <p className="font-medium">{new Date(booking.booking_date).toLocaleDateString('en-US', { 
-                                      weekday: 'short', 
-                                      year: 'numeric', 
-                                      month: 'short', 
-                                      day: 'numeric' 
-                                    })}</p>
-                                  </div>
-                                  
-                                  <div className="bg-gray-50 px-3 py-2 rounded-md">
-                                    <p className="text-xs text-gray-500">Time</p>
-                                    <p className="font-medium">{formatTime(booking.start_time)} - {formatTime(booking.end_time)}</p>
-                                  </div>
-                                  
-                                  <div className="bg-gray-50 px-3 py-2 rounded-md">
-                                    <p className="text-xs text-gray-500">Price</p>
-                                    <p className="font-medium">₹{booking.total_price.toFixed(2)}</p>
-                                  </div>
+                                <div className="mt-2 md:mt-0">
+                                  <p className="text-gray-700">
+                                    <span className="font-semibold">Time:</span> {formatTime(booking.start_time)} - {formatTime(booking.end_time)}
+                                  </p>
+                                  <p className="text-gray-700">
+                                    <span className="font-semibold">Price:</span> ₹{booking.total_price.toFixed(2)}
+                                  </p>
                                 </div>
                               </div>
+                              
+                              {/* Actions row - Removed cancel button */}
+                              <div className="mt-4 flex justify-end">
+                                <a 
+                                  href={`/venues/${booking.court.venue.id}`} 
+                                  className="px-4 py-2 text-sport-green hover:bg-sport-green-light/20 rounded-md transition-colors"
+                                >
+                                  View Venue
+                                </a>
+                                {/* Cancel button removed */}
+                              </div>
                             </div>
-                          );
-                        })}
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
@@ -438,7 +429,7 @@ const Profile: React.FC = () => {
       
       <footer className="bg-white py-6">
         <div className="container mx-auto px-4 text-center">
-          <p className="text-sport-gray">&copy; 2025 SportySlot. All rights reserved.</p>
+          <p className="text-gray-600">&copy; 2025 SportySlot. All rights reserved.</p>
         </div>
       </footer>
     </div>

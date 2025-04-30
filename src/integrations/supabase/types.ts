@@ -110,6 +110,7 @@ export type Database = {
           name: string
           sport_id: string
           updated_at: string
+          "Venue name/ Sports name": string | null
           venue_id: string
         }
         Insert: {
@@ -121,6 +122,7 @@ export type Database = {
           name: string
           sport_id: string
           updated_at?: string
+          "Venue name/ Sports name"?: string | null
           venue_id: string
         }
         Update: {
@@ -132,6 +134,7 @@ export type Database = {
           name?: string
           sport_id?: string
           updated_at?: string
+          "Venue name/ Sports name"?: string | null
           venue_id?: string
         }
         Relationships: [

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { MapPin, Star, Filter, Search } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -186,10 +187,10 @@ const Venues: React.FC = () => {
   });
 
   return (
-    <div className="min-h-screen bg-sport-gray-light">
+    <div className="min-h-screen bg-gradient-to-b from-sport-green-light to-sport-green-dark">
       <Header />
       
-      <div className="bg-sport-green pt-32 pb-12 md:pb-16">
+      <div className="bg-gradient-to-r from-sport-green-dark to-sport-green pt-32 pb-12 md:pb-16">
         <div className="container mx-auto px-4">
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 text-center">Explore Venues</h1>
           <p className="text-xl text-white opacity-90 max-w-3xl mx-auto text-center mb-8">
@@ -206,11 +207,11 @@ const Venues: React.FC = () => {
                 placeholder="Search venues by name, location, or facilities"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 w-full p-4 rounded-md focus:outline-none focus:ring-2 focus:ring-sport-green-dark"
+                className="pl-10 w-full p-4 rounded-md focus:outline-none focus:ring-2 focus:ring-sport-green-dark bg-white/90 backdrop-blur-sm"
               />
               <button
                 onClick={() => setIsFilterOpen(!isFilterOpen)}
-                className="absolute inset-y-0 right-0 px-4 flex items-center bg-sport-green-dark text-white rounded-r-md hover:bg-sport-green transition-colors"
+                className="absolute inset-y-0 right-0 px-4 flex items-center bg-sport-green text-white rounded-r-md hover:bg-sport-green-light transition-colors"
               >
                 <Filter className="h-5 w-5 mr-2" />
                 Filters
@@ -218,9 +219,9 @@ const Venues: React.FC = () => {
             </div>
             
             {isFilterOpen && (
-              <div className="mt-4 bg-white p-6 rounded-md shadow-lg animate-fade-in">
+              <div className="mt-4 bg-white/90 backdrop-blur-md p-6 rounded-md shadow-lg animate-fade-in border border-sport-green-light/30">
                 <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-sport-gray-dark mb-3">Filter by Sport</h3>
+                  <h3 className="text-lg font-semibold text-sport-green-dark mb-3">Filter by Sport</h3>
                   <div className="flex flex-wrap gap-2">
                     {sports.map(sport => (
                       <button
@@ -229,7 +230,7 @@ const Venues: React.FC = () => {
                         className={`px-3 py-1 rounded-full text-sm ${
                           selectedSports.includes(sport.id)
                             ? 'bg-sport-green text-white'
-                            : 'bg-gray-100 text-sport-gray-dark hover:bg-gray-200'
+                            : 'bg-gray-100 text-sport-green-dark hover:bg-gray-200'
                         } transition-colors`}
                       >
                         {sport.name}
@@ -239,7 +240,7 @@ const Venues: React.FC = () => {
                 </div>
                 
                 <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-sport-gray-dark mb-3">Minimum Rating</h3>
+                  <h3 className="text-lg font-semibold text-sport-green-dark mb-3">Minimum Rating</h3>
                   <div className="flex items-center space-x-2">
                     {[0, 3, 3.5, 4, 4.5].map(rating => (
                       <button
@@ -248,7 +249,7 @@ const Venues: React.FC = () => {
                         className={`px-3 py-1 rounded-md ${
                           ratingFilter === rating
                             ? 'bg-sport-green text-white'
-                            : 'bg-gray-100 text-sport-gray-dark hover:bg-gray-200'
+                            : 'bg-gray-100 text-sport-green-dark hover:bg-gray-200'
                         } transition-colors`}
                       >
                         {rating === 0 ? 'Any' : `${rating}+`}
@@ -279,14 +280,14 @@ const Venues: React.FC = () => {
       
       <div className="container mx-auto px-4 py-12">
         <div className="mb-6 flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-sport-gray-dark">
+          <h2 className="text-2xl font-bold text-white">
             {loading ? 'Loading venues...' : `${filteredVenues.length} Venues Found`}
           </h2>
           <div className="flex space-x-2">
-            <button className="px-3 py-1 border border-sport-gray rounded-md text-sport-gray-dark hover:bg-sport-gray-light transition-colors">
+            <button className="px-3 py-1 border border-white/50 rounded-md text-white hover:bg-sport-green-light/30 transition-colors">
               Sort by Distance
             </button>
-            <button className="px-3 py-1 border border-sport-gray rounded-md text-sport-gray-dark hover:bg-sport-gray-light transition-colors">
+            <button className="px-3 py-1 border border-white/50 rounded-md text-white hover:bg-sport-green-light/30 transition-colors">
               Sort by Rating
             </button>
           </div>
@@ -294,15 +295,15 @@ const Venues: React.FC = () => {
         
         {loading ? (
           <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
           </div>
         ) : filteredVenues.length === 0 ? (
-          <div className="text-center py-16">
-            <h3 className="text-2xl font-semibold text-sport-gray-dark mb-2">No venues found</h3>
-            <p className="text-sport-gray mb-6">Try adjusting your filters or search term</p>
+          <div className="text-center py-16 bg-white/20 backdrop-blur-sm rounded-xl">
+            <h3 className="text-2xl font-semibold text-white mb-2">No venues found</h3>
+            <p className="text-white/80 mb-6">Try adjusting your filters or search term</p>
             <button
               onClick={clearFilters}
-              className="px-6 py-3 bg-sport-green text-white rounded-md hover:bg-sport-green-dark transition-colors"
+              className="px-6 py-3 bg-sport-green text-white rounded-md hover:bg-sport-green-light transition-colors"
             >
               Clear All Filters
             </button>
@@ -312,7 +313,7 @@ const Venues: React.FC = () => {
             {filteredVenues.map((venue) => (
               <div
                 key={venue.id}
-                className="bg-white rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-shadow"
+                className="bg-white/90 backdrop-blur-sm rounded-xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
               >
                 <div className="h-48 relative overflow-hidden">
                   <img 
@@ -320,16 +321,17 @@ const Venues: React.FC = () => {
                     alt={venue.name} 
                     className="w-full h-full object-cover transform transition-transform duration-500 hover:scale-110"
                   />
+                  <div className="absolute inset-0 bg-gradient-to-t from-sport-green-dark/70 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
                   <div className="absolute top-2 right-2 bg-white px-2 py-1 rounded-md shadow flex items-center">
                     <Star className="h-4 w-4 text-yellow-400 fill-current mr-1" />
-                    <span className="font-bold text-sport-gray-dark">{venue.rating ? venue.rating.toFixed(1) : '4.5'}</span>
+                    <span className="font-bold text-sport-green-dark">{venue.rating ? venue.rating.toFixed(1) : '4.5'}</span>
                   </div>
                 </div>
                 
-                <div className="p-5">
+                <div className="p-5 bg-gradient-to-b from-white to-gray-50">
                   <div className="flex justify-between items-start mb-2">
-                    <h3 className="text-xl font-bold text-sport-gray-dark">{venue.name}</h3>
-                    <span className="text-sm text-sport-gray bg-sport-gray-light px-2 py-1 rounded">
+                    <h3 className="text-xl font-bold text-sport-green-dark">{venue.name}</h3>
+                    <span className="text-sm text-white bg-sport-green px-2 py-1 rounded">
                       {venue.distance}
                     </span>
                   </div>
@@ -347,7 +349,7 @@ const Venues: React.FC = () => {
                       {venue.facilities && venue.facilities.map(facility => (
                         <span
                           key={facility}
-                          className="text-xs bg-sport-gray-light text-sport-gray-dark px-2 py-1 rounded"
+                          className="text-xs bg-sport-green-light/30 text-sport-green-dark px-2 py-1 rounded"
                         >
                           {facility}
                         </span>
@@ -376,7 +378,7 @@ const Venues: React.FC = () => {
         )}
       </div>
       
-      <footer className="bg-sport-gray-dark text-white py-8">
+      <footer className="bg-sport-green-dark text-white py-8">
         <div className="container mx-auto px-4 text-center">
           <p>&copy; 2025 SportySlot. All rights reserved.</p>
         </div>

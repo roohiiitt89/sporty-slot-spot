@@ -85,8 +85,8 @@ export default {
 				// Sport theme colors
 				'sport-green': {
 					light: '#4CAF50',  // Lighter green
-					DEFAULT: '#2E7D32', // Medium green
-					dark: '#1B5E20'     // Dark green
+					DEFAULT: '#2E7D32', // Medium green - Kaitoke Green
+					dark: '#1B5E20'     // Dark green - Sleek green
 				},
 				'sport-gray': {
 					light: '#F5F5F5',  // Very light gray
@@ -133,6 +133,16 @@ export default {
 				'pulse-light': {
 					'0%, 100%': { opacity: '1' },
 					'50%': { opacity: '0.8' }
+				},
+				'reveal': {
+					'0%': { 
+						opacity: '0',
+						transform: 'translateY(20px)'
+					},
+					'100%': { 
+						opacity: '1',
+						transform: 'translateY(0)'
+					}
 				}
 			},
 			animation: {
@@ -140,7 +150,8 @@ export default {
 				'accordion-up': 'accordion-up 0.2s ease-out',
 				'fade-in': 'fade-in 0.5s ease-out forwards',
 				'float': 'float 6s ease-in-out infinite',
-				'pulse-light': 'pulse-light 3s ease-in-out infinite'
+				'pulse-light': 'pulse-light 3s ease-in-out infinite',
+				'reveal': 'reveal 0.7s ease-out forwards'
 			}
 		}
 	},

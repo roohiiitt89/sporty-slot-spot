@@ -35,6 +35,29 @@ const sportsQuotes = [
   "\"The difference between the impossible and the possible lies in a person's determination.\" — Tommy Lasorda",
 ];
 
+const athletesBenefits = [
+  {
+    title: "Performance Analytics",
+    description: "Track your performance metrics and improve your game with advanced analytics",
+    image: "https://images.unsplash.com/photo-1517649763962-0c623066013b?q=80&w=1000&auto=format&fit=crop",
+  },
+  {
+    title: "Digital Training Log",
+    description: "Keep a digital record of all your training sessions and track progress over time",
+    image: "https://images.unsplash.com/photo-1517841905240-472988babdf9?q=80&w=1000&auto=format&fit=crop",
+  },
+  {
+    title: "Team Communication",
+    description: "Stay connected with your team and coaches through our integrated messaging platform",
+    image: "https://images.unsplash.com/photo-1519311965067-36d3e5f33d39?q=80&w=1000&auto=format&fit=crop",
+  },
+  {
+    title: "Skill Development",
+    description: "Access personalized training plans to develop your skills and reach your full potential",
+    image: "https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?q=80&w=1000&auto=format&fit=crop",
+  }
+];
+
 const Index: React.FC = () => {
   const navigate = useNavigate();
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
@@ -42,6 +65,7 @@ const Index: React.FC = () => {
   const [visibleSections, setVisibleSections] = useState({
     venues: false,
     sports: false,
+    athletes: false,
     forYou: false,
     quotes: false
   });
@@ -54,6 +78,7 @@ const Index: React.FC = () => {
 
   const venuesRef = useRef<HTMLDivElement>(null);
   const sportsRef = useRef<HTMLDivElement>(null);
+  const athletesRef = useRef<HTMLDivElement>(null);
   const forYouRef = useRef<HTMLDivElement>(null);
   const quotesRef = useRef<HTMLDivElement>(null);
 
@@ -131,6 +156,7 @@ const Index: React.FC = () => {
     
     if (venuesRef.current) observer.observe(venuesRef.current);
     if (sportsRef.current) observer.observe(sportsRef.current);
+    if (athletesRef.current) observer.observe(athletesRef.current);
     if (forYouRef.current) observer.observe(forYouRef.current);
     if (quotesRef.current) observer.observe(quotesRef.current);
 
@@ -283,7 +309,7 @@ const Index: React.FC = () => {
                   {sports.map((sport, index) => (
                     <CarouselItem key={sport.id} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/4">
                       <div 
-                        className="sport-card group hover-3d cursor-pointer"
+                        className="sport-card group cursor-pointer overflow-hidden rounded-xl"
                         style={{ animationDelay: `${0.1 * (index + 1)}s` }}
                         onClick={() => handleSportCardClick(sport.id)}
                       >
@@ -293,23 +319,29 @@ const Index: React.FC = () => {
                             alt={sport.name} 
                             className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-110"
                           />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-0 group-hover:opacity-70 transition-opacity"></div>
-                          <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button 
-                              className="bg-indigo text-white px-6 py-2 rounded-md transform translate-y-4 group-hover:translate-y-0 transition-all duration-300"
-                            >
-                              Find Venues
-                            </button>
+                          <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-30 group-hover:opacity-70 transition-opacity"></div>
+                          
+                          {/* New overlay with icon and hover effect */}
+                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
+                            <div className="bg-indigo/80 backdrop-blur-sm p-3 rounded-full transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                            </div>
                           </div>
                         </div>
-                        <div className="p-4 bg-navy-light text-white">
-                          <h3 className="text-xl font-bold group-hover:text-indigo-light transition-colors">
+                        <div className="p-4 bg-navy-light text-white relative overflow-hidden group-hover:bg-indigo transition-colors duration-500">
+                          <h3 className="text-xl font-bold group-hover:text-white transition-colors">
                             {sport.name}
                           </h3>
-                          <p className="text-gray-300 mt-2">{sport.description || 'Find venues for this sport'}</p>
-                          <div className="mt-4 h-1 w-full bg-navy overflow-hidden">
-                            <div className="h-full bg-indigo transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-500"></div>
-                          </div>
+                          <p className="text-gray-300 mt-2 line-clamp-2">{sport.description || 'Find venues for this sport'}</p>
+                          
+                          {/* Animated underline effect */}
+                          <div className="absolute bottom-0 left-0 w-full h-1 bg-indigo transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-500"></div>
+                          
+                          {/* Animated card corner flourish */}
+                          <div className="absolute -bottom-12 -right-12 w-24 h-24 bg-indigo-light rounded-full opacity-0 group-hover:opacity-20 transform translate-x-full translate-y-full group-hover:translate-x-0 group-hover:translate-y-0 transition-all duration-700"></div>
                         </div>
                       </div>
                     </CarouselItem>
@@ -325,6 +357,76 @@ const Index: React.FC = () => {
                 <p className="text-white text-lg">No sports available at the moment. Please check back later.</p>
               </div>
             )}
+          </div>
+        </div>
+      </section>
+
+      <section 
+        id="athletes" 
+        ref={athletesRef}
+        className="py-16 bg-gradient-to-b from-black/90 to-navy-dark"
+      >
+        <div className="container mx-auto px-4">
+          <div className={`mb-10 ${visibleSections.athletes ? 'animate-reveal' : 'opacity-0'}`}>
+            <h2 className="section-title text-white text-center relative">
+              For Athletes
+              <span className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-20 h-1 bg-indigo-light"></span>
+            </h2>
+            <p className="text-gray-300 text-center max-w-3xl mx-auto mt-4">
+              Enhance your athletic journey with our advanced features designed specifically for players and teams
+            </p>
+          </div>
+          
+          <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 ${visibleSections.athletes ? 'animate-reveal' : 'opacity-0'}`}>
+            {athletesBenefits.map((benefit, index) => (
+              <div 
+                key={index} 
+                className="group"
+                style={{ animationDelay: `${0.15 * (index + 1)}s` }}
+              >
+                <div className="overflow-hidden rounded-lg bg-navy relative h-80">
+                  {/* Black and white filtered image */}
+                  <img 
+                    src={benefit.image} 
+                    alt={benefit.title} 
+                    className="w-full h-full object-cover filter grayscale group-hover:grayscale-0 transition-all duration-500"
+                  />
+                  
+                  {/* Info Overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-navy to-transparent opacity-70"></div>
+                  
+                  {/* Tech overlay - these are the circles and tech lines */}
+                  <div className="absolute inset-0">
+                    <svg className="w-full h-full opacity-0 group-hover:opacity-40 transition-opacity duration-700" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                      <circle cx="20" cy="20" r="2" fill="#4CAF50" className="animate-pulse-light" />
+                      <circle cx="80" cy="30" r="2" fill="#4CAF50" className="animate-pulse-light" style={{ animationDelay: '0.5s' }} />
+                      <circle cx="65" cy="65" r="2" fill="#4CAF50" className="animate-pulse-light" style={{ animationDelay: '1s' }} />
+                      <circle cx="30" cy="75" r="2" fill="#4CAF50" className="animate-pulse-light" style={{ animationDelay: '1.5s' }} />
+                      <line x1="20" y1="20" x2="80" y2="30" stroke="#4CAF50" strokeWidth="0.5" strokeDasharray="2" />
+                      <line x1="80" y1="30" x2="65" y2="65" stroke="#4CAF50" strokeWidth="0.5" strokeDasharray="2" />
+                      <line x1="65" y1="65" x2="30" y2="75" stroke="#4CAF50" strokeWidth="0.5" strokeDasharray="2" />
+                      <line x1="30" y1="75" x2="20" y2="20" stroke="#4CAF50" strokeWidth="0.5" strokeDasharray="2" />
+                    </svg>
+                  </div>
+                  
+                  {/* Content */}
+                  <div className="absolute inset-0 p-6 flex flex-col justify-end">
+                    <h3 className="text-xl font-bold text-white mb-2">{benefit.title}</h3>
+                    <p className="text-gray-300 opacity-0 group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">{benefit.description}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          <div className="mt-10 text-center">
+            <Link 
+              to="/register" 
+              className="inline-flex items-center px-6 py-3 bg-indigo text-white rounded-md hover:bg-indigo-dark transition-colors"
+            >
+              Join Now
+              <ArrowRight className="ml-2 w-5 h-5" />
+            </Link>
           </div>
         </div>
       </section>
