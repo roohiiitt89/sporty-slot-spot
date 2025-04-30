@@ -44,7 +44,7 @@ const athletesBenefits = [
   {
     title: "Digital Training Log",
     description: "Keep a digital record of all your training sessions and track progress over time",
-    image: "https://images.unsplash.com/photo-1517841905240-472988babdf9?q=80&w=1000&auto=format&fit=crop",
+    image: "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//%20-2.jpg",
   },
   {
     title: "Team Communication",
