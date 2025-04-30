@@ -17,10 +17,8 @@ interface Message {
   created_at: string;
   user_id: string;
   is_read: boolean;
-  profiles?: {
-    full_name: string | null;
-    email: string | null;
-  };
+  user_name?: string;
+  user_email?: string;
 }
 
 interface Conversation {
@@ -47,41 +45,62 @@ const AdminChatInterface: React.FC<AdminChatInterfaceProps> = ({ venueId, userRo
       if (!venueId) return;
       
       try {
-        // Get all unique users that have sent messages to this venue
-        const { data, error } = await supabase
+        // First, get all unique users that have sent messages to this venue
+        const { data: messagesData, error: messagesError } = await supabase
           .from('messages')
           .select(`
             user_id,
             content,
-            created_at,
-            profiles (
-              full_name,
-              email
-            )
+            created_at
           `)
           .eq('venue_id', venueId)
           .order('created_at', { ascending: false });
         
-        if (error) throw error;
+        if (messagesError) throw messagesError;
         
-        if (data) {
-          // Group by user_id and get the most recent message
-          const userConversations = new Map<string, Conversation>();
-          
-          data.forEach(message => {
-            if (!userConversations.has(message.user_id)) {
-              userConversations.set(message.user_id, {
-                userId: message.user_id,
-                userName: message.profiles?.full_name || 'Guest User',
-                userEmail: message.profiles?.email || 'No email',
-                lastMessage: message.content,
-                lastMessageTime: message.created_at,
-              });
-            }
-          });
-          
-          setConversations(Array.from(userConversations.values()));
+        // Now fetch the profiles separately
+        const uniqueUserIds = Array.from(new Set(messagesData?.map(msg => msg.user_id) || []));
+        
+        if (uniqueUserIds.length === 0) {
+          setConversations([]);
+          setLoading(false);
+          return;
         }
+        
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, full_name, email')
+          .in('id', uniqueUserIds);
+          
+        if (profilesError) throw profilesError;
+        
+        // Create a map of user profiles for easy lookup
+        const profilesMap = new Map();
+        profilesData?.forEach(profile => {
+          profilesMap.set(profile.id, {
+            full_name: profile.full_name || 'Guest User',
+            email: profile.email || 'No email'
+          });
+        });
+        
+        // Group by user_id and get the most recent message
+        const userConversations = new Map<string, Conversation>();
+        
+        messagesData?.forEach(message => {
+          if (!userConversations.has(message.user_id)) {
+            const profile = profilesMap.get(message.user_id) || { full_name: 'Guest User', email: 'No email' };
+            
+            userConversations.set(message.user_id, {
+              userId: message.user_id,
+              userName: profile.full_name,
+              userEmail: profile.email,
+              lastMessage: message.content,
+              lastMessageTime: message.created_at,
+            });
+          }
+        });
+        
+        setConversations(Array.from(userConversations.values()));
       } catch (error) {
         console.error('Error fetching conversations:', error);
         toast({
@@ -112,7 +131,14 @@ const AdminChatInterface: React.FC<AdminChatInterfaceProps> = ({ venueId, userRo
           
           // If this is for the selected user, add it to the messages
           if (selectedUser === payload.new.user_id) {
-            setMessages(prev => [...prev, payload.new as Message]);
+            const newMsg: Message = {
+              id: payload.new.id,
+              content: payload.new.content,
+              created_at: payload.new.created_at,
+              user_id: payload.new.user_id,
+              is_read: payload.new.is_read
+            };
+            setMessages(prev => [...prev, newMsg]);
           }
         }
       )
@@ -129,25 +155,38 @@ const AdminChatInterface: React.FC<AdminChatInterfaceProps> = ({ venueId, userRo
       if (!selectedUser || !venueId) return;
       
       try {
-        const { data, error } = await supabase
+        // Fetch messages between the venue and the user
+        const { data: messagesData, error: messagesError } = await supabase
           .from('messages')
-          .select(`
-            *,
-            profiles (
-              full_name,
-              email
-            )
-          `)
+          .select(`*`)
           .eq('venue_id', venueId)
           .eq('user_id', selectedUser)
           .order('created_at', { ascending: true });
           
-        if (error) throw error;
+        if (messagesError) throw messagesError;
         
-        setMessages(data || []);
+        // Fetch the user's profile to get name and email
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('full_name, email')
+          .eq('id', selectedUser)
+          .single();
+          
+        if (profileError && profileError.code !== 'PGRST116') { // PGRST116 is "no rows returned"
+          throw profileError;
+        }
+        
+        // Create messages with user information
+        const messagesWithUser = messagesData?.map(msg => ({
+          ...msg,
+          user_name: profileData?.full_name || 'Guest User',
+          user_email: profileData?.email || 'No email'
+        })) || [];
+        
+        setMessages(messagesWithUser);
         
         // Mark messages as read
-        if (data && data.length > 0) {
+        if (messagesData && messagesData.length > 0) {
           await supabase
             .from('messages')
             .update({ is_read: true })
