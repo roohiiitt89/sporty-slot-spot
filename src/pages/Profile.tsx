@@ -392,7 +392,11 @@ const Profile: React.FC = () => {
                               <div className="flex flex-col md:flex-row md:justify-between md:items-center">
                                 <div>
                                   <h3 className="text-lg font-semibold text-gray-800">{booking.court.venue.name}</h3>
-                                  <p className="text-gray-600">{booking.court.name} - <SportDisplayName sportId={booking.court.sport.id} /></p>
+                                  <p className="text-gray-600">{booking.court.name} - <SportDisplayName 
+                                    venueId={booking.court.venue.id} 
+                                    sportId={booking.court.sport.id} 
+                                    defaultName={booking.court.sport.name} 
+                                  /></p>
                                 </div>
                                 <div className="mt-2 md:mt-0">
                                   <p className="text-gray-700">
@@ -412,7 +416,6 @@ const Profile: React.FC = () => {
                                 >
                                   View Venue
                                 </a>
-                                {/* Cancel button removed */}
                               </div>
                             </div>
                           </div>
