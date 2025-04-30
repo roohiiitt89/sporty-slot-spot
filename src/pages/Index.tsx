@@ -40,8 +40,8 @@ const sportsQuotes = [
 
 const athletesBenefits = [
   {
-    title: "Performance Analytics",
-    description: "Track your performance metrics and improve your game with advanced analytics",
+    title: "Challenge Mode",
+    description: "Create your team, challenge rivals, and climb the leaderboard in our competitive arena.",
     image: "https://images.unsplash.com/photo-1517649763962-0c623066013b?q=80&w=1000&auto=format&fit=crop",
   },
   {
