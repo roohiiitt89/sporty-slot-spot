@@ -17,6 +17,7 @@ interface Message {
   content: string;
   created_at: string;
   user_id: string;
+  sender_id: string;
   is_read: boolean;
 }
 
@@ -98,6 +99,7 @@ const ChatModal: React.FC<ChatModalProps> = ({ venueId, venueName, onClose }) =>
         .insert({
           content: newMessage,
           user_id: user.id,
+          sender_id: user.id, // User is sending their own message
           venue_id: venueId,
         });
 
@@ -127,6 +129,11 @@ const ChatModal: React.FC<ChatModalProps> = ({ venueId, venueName, onClose }) =>
     });
   };
 
+  // Helper function to check if a message is from the venue admin
+  const isAdminMessage = (message: Message) => {
+    return message.sender_id !== message.user_id;
+  };
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md flex flex-col max-h-[80vh]">
@@ -154,10 +161,20 @@ const ChatModal: React.FC<ChatModalProps> = ({ venueId, venueName, onClose }) =>
           ) : (
             messages.map((message) => (
               <div key={message.id} className="flex flex-col">
-                <div className="bg-indigo-light/10 p-3 rounded-lg max-w-[85%] self-start">
-                  <p className="text-gray-800">{message.content}</p>
-                  <span className="text-xs text-gray-500 mt-1 block">
-                    {formatDate(message.created_at)}
+                <div 
+                  className={`p-3 rounded-lg max-w-[85%] ${
+                    isAdminMessage(message) 
+                      ? 'bg-indigo text-white self-start' 
+                      : 'bg-indigo-light/10 self-end'
+                  }`}
+                >
+                  <p className={isAdminMessage(message) ? 'text-white' : 'text-gray-800'}>
+                    {message.content}
+                  </p>
+                  <span className={`text-xs mt-1 block ${
+                    isAdminMessage(message) ? 'text-white/70' : 'text-gray-500'
+                  }`}>
+                    {isAdminMessage(message) ? venueName : 'You'} • {formatDate(message.created_at)}
                   </span>
                 </div>
               </div>

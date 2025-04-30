@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 import { Send, Loader2, User } from 'lucide-react';
 import { Card } from "@/components/ui/card";
+import { useAuth } from '@/context/AuthContext';
 
 interface AdminChatInterfaceProps {
   venueId: string;
@@ -16,6 +17,7 @@ interface Message {
   content: string;
   created_at: string;
   user_id: string;
+  sender_id: string;
   is_read: boolean;
   user_name?: string;
   user_email?: string;
@@ -30,6 +32,7 @@ interface Conversation {
 }
 
 const AdminChatInterface: React.FC<AdminChatInterfaceProps> = ({ venueId, userRole }) => {
+  const { user } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
@@ -136,6 +139,7 @@ const AdminChatInterface: React.FC<AdminChatInterfaceProps> = ({ venueId, userRo
               content: payload.new.content,
               created_at: payload.new.created_at,
               user_id: payload.new.user_id,
+              sender_id: payload.new.sender_id,
               is_read: payload.new.is_read
             };
             setMessages(prev => [...prev, newMsg]);
@@ -220,7 +224,7 @@ const AdminChatInterface: React.FC<AdminChatInterfaceProps> = ({ venueId, userRo
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!newMessage.trim() || !selectedUser || !venueId) return;
+    if (!newMessage.trim() || !selectedUser || !venueId || !user) return;
     
     setSending(true);
     try {
@@ -230,7 +234,8 @@ const AdminChatInterface: React.FC<AdminChatInterfaceProps> = ({ venueId, userRo
         .from('messages')
         .insert({
           content: newMessage,
-          user_id: selectedUser,
+          user_id: selectedUser,  // This is the customer's ID
+          sender_id: user.id,     // This is the admin's ID who is sending the message
           venue_id: venueId,
           is_read: true // Admin messages are auto-read
         });
@@ -259,6 +264,11 @@ const AdminChatInterface: React.FC<AdminChatInterfaceProps> = ({ venueId, userRo
       minute: 'numeric',
       hour12: true,
     });
+  };
+
+  // Helper function to check if a message is from the admin
+  const isAdminMessage = (message: Message) => {
+    return message.sender_id !== message.user_id;
   };
 
   if (!venueId) {
@@ -327,10 +337,20 @@ const AdminChatInterface: React.FC<AdminChatInterfaceProps> = ({ venueId, userRo
             <div className="flex-grow overflow-y-auto p-4 space-y-4">
               {messages.map((message) => (
                 <div key={message.id} className="flex flex-col">
-                  <div className="bg-indigo-light/10 p-3 rounded-lg max-w-[85%] self-start">
-                    <p className="text-gray-800">{message.content}</p>
-                    <span className="text-xs text-gray-500 mt-1 block">
-                      {formatDate(message.created_at)}
+                  <div 
+                    className={`p-3 rounded-lg max-w-[85%] ${
+                      isAdminMessage(message) 
+                        ? 'bg-indigo text-white self-end' 
+                        : 'bg-indigo-light/10 self-start'
+                    }`}
+                  >
+                    <p className={isAdminMessage(message) ? 'text-white' : 'text-gray-800'}>
+                      {message.content}
+                    </p>
+                    <span className={`text-xs mt-1 block ${
+                      isAdminMessage(message) ? 'text-white/70' : 'text-gray-500'
+                    }`}>
+                      {isAdminMessage(message) ? 'You' : message.user_name} • {formatDate(message.created_at)}
                     </span>
                   </div>
                 </div>
