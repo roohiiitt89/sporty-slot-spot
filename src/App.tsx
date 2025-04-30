@@ -17,6 +17,8 @@ import Register from "./pages/Register";
 import VerifyEmail from "./pages/VerifyEmail";
 import AdminDashboard from "./pages/admin/Dashboard";
 import Profile from "./pages/Profile";
+import ChallengeDashboard from "./pages/challenge/ChallengeDashboard";
+import TeamDetails from "./pages/challenge/TeamDetails";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +41,8 @@ const App = () => (
             <Route element={<RouteGuard requireAuth={true} />}>
               <Route path="/profile" element={<Profile />} />
               <Route path="/bookings" element={<Bookings />} />
+              <Route path="/challenge" element={<ChallengeDashboard />} />
+              <Route path="/team/:slug" element={<TeamDetails />} />
             </Route>
             
             {/* Admin routes - accessible to both admin and super_admin */}

@@ -161,6 +161,96 @@ export type Database = {
           },
         ]
       }
+      match_chats: {
+        Row: {
+          challenge_id: string
+          content: string
+          created_at: string
+          id: string
+          team_id: string
+          user_id: string
+        }
+        Insert: {
+          challenge_id: string
+          content: string
+          created_at?: string
+          id?: string
+          team_id: string
+          user_id: string
+        }
+        Update: {
+          challenge_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          team_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_chats_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "team_challenges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_chats_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      match_results: {
+        Row: {
+          challenge_id: string
+          completed_at: string
+          created_at: string
+          id: string
+          team_a_score: number
+          team_b_score: number
+          updated_at: string
+          winner_team_id: string | null
+        }
+        Insert: {
+          challenge_id: string
+          completed_at?: string
+          created_at?: string
+          id?: string
+          team_a_score?: number
+          team_b_score?: number
+          updated_at?: string
+          winner_team_id?: string | null
+        }
+        Update: {
+          challenge_id?: string
+          completed_at?: string
+          created_at?: string
+          id?: string
+          team_a_score?: number
+          team_b_score?: number
+          updated_at?: string
+          winner_team_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_results_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: true
+            referencedRelation: "team_challenges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_results_winner_team_id_fkey"
+            columns: ["winner_team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           content: string
@@ -198,6 +288,89 @@ export type Database = {
             columns: ["venue_id"]
             isOneToOne: false
             referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      player_profiles: {
+        Row: {
+          created_at: string
+          draws: number
+          id: string
+          level: number
+          losses: number
+          profile_name: string | null
+          share_link: string | null
+          updated_at: string
+          wins: number
+          xp: number
+        }
+        Insert: {
+          created_at?: string
+          draws?: number
+          id: string
+          level?: number
+          losses?: number
+          profile_name?: string | null
+          share_link?: string | null
+          updated_at?: string
+          wins?: number
+          xp?: number
+        }
+        Update: {
+          created_at?: string
+          draws?: number
+          id?: string
+          level?: number
+          losses?: number
+          profile_name?: string | null
+          share_link?: string | null
+          updated_at?: string
+          wins?: number
+          xp?: number
+        }
+        Relationships: []
+      }
+      player_stats: {
+        Row: {
+          assists: number
+          challenge_id: string
+          created_at: string
+          goals: number
+          id: string
+          is_mvp: boolean | null
+          rating: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assists?: number
+          challenge_id: string
+          created_at?: string
+          goals?: number
+          id?: string
+          is_mvp?: boolean | null
+          rating?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assists?: number
+          challenge_id?: string
+          created_at?: string
+          goals?: number
+          id?: string
+          is_mvp?: boolean | null
+          rating?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_stats_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "team_challenges"
             referencedColumns: ["id"]
           },
         ]
@@ -256,6 +429,199 @@ export type Database = {
           image_url?: string | null
           is_active?: boolean
           name?: string
+        }
+        Relationships: []
+      }
+      team_challenges: {
+        Row: {
+          booking_date: string
+          challenger_team_id: string
+          court_id: string
+          created_at: string
+          end_time: string
+          format: string
+          id: string
+          opponent_team_id: string
+          sport_id: string
+          start_time: string
+          status: string
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          booking_date: string
+          challenger_team_id: string
+          court_id: string
+          created_at?: string
+          end_time: string
+          format: string
+          id?: string
+          opponent_team_id: string
+          sport_id: string
+          start_time: string
+          status: string
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          booking_date?: string
+          challenger_team_id?: string
+          court_id?: string
+          created_at?: string
+          end_time?: string
+          format?: string
+          id?: string
+          opponent_team_id?: string
+          sport_id?: string
+          start_time?: string
+          status?: string
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_challenges_challenger_team_id_fkey"
+            columns: ["challenger_team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_challenges_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_challenges_opponent_team_id_fkey"
+            columns: ["opponent_team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_challenges_sport_id_fkey"
+            columns: ["sport_id"]
+            isOneToOne: false
+            referencedRelation: "sports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_challenges_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_chats: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          team_id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          team_id: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          team_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_chats_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_members: {
+        Row: {
+          id: string
+          joined_at: string
+          role: string
+          team_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          joined_at?: string
+          role: string
+          team_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          joined_at?: string
+          role?: string
+          team_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teams: {
+        Row: {
+          created_at: string
+          creator_id: string
+          description: string | null
+          draws: number
+          id: string
+          logo_url: string | null
+          losses: number
+          name: string
+          slug: string
+          updated_at: string
+          wins: number
+          xp: number
+        }
+        Insert: {
+          created_at?: string
+          creator_id: string
+          description?: string | null
+          draws?: number
+          id?: string
+          logo_url?: string | null
+          losses?: number
+          name: string
+          slug: string
+          updated_at?: string
+          wins?: number
+          xp?: number
+        }
+        Update: {
+          created_at?: string
+          creator_id?: string
+          description?: string | null
+          draws?: number
+          id?: string
+          logo_url?: string | null
+          losses?: number
+          name?: string
+          slug?: string
+          updated_at?: string
+          wins?: number
+          xp?: number
         }
         Relationships: []
       }
@@ -445,6 +811,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_slug: {
+        Args: { team_name: string }
+        Returns: string
+      }
       get_admin_venues: {
         Args: Record<PropertyKey, never>
         Returns: {
