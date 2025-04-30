@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Search, Filter } from 'lucide-react';
 import Header from '../components/Header';
@@ -220,52 +219,47 @@ const Sports: React.FC = () => {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {filteredSports.map((sport) => (
               <div
                 key={sport.id}
-                className="bg-white/90 backdrop-blur-sm rounded-xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
+                className="bg-white/90 backdrop-blur-sm rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-1 flex flex-col h-full"
               >
-                <div className="h-48 relative overflow-hidden">
+                <div className="h-32 relative overflow-hidden">
                   <img 
                     src={sport.image_url || 'https://images.unsplash.com/photo-1518063319789-7217e6706b04?q=80&w=1000'} 
                     alt={sport.name} 
-                    className="w-full h-full object-cover transform transition-transform duration-500 hover:scale-110"
+                    className="w-full h-full object-cover"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-sport-green-dark/70 to-transparent opacity-0 hover:opacity-100 transition-opacity"></div>
-                  <div className="absolute top-2 right-2 bg-white px-2 py-1 rounded-md shadow">
-                    <span className="font-medium text-sport-green-dark">
-                      {sport.venues_count || 0} venues
-                    </span>
+                  <div className="absolute top-2 right-2 bg-white px-2 py-0.5 rounded text-xs font-medium">
+                    {sport.venues_count || 0} venues
                   </div>
                 </div>
                 
-                <div className="p-5 bg-gradient-to-b from-white to-gray-50">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="text-xl font-bold text-sport-green-dark">{sport.name}</h3>
-                    <span className={`text-xs px-2 py-1 rounded-full ${
+                <div className="p-3 bg-gradient-to-b from-white to-gray-50 flex-grow">
+                  <div className="flex justify-between items-start mb-1">
+                    <h3 className="text-base font-semibold text-sport-green-dark">{sport.name}</h3>
+                    <span className={`text-xs px-1.5 py-0.5 rounded-full ${
                       sport.popularity === 'High' 
                         ? 'bg-green-100 text-green-800'
                         : sport.popularity === 'Medium'
                         ? 'bg-yellow-100 text-yellow-800'
                         : 'bg-blue-100 text-blue-800'
                     }`}>
-                      {sport.popularity} popularity
+                      {sport.popularity}
                     </span>
                   </div>
                   
-                  <p className="text-sport-gray-dark mb-4">{sport.description || 'No description available'}</p>
-                  
-                  <div className="flex space-x-2">
+                  <div className="flex mt-2 gap-1">
                     <button
                       onClick={() => handleBookNow(sport.id)}
-                      className="flex-1 py-2 bg-sport-green text-white rounded-md font-semibold hover:bg-sport-green-dark transition-colors"
+                      className="flex-1 py-1 bg-sport-green text-white rounded text-xs font-medium hover:bg-sport-green-dark transition-colors"
                     >
                       Book Now
                     </button>
                     <Link
                       to={`/venues?sport=${sport.id}`}
-                      className="flex-1 py-2 border border-sport-green text-sport-green rounded-md font-semibold text-center hover:bg-sport-green hover:text-white transition-colors"
+                      className="flex-1 py-1 border border-sport-green text-sport-green rounded text-xs font-medium text-center hover:bg-sport-green hover:text-white transition-colors"
                     >
                       Find Venues
                     </Link>

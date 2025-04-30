@@ -84,7 +84,8 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
             )
           )
         `)
-        .order('booking_date', { ascending: false });
+        .order('booking_date', { ascending: false }) // Changed to show latest first
+        .order('created_at', { ascending: false }); // Added secondary sort by creation time
 
       // Apply status filter if not "all"
       if (filter !== 'all') {

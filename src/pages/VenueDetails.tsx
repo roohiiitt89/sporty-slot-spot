@@ -1,11 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MapPin, Star, ArrowLeft } from 'lucide-react';
+import { MapPin, Star, ArrowLeft, MessageCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/context/AuthContext';
 import Header from '../components/Header';
 import BookSlotModal from '../components/BookSlotModal';
+import ChatModal from '../components/ChatModal';
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import SportDisplayName from '@/components/SportDisplayName';
 import { getVenueSportDisplayNames } from '@/utils/sportDisplayNames';
 
@@ -43,11 +46,13 @@ interface CourtWithSports {
 const VenueDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [venue, setVenue] = useState<Venue | null>(null);
   const [courts, setCourts] = useState<Court[]>([]);
   const [sports, setSports] = useState<Sport[]>([]);
   const [loading, setLoading] = useState(true);
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
+  const [isChatModalOpen, setIsChatModalOpen] = useState(false);
   const [sportDisplayNames, setSportDisplayNames] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -224,10 +229,10 @@ const VenueDetails: React.FC = () => {
                 <h2 className="text-2xl font-bold text-sport-gray-dark mb-4">Sports Available</h2>
                 
                 {sports.length > 0 ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
                     {sports.map(sport => (
-                      <div key={sport.id} className="bg-navy-light text-white p-4 rounded-lg text-center hover:bg-sport-green transition-colors">
-                        <h3 className="font-semibold">
+                      <div key={sport.id} className="bg-navy-light text-white p-3 rounded-lg text-center hover:bg-sport-green transition-colors">
+                        <h3 className="font-semibold text-sm">
                           {id && (
                             <SportDisplayName 
                               venueId={id} 
@@ -251,11 +256,11 @@ const VenueDetails: React.FC = () => {
                 <h2 className="text-2xl font-bold text-sport-gray-dark mb-4">Courts Available</h2>
                 
                 {courts.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     {courts.map(court => (
-                      <div key={court.id} className="border border-gray-200 rounded-lg p-4 hover:border-sport-green transition-colors">
-                        <h3 className="font-semibold text-sport-gray-dark">{court.name}</h3>
-                        <p className="text-sport-gray-dark text-sm">
+                      <div key={court.id} className="border border-gray-200 rounded-lg p-3 hover:border-sport-green transition-colors">
+                        <h3 className="font-semibold text-sport-gray-dark text-sm">{court.name}</h3>
+                        <p className="text-sport-gray-dark text-xs">
                           Sport: {id && (
                             <SportDisplayName
                               venueId={id}
@@ -281,12 +286,23 @@ const VenueDetails: React.FC = () => {
                 <h2 className="text-2xl font-bold text-sport-gray-dark mb-4">Book this Venue</h2>
                 <p className="text-sport-gray-dark mb-6">Ready to play? Book a slot at this venue now.</p>
                 
-                <button
+                <Button
                   onClick={() => setIsBookModalOpen(true)}
-                  className="w-full py-3 bg-sport-green text-white rounded-md font-semibold hover:bg-sport-green-dark transition-colors"
+                  className="w-full py-6 bg-sport-green text-white font-semibold hover:bg-sport-green-dark transition-colors"
                 >
                   Book Now
-                </button>
+                </Button>
+                
+                {user && (
+                  <Button
+                    onClick={() => setIsChatModalOpen(true)}
+                    variant="outline"
+                    className="w-full mt-3 flex items-center justify-center"
+                  >
+                    <MessageCircle className="mr-2 h-4 w-4" />
+                    Chat with Venue
+                  </Button>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -305,6 +321,15 @@ const VenueDetails: React.FC = () => {
         <BookSlotModal 
           onClose={() => setIsBookModalOpen(false)} 
           venueId={id} 
+        />
+      )}
+      
+      {/* Chat Modal */}
+      {isChatModalOpen && venue && (
+        <ChatModal
+          venueId={venue.id}
+          venueName={venue.name}
+          onClose={() => setIsChatModalOpen(false)}
         />
       )}
     </div>

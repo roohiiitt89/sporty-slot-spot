@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
-import { LayoutGrid, Users, Calendar, Map, Dumbbell, ShieldCheckIcon, Info, BarChart } from 'lucide-react';
+import { LayoutGrid, Users, Calendar, Map, Dumbbell, ShieldCheckIcon, Info, BarChart, MessageCircle } from 'lucide-react';
 
 // Admin pages
 import VenueManagement from './VenueManagement';
@@ -13,6 +14,7 @@ import BookingManagement from './BookingManagement';
 import TemplateSlotManagement from './TemplateSlotManagement';
 import SportDisplayNames from './SportDisplayNames';
 import AnalyticsDashboard from './AnalyticsDashboard';
+import MessageManagement from './MessageManagement';
 
 const Dashboard: React.FC = () => {
   const { user, userRole } = useAuth();
@@ -66,6 +68,7 @@ const Dashboard: React.FC = () => {
     { path: '/admin/bookings', icon: <Calendar className="mr-2" />, title: 'Bookings' },
     { path: '/admin/template-slots', icon: <Calendar className="mr-2" />, title: 'Template Slots' },
     { path: '/admin/sport-display-names', icon: <Dumbbell className="mr-2" />, title: 'Sport Display Names' },
+    { path: '/admin/messages', icon: <MessageCircle className="mr-2" />, title: 'Messages' },
   ];
 
   return (
@@ -199,6 +202,7 @@ const Dashboard: React.FC = () => {
                 <Route path="/template-slots" element={<TemplateSlotManagement userRole={userRole} adminVenues={adminVenues} />} />
                 <Route path="/sport-display-names" element={<SportDisplayNames userRole={userRole} adminVenues={adminVenues} />} />
                 <Route path="/analytics" element={<AnalyticsDashboard />} />
+                <Route path="/messages" element={<MessageManagement userRole={userRole} adminVenues={adminVenues} />} />
               </Routes>
             </div>
           </div>

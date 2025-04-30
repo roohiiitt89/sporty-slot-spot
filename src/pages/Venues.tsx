@@ -309,66 +309,71 @@ const Venues: React.FC = () => {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {filteredVenues.map((venue) => (
               <div
                 key={venue.id}
-                className="bg-white/90 backdrop-blur-sm rounded-xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
+                className="bg-white/90 backdrop-blur-sm rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-1 flex flex-col h-full"
               >
-                <div className="h-48 relative overflow-hidden">
+                <div className="h-32 relative overflow-hidden">
                   <img 
                     src={venue.image_url || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000'} 
                     alt={venue.name} 
-                    className="w-full h-full object-cover transform transition-transform duration-500 hover:scale-110"
+                    className="w-full h-full object-cover"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-sport-green-dark/70 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
-                  <div className="absolute top-2 right-2 bg-white px-2 py-1 rounded-md shadow flex items-center">
-                    <Star className="h-4 w-4 text-yellow-400 fill-current mr-1" />
-                    <span className="font-bold text-sport-green-dark">{venue.rating ? venue.rating.toFixed(1) : '4.5'}</span>
+                  <div className="absolute top-0 right-0 bg-white/90 px-2 py-0.5 rounded-bl-lg shadow-sm flex items-center">
+                    <Star className="h-3 w-3 text-yellow-400 fill-current" />
+                    <span className="text-xs font-semibold text-sport-green-dark ml-0.5">{venue.rating ? venue.rating.toFixed(1) : '4.5'}</span>
                   </div>
                 </div>
                 
-                <div className="p-5 bg-gradient-to-b from-white to-gray-50">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="text-xl font-bold text-sport-green-dark">{venue.name}</h3>
-                    <span className="text-sm text-white bg-sport-green px-2 py-1 rounded">
+                <div className="p-3 bg-gradient-to-b from-white to-gray-50 flex-grow flex flex-col">
+                  <div className="flex justify-between items-start mb-1">
+                    <h3 className="text-base font-semibold text-sport-green-dark line-clamp-1" title={venue.name}>
+                      {venue.name}
+                    </h3>
+                    <span className="text-xs text-white bg-sport-green px-1.5 py-0.5 rounded-full">
                       {venue.distance}
                     </span>
                   </div>
                   
-                  <div className="flex items-center text-sport-gray mb-3">
-                    <MapPin className="w-4 h-4 mr-1" />
-                    <span>{venue.location}</span>
+                  <div className="flex items-center text-gray-600 text-xs mb-1">
+                    <MapPin className="w-3 h-3 mr-0.5" />
+                    <span className="line-clamp-1" title={venue.location}>{venue.location}</span>
                   </div>
                   
-                  <p className="text-sport-gray-dark mb-4">{venue.description || 'No description available'}</p>
-                  
-                  <div className="mb-4">
-                    <p className="text-sm font-medium text-sport-gray-dark mb-2">Facilities:</p>
-                    <div className="flex flex-wrap gap-1">
-                      {venue.facilities && venue.facilities.map(facility => (
-                        <span
-                          key={facility}
-                          className="text-xs bg-sport-green-light/30 text-sport-green-dark px-2 py-1 rounded"
-                        >
-                          {facility}
-                        </span>
-                      ))}
+                  {venue.facilities && venue.facilities.length > 0 && (
+                    <div className="mb-2 flex-grow">
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {venue.facilities.slice(0, 3).map(facility => (
+                          <span
+                            key={facility}
+                            className="inline-block text-xs bg-sport-green-light/30 text-sport-green-dark px-1.5 py-0.5 rounded"
+                          >
+                            {facility}
+                          </span>
+                        ))}
+                        {venue.facilities.length > 3 && (
+                          <span className="inline-block text-xs text-gray-500">
+                            +{venue.facilities.length - 3} more
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  )}
                   
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-1 mt-auto">
                     <button
                       onClick={() => navigate(`/venues/${venue.id}`)}
-                      className="py-2 border border-sport-green text-sport-green rounded-md font-semibold hover:bg-sport-green hover:text-white transition-colors"
+                      className="py-1 border border-sport-green text-sport-green rounded text-xs font-medium hover:bg-sport-green hover:text-white transition-colors"
                     >
-                      View Details
+                      Details
                     </button>
                     <button
                       onClick={() => setIsBookModalOpen(true)}
-                      className="py-2 bg-sport-green text-white rounded-md font-semibold hover:bg-sport-green-dark transition-colors"
+                      className="py-1 bg-sport-green text-white rounded text-xs font-medium hover:bg-sport-green-dark transition-colors"
                     >
-                      Book Now
+                      Book
                     </button>
                   </div>
                 </div>
