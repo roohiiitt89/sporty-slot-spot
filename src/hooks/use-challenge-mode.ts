@@ -11,9 +11,11 @@ export const useChallengeMode = () => {
   const [userTeam, setUserTeam] = useState<Team | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [topTeams, setTopTeams] = useState<Team[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchPlayerProfile = async () => {
     if (!user) return null;
+    setError(null);
     
     try {
       const { data, error } = await supabase
@@ -24,6 +26,7 @@ export const useChallengeMode = () => {
 
       if (error) {
         console.error('Error fetching player profile:', error);
+        setError('Failed to fetch player profile');
         return null;
       }
 
@@ -31,12 +34,14 @@ export const useChallengeMode = () => {
       return data;
     } catch (error) {
       console.error('Error in fetchPlayerProfile:', error);
+      setError('An unexpected error occurred');
       return null;
     }
   };
 
   const fetchUserTeam = async () => {
     if (!user) return null;
+    setError(null);
 
     try {
       // First check if user is a member of any team
@@ -64,6 +69,7 @@ export const useChallengeMode = () => {
       if (teamError) {
         console.error('Error fetching team details:', teamError);
         setUserTeam(null);
+        setError('Failed to fetch team details');
         return null;
       }
 
@@ -72,11 +78,13 @@ export const useChallengeMode = () => {
     } catch (error) {
       console.error('Error in fetchUserTeam:', error);
       setUserTeam(null);
+      setError('An unexpected error occurred');
       return null;
     }
   };
 
   const fetchTeamMembers = async (teamId: string) => {
+    setError(null);
     try {
       const { data, error } = await supabase
         .from('team_members')
@@ -88,20 +96,27 @@ export const useChallengeMode = () => {
 
       if (error) {
         console.error('Error fetching team members:', error);
+        setError('Failed to fetch team members');
         return [];
       }
 
-      // Cast the data to the correct type
-      const typedMembers = data as unknown as TeamMember[];
+      // Properly type casting the data to match TeamMember interface
+      const typedMembers = data.map(member => ({
+        ...member,
+        role: member.role as 'creator' | 'member'
+      }));
+      
       setTeamMembers(typedMembers);
       return typedMembers;
     } catch (error) {
       console.error('Error in fetchTeamMembers:', error);
+      setError('An unexpected error occurred');
       return [];
     }
   };
 
   const fetchTopTeams = async (limit = 5) => {
+    setError(null);
     try {
       const { data, error } = await supabase
         .from('teams')
@@ -111,6 +126,7 @@ export const useChallengeMode = () => {
 
       if (error) {
         console.error('Error fetching top teams:', error);
+        setError('Failed to fetch top teams');
         return [];
       }
 
@@ -118,12 +134,14 @@ export const useChallengeMode = () => {
       return data;
     } catch (error) {
       console.error('Error in fetchTopTeams:', error);
+      setError('An unexpected error occurred');
       return [];
     }
   };
 
   const createTeam = async (name: string, description?: string) => {
     if (!user) return null;
+    setError(null);
 
     try {
       // Generate a slug from the name
@@ -143,6 +161,7 @@ export const useChallengeMode = () => {
 
       if (teamError) {
         console.error('Error creating team:', teamError);
+        setError('Failed to create team');
         return null;
       }
 
@@ -157,6 +176,7 @@ export const useChallengeMode = () => {
 
       if (memberError) {
         console.error('Error adding team member:', memberError);
+        setError('Failed to add you as a team member');
         return null;
       }
 
@@ -167,7 +187,34 @@ export const useChallengeMode = () => {
       return teamData;
     } catch (error) {
       console.error('Error in createTeam:', error);
+      setError('An unexpected error occurred');
       return null;
+    }
+  };
+
+  const updateProfileName = async (profileName: string) => {
+    if (!user) return false;
+    setError(null);
+    
+    try {
+      const { error } = await supabase
+        .from('player_profiles')
+        .update({ profile_name: profileName })
+        .eq('id', user.id);
+        
+      if (error) {
+        console.error('Error updating profile name:', error);
+        setError('Failed to update profile name');
+        return false;
+      }
+      
+      // Refresh the player profile
+      await fetchPlayerProfile();
+      return true;
+    } catch (error) {
+      console.error('Error in updateProfileName:', error);
+      setError('An unexpected error occurred');
+      return false;
     }
   };
 
@@ -190,6 +237,7 @@ export const useChallengeMode = () => {
 
   return {
     loading,
+    error,
     playerProfile,
     userTeam,
     teamMembers,
@@ -198,6 +246,7 @@ export const useChallengeMode = () => {
     fetchUserTeam,
     fetchTeamMembers,
     fetchTopTeams,
-    createTeam
+    createTeam,
+    updateProfileName
   };
 };

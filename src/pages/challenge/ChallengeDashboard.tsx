@@ -8,9 +8,13 @@ import { TeamSection } from '@/components/challenge/TeamSection';
 import { ProfileCard } from '@/components/challenge/ProfileCard';
 import { toast } from '@/components/ui/sonner';
 import { useNavigate } from 'react-router-dom';
+import { useChallengeMode } from '@/hooks/use-challenge-mode';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { RefreshCcw } from 'lucide-react';
 
 const ChallengeDashboard = () => {
   const { user } = useAuth();
+  const { error, loading, fetchPlayerProfile } = useChallengeMode();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -19,6 +23,11 @@ const ChallengeDashboard = () => {
       navigate('/login', { state: { from: '/challenge' } });
     }
   }, [user, navigate]);
+
+  const handleRefresh = () => {
+    fetchPlayerProfile();
+    toast.success('Refreshing data...');
+  };
 
   if (!user) {
     return null;
@@ -35,6 +44,24 @@ const ChallengeDashboard = () => {
             Create your team, challenge others, and climb the leaderboard in our competitive gaming environment.
           </p>
         </header>
+        
+        {error && (
+          <Alert className="mb-6 bg-red-900/20 border-red-800 text-red-300">
+            <AlertTitle className="flex items-center justify-between">
+              <span>Something went wrong</span>
+              <button 
+                onClick={handleRefresh} 
+                className="p-1 hover:bg-red-800/30 rounded-full"
+                title="Refresh data"
+              >
+                <RefreshCcw size={16} />
+              </button>
+            </AlertTitle>
+            <AlertDescription>
+              {error}. Please try refreshing the page or contact support if the issue persists.
+            </AlertDescription>
+          </Alert>
+        )}
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
