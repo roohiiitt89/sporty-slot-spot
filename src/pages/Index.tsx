@@ -52,7 +52,7 @@ const athletesBenefits = [
   {
     title: "Team Communication",
     description: "Stay connected with your team and coaches through our integrated messaging platform",
-    image: "https://images.unsplash.com/photo-1519311965067-36d3e5f33d39?q=80&w=1000&auto=format&fit=crop",
+    image: "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//%20-4.jpg",
   },
   {
     title: "Skill Development",
