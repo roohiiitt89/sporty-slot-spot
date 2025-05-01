@@ -42,7 +42,7 @@ const athletesBenefits = [
   {
     title: "Challenge Mode",
     description: "Create your team, challenge rivals, and climb the leaderboard in our competitive arena.",
-    image: "https://images.unsplash.com/photo-1517649763962-0c623066013b?q=80&w=1000&auto=format&fit=crop",
+    image: "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//%20-3.jpg",
   },
   {
     title: "Digital Training Log",
