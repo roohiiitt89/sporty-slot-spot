@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -100,11 +99,24 @@ export const useChallengeMode = () => {
         return [];
       }
 
-      // Properly type casting the data to match TeamMember interface
-      const typedMembers = data.map(member => ({
-        ...member,
-        role: member.role as 'creator' | 'member'
-      }));
+      // Safe type casting and handling potential profile errors
+      const typedMembers: TeamMember[] = data.map(member => {
+        // Check if profiles has an error property or is missing required fields
+        const profileData = member.profiles && 
+          typeof member.profiles === 'object' && 
+          !('error' in member.profiles) ? 
+            member.profiles : 
+            { full_name: null, email: null };
+            
+        return {
+          ...member,
+          role: member.role as 'creator' | 'member',
+          profiles: {
+            full_name: profileData.full_name,
+            email: profileData.email
+          }
+        };
+      });
       
       setTeamMembers(typedMembers);
       return typedMembers;
