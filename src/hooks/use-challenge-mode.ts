@@ -101,19 +101,17 @@ export const useChallengeMode = () => {
 
       // Safe type casting and handling potential profile errors
       const typedMembers: TeamMember[] = data.map(member => {
-        // Check if profiles has an error property or is missing required fields
-        const profileData = member.profiles && 
+        // Check if profiles exists, is an object, and doesn't have an error property
+        const hasValidProfile = member.profiles && 
           typeof member.profiles === 'object' && 
-          !('error' in member.profiles) ? 
-            member.profiles : 
-            { full_name: null, email: null };
+          !('error' in member.profiles);
             
         return {
           ...member,
           role: member.role as 'creator' | 'member',
           profiles: {
-            full_name: profileData.full_name,
-            email: profileData.email
+            full_name: hasValidProfile ? member.profiles.full_name : null,
+            email: hasValidProfile ? member.profiles.email : null
           }
         };
       });
