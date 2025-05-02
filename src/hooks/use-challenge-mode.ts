@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -150,15 +151,14 @@ export const useChallengeMode = () => {
     }
   };
 
-  // Modified to use proper type checking and handling
   const fetchTeamJoinRequests = async (teamId: string) => {
     if (!user) return [];
     setError(null);
 
     try {
-      // Using any to bypass the TypeScript issues with team_join_requests
+      // Use a regular query instead of RPC
       const { data, error } = await supabase
-        .from('team_join_requests' as any)
+        .from('team_join_requests')
         .select('*')
         .eq('team_id', teamId)
         .eq('status', 'pending');
@@ -204,7 +204,6 @@ export const useChallengeMode = () => {
     }
   };
 
-  // Modified to handle type issues with team_join_requests
   const handleJoinRequest = async (requestId: string, status: 'accepted' | 'rejected') => {
     if (!user) return false;
     setError(null);
@@ -212,7 +211,7 @@ export const useChallengeMode = () => {
     try {
       // Instead of using RPC, do separate operations
       const { data: requestData, error: requestError } = await supabase
-        .from('team_join_requests' as any)
+        .from('team_join_requests')
         .select('*')
         .eq('id', requestId)
         .single();
@@ -225,7 +224,7 @@ export const useChallengeMode = () => {
       
       // Update request status
       const { error: updateError } = await supabase
-        .from('team_join_requests' as any)
+        .from('team_join_requests')
         .update({ status, updated_at: new Date().toISOString() })
         .eq('id', requestId);
         
@@ -260,7 +259,6 @@ export const useChallengeMode = () => {
     }
   };
 
-  // Modified to handle type issues with team_join_requests
   const requestToJoinTeam = async (teamId: string, message?: string) => {
     if (!user) return false;
     setError(null);
@@ -268,7 +266,7 @@ export const useChallengeMode = () => {
     try {
       // Direct insert instead of RPC
       const { data, error } = await supabase
-        .from('team_join_requests' as any)
+        .from('team_join_requests')
         .insert({
           team_id: teamId,
           user_id: user.id,

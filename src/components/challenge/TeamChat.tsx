@@ -35,13 +35,10 @@ export const TeamChat = ({ teamId }: TeamChatProps) => {
       setLoading(true);
       
       try {
+        // Simpler query that doesn't rely on complex joins
         const { data, error } = await supabase
           .from('team_chats')
-          .select(`
-            *,
-            profiles:user_id (full_name),
-            player_profiles:user_id (profile_name)
-          `)
+          .select('*')
           .eq('team_id', teamId)
           .order('created_at', { ascending: true });
         
@@ -49,16 +46,35 @@ export const TeamChat = ({ teamId }: TeamChatProps) => {
           console.error('Error fetching team chats:', error);
           return;
         }
-        
-        const typedMessages = data.map((message) => ({
-          ...message,
-          sender: {
-            full_name: message.profiles?.full_name || null,
-            profile_name: message.player_profiles?.profile_name || null
-          }
-        }));
 
-        setMessages(typedMessages);
+        // Fetch user profiles separately to avoid join issues
+        const messagesWithSenderInfo = await Promise.all(
+          data.map(async (message) => {
+            // Get user profile info
+            const { data: profileData } = await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('id', message.user_id)
+              .single();
+              
+            // Get player profile info  
+            const { data: playerProfileData } = await supabase
+              .from('player_profiles')
+              .select('profile_name')
+              .eq('id', message.user_id)
+              .single();
+              
+            return {
+              ...message,
+              sender: {
+                full_name: profileData?.full_name || null,
+                profile_name: playerProfileData?.profile_name || null
+              }
+            } as TeamChatType;
+          })
+        );
+
+        setMessages(messagesWithSenderInfo);
       } catch (error) {
         console.error('Error in fetchMessages:', error);
       } finally {
@@ -80,22 +96,32 @@ export const TeamChat = ({ teamId }: TeamChatProps) => {
         }, 
         async (payload) => {
           // Fetch the new message with user details
-          const { data, error } = await supabase
+          const { data: messageData } = await supabase
             .from('team_chats')
-            .select(`
-              *,
-              profiles:user_id (full_name),
-              player_profiles:user_id (profile_name)
-            `)
+            .select('*')
             .eq('id', payload.new.id)
             .single();
-
-          if (!error && data) {
-            const newMessage = {
-              ...data,
+            
+          if (messageData) {
+            // Get user profile info
+            const { data: profileData } = await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('id', messageData.user_id)
+              .single();
+              
+            // Get player profile info  
+            const { data: playerProfileData } = await supabase
+              .from('player_profiles')
+              .select('profile_name')
+              .eq('id', messageData.user_id)
+              .single();
+              
+            const newMessage: TeamChatType = {
+              ...messageData,
               sender: {
-                full_name: data.profiles?.full_name || null,
-                profile_name: data.player_profiles?.profile_name || null
+                full_name: profileData?.full_name || null,
+                profile_name: playerProfileData?.profile_name || null
               }
             };
             
