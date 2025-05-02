@@ -1,6 +1,31 @@
 
+-- Create team_join_requests table if it doesn't exist
+CREATE TABLE IF NOT EXISTS public.team_join_requests (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  team_id UUID NOT NULL REFERENCES public.teams(id),
+  user_id UUID NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  message TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(team_id, user_id)
+);
+
 -- Set up RLS policies for team_join_requests
 ALTER TABLE public.team_join_requests ENABLE ROW LEVEL SECURITY;
+
+-- Add RLS policies for team_join_requests
+CREATE POLICY "Team creators can view all join requests" ON public.team_join_requests
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.teams t
+      JOIN public.team_members tm ON t.id = tm.team_id
+      WHERE t.id = team_id AND tm.user_id = auth.uid() AND tm.role = 'creator'
+    )
+  );
+
+CREATE POLICY "Users can request to join teams" ON public.team_join_requests
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 -- Run the functions we defined
 \i supabase/functions/team-functions.sql

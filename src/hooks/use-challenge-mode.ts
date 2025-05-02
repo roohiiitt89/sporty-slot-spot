@@ -114,7 +114,7 @@ export const useChallengeMode = () => {
               full_name: profileData.full_name || null,
               email: profileData.email || null
             } : null
-          };
+          } as TeamMember; // Cast to ensure TypeScript recognizes this as TeamMember
         })
       );
       
@@ -156,9 +156,11 @@ export const useChallengeMode = () => {
     setError(null);
 
     try {
-      // Direct query to the team_join_requests table
+      // Use a regular query instead of RPC
       const { data, error } = await supabase
-        .rpc('get_team_join_requests', { team_id_param: teamId })
+        .from('team_join_requests')
+        .select('*')
+        .eq('team_id', teamId)
         .eq('status', 'pending');
 
       if (error) {
@@ -207,20 +209,49 @@ export const useChallengeMode = () => {
     setError(null);
 
     try {
-      // Call RPC function to handle join requests
-      const { data, error } = await supabase
-        .rpc('handle_team_join_request', { 
-          request_id_param: requestId,
-          status_param: status
-        });
-
-      if (error) {
-        console.error('Error handling join request:', error);
-        setError('Failed to process join request');
+      // Instead of using RPC, do separate operations
+      const { data: requestData, error: requestError } = await supabase
+        .from('team_join_requests')
+        .select('*')
+        .eq('id', requestId)
+        .single();
+      
+      if (requestError) {
+        console.error('Error fetching join request:', requestError);
+        setError('Failed to find join request');
         return false;
       }
-
-      return data;
+      
+      // Update request status
+      const { error: updateError } = await supabase
+        .from('team_join_requests')
+        .update({ status, updated_at: new Date().toISOString() })
+        .eq('id', requestId);
+        
+      if (updateError) {
+        console.error('Error updating join request:', updateError);
+        setError('Failed to update join request');
+        return false;
+      }
+      
+      // If accepted, add user to team
+      if (status === 'accepted') {
+        const { error: memberError } = await supabase
+          .from('team_members')
+          .insert({
+            team_id: requestData.team_id,
+            user_id: requestData.user_id,
+            role: 'member'
+          });
+          
+        if (memberError) {
+          console.error('Error adding team member:', memberError);
+          setError('Failed to add user to team');
+          return false;
+        }
+      }
+      
+      return true;
     } catch (error) {
       console.error('Error in handleJoinRequest:', error);
       setError('An unexpected error occurred');
@@ -233,20 +264,28 @@ export const useChallengeMode = () => {
     setError(null);
 
     try {
-      // Call RPC function to create join request
+      // Direct insert instead of RPC
       const { data, error } = await supabase
-        .rpc('create_team_join_request', {
-          team_id_param: teamId,
-          message_param: message || null
+        .from('team_join_requests')
+        .insert({
+          team_id: teamId,
+          user_id: user.id,
+          message: message || null,
+          status: 'pending'
         });
 
       if (error) {
-        console.error('Error requesting to join team:', error);
-        setError('Failed to send join request');
+        if (error.code === '23505') { // Unique violation
+          console.error('Error requesting to join team:', error);
+          setError('You have already requested to join this team');
+        } else {
+          console.error('Error requesting to join team:', error);
+          setError('Failed to send join request');
+        }
         return false;
       }
 
-      return data;
+      return true;
     } catch (error) {
       console.error('Error in requestToJoinTeam:', error);
       setError('An unexpected error occurred');

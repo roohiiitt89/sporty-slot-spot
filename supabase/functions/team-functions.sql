@@ -65,8 +65,8 @@ CREATE OR REPLACE FUNCTION public.create_team_join_request(
   message_param TEXT
 ) RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
-  INSERT INTO public.team_join_requests (team_id, user_id, message)
-  VALUES (team_id_param, auth.uid(), message_param);
+  INSERT INTO public.team_join_requests (team_id, user_id, message, status)
+  VALUES (team_id_param, auth.uid(), message_param, 'pending');
   
   RETURN TRUE;
 EXCEPTION

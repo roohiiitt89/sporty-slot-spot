@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -65,15 +64,13 @@ export const TeamChat = ({ teamId }: TeamChatProps) => {
               .eq('id', message.user_id)
               .single();
               
-            const typedMessage: TeamChatType = {
+            return {
               ...message,
               sender: {
                 full_name: profileData?.full_name || null,
                 profile_name: playerProfileData?.profile_name || null
               }
-            };
-            
-            return typedMessage;
+            } as TeamChatType;
           })
         );
 

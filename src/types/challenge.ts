@@ -31,7 +31,7 @@ export interface TeamMember {
   id: string;
   team_id: string;
   user_id: string;
-  role: 'creator' | 'member';
+  role: 'creator' | 'member' | string; // Adding string to support any role from database
   joined_at: string;
   profiles?: {
     full_name: string | null;
@@ -84,7 +84,7 @@ export interface TeamJoinRequest {
   id: string;
   team_id: string;
   user_id: string;
-  status: 'pending' | 'accepted' | 'rejected';
+  status: 'pending' | 'accepted' | 'rejected' | string; // Adding string to handle any values from DB
   message: string | null;
   created_at: string;
   updated_at: string;
