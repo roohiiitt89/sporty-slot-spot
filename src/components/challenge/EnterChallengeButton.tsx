@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
+import { Trophy } from 'lucide-react';
 
 export const EnterChallengeButton = () => {
   const { user } = useAuth();
@@ -38,7 +39,7 @@ export const EnterChallengeButton = () => {
           onMouseLeave={() => setIsHovering(false)}
           onClick={handleEnterChallengeMode}
         >
-          <span className="mr-2">🔥</span> Enter Challenge Mode
+          <Trophy className="mr-2" /> Enter Challenge Mode
         </Button>
       </motion.div>
     </motion.div>

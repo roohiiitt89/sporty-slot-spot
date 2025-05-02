@@ -3,22 +3,41 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { DarkThemeProvider } from '@/components/challenge/DarkThemeProvider';
 import { supabase } from '@/integrations/supabase/client';
-import { Team, TeamMember } from '@/types/challenge';
+import { Team, TeamMember, TeamJoinRequest } from '@/types/challenge';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/sonner';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
+import { useChallengeMode } from '@/hooks/use-challenge-mode';
+import { TeamChat } from '@/components/challenge/TeamChat';
+import { TeamJoinRequests } from '@/components/challenge/TeamJoinRequests';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Textarea } from '@/components/ui/textarea';
+import { Trophy, Users, MessageSquare, Plus } from 'lucide-react';
 
 const TeamDetails = () => {
   const { slug } = useParams<{ slug: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { requestToJoinTeam } = useChallengeMode();
 
   const [team, setTeam] = useState<Team | null>(null);
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isTeamMember, setIsTeamMember] = useState(false);
   const [isCreator, setIsCreator] = useState(false);
+  const [joinMessage, setJoinMessage] = useState('');
+  const [isJoinDialogOpen, setIsJoinDialogOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     const fetchTeam = async () => {
@@ -77,6 +96,20 @@ const TeamDetails = () => {
       fetchTeam();
     }
   }, [slug, user, navigate]);
+
+  const handleJoinRequest = async () => {
+    if (!team) return;
+    
+    setSubmitting(true);
+    const success = await requestToJoinTeam(team.id, joinMessage);
+    setSubmitting(false);
+    
+    if (success) {
+      toast.success('Join request sent successfully');
+      setIsJoinDialogOpen(false);
+      setJoinMessage('');
+    }
+  };
 
   if (loading) {
     return (
@@ -168,47 +201,170 @@ const TeamDetails = () => {
                     <div className="text-xs text-gray-400">Losses</div>
                   </div>
                 </div>
+
+                {user && !isTeamMember && (
+                  <div className="mt-6">
+                    <Dialog open={isJoinDialogOpen} onOpenChange={setIsJoinDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button className="bg-emerald-600 hover:bg-emerald-700">Request to Join</Button>
+                      </DialogTrigger>
+                      <DialogContent className="bg-gray-800 border-gray-700 text-white">
+                        <DialogHeader>
+                          <DialogTitle>Join Request</DialogTitle>
+                          <DialogDescription className="text-gray-400">
+                            Send a request to join {team.name}. The team creator will review your request.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <Textarea
+                          className="bg-gray-900 border-gray-700 text-white mt-2"
+                          placeholder="Optional message to the team creator..."
+                          value={joinMessage}
+                          onChange={(e) => setJoinMessage(e.target.value)}
+                        />
+                        <DialogFooter className="mt-4">
+                          <Button variant="outline" onClick={() => setIsJoinDialogOpen(false)} className="border-gray-600 text-gray-300">
+                            Cancel
+                          </Button>
+                          <Button 
+                            className="bg-emerald-600 hover:bg-emerald-700" 
+                            onClick={handleJoinRequest}
+                            disabled={submitting}
+                          >
+                            {submitting ? 'Sending...' : 'Send Request'}
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                )}
               </div>
             </div>
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <h3 className="text-xl font-bold mb-4">Team Members</h3>
-            <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
-              {members.length > 0 ? (
-                <div className="divide-y divide-gray-700">
-                  {members.map((member) => (
-                    <div key={member.id} className="flex items-center justify-between p-4">
-                      <div className="flex items-center">
-                        <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center mr-3 text-sm font-medium">
-                          {member.profiles?.full_name ? member.profiles.full_name.substring(0, 2).toUpperCase() : 'U'}
+          {isTeamMember && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="mb-8"
+            >
+              <Tabs defaultValue="members">
+                <TabsList className="grid w-full grid-cols-3 bg-gray-800 border border-gray-700">
+                  <TabsTrigger value="members" className="data-[state=active]:bg-gray-700">
+                    <Users size={16} className="mr-2" /> Members
+                  </TabsTrigger>
+                  <TabsTrigger value="chat" className="data-[state=active]:bg-gray-700">
+                    <MessageSquare size={16} className="mr-2" /> Team Chat
+                  </TabsTrigger>
+                  <TabsTrigger value="challenges" className="data-[state=active]:bg-gray-700">
+                    <Trophy size={16} className="mr-2" /> Challenges
+                  </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="members" className="mt-4">
+                  <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+                    <div className="p-4 border-b border-gray-700 flex justify-between items-center">
+                      <h3 className="font-medium">Team Members ({members.length})</h3>
+                      {isCreator && (
+                        <Button size="sm" variant="outline" className="border-gray-600 text-gray-300">
+                          <Plus size={16} className="mr-1" /> Invite
+                        </Button>
+                      )}
+                    </div>
+                    {members.length > 0 ? (
+                      <div className="divide-y divide-gray-700">
+                        {members.map((member) => (
+                          <div key={member.id} className="flex items-center justify-between p-4">
+                            <div className="flex items-center">
+                              <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center mr-3 text-sm font-medium">
+                                {member.profiles?.full_name ? member.profiles.full_name.substring(0, 2).toUpperCase() : 'U'}
+                              </div>
+                              <div>
+                                <div className="font-medium">{member.profiles?.full_name || 'Unknown User'}</div>
+                                <div className="text-sm text-gray-400">{member.profiles?.email || 'No email'}</div>
+                              </div>
+                            </div>
+                            <div>
+                              <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                                member.role === 'creator' ? 'bg-amber-900/30 text-amber-400 border border-amber-600/30' : 'bg-gray-700 text-gray-300'
+                              }`}>
+                                {member.role === 'creator' ? 'Team Creator' : 'Member'}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-6 text-center text-gray-400">
+                        No team members found.
+                      </div>
+                    )}
+                  </div>
+                  
+                  {isCreator && <TeamJoinRequests teamId={team.id} />}
+                </TabsContent>
+                
+                <TabsContent value="chat" className="mt-4">
+                  <TeamChat teamId={team.id} />
+                </TabsContent>
+                
+                <TabsContent value="challenges" className="mt-4">
+                  <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+                    <div className="p-4 border-b border-gray-700 flex justify-between items-center">
+                      <h3 className="font-medium">Team Challenges</h3>
+                      {isCreator && (
+                        <Button className="bg-emerald-600 hover:bg-emerald-700">
+                          <Trophy size={16} className="mr-2" /> Challenge a Team
+                        </Button>
+                      )}
+                    </div>
+                    <div className="p-10 text-center text-gray-400">
+                      No challenges yet. Create your first challenge!
+                    </div>
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </motion.div>
+          )}
+
+          {!isTeamMember && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              <h3 className="text-xl font-bold mb-4">Team Members</h3>
+              <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+                {members.length > 0 ? (
+                  <div className="divide-y divide-gray-700">
+                    {members.map((member) => (
+                      <div key={member.id} className="flex items-center justify-between p-4">
+                        <div className="flex items-center">
+                          <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center mr-3 text-sm font-medium">
+                            {member.profiles?.full_name ? member.profiles.full_name.substring(0, 2).toUpperCase() : 'U'}
+                          </div>
+                          <div>
+                            <div className="font-medium">{member.profiles?.full_name || 'Unknown User'}</div>
+                          </div>
                         </div>
                         <div>
-                          <div className="font-medium">{member.profiles?.full_name || 'Unknown User'}</div>
-                          <div className="text-sm text-gray-400">{member.profiles?.email || 'No email'}</div>
+                          <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                            member.role === 'creator' ? 'bg-amber-900/30 text-amber-400 border border-amber-600/30' : 'bg-gray-700 text-gray-300'
+                          }`}>
+                            {member.role === 'creator' ? 'Team Creator' : 'Member'}
+                          </span>
                         </div>
                       </div>
-                      <div>
-                        <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-                          member.role === 'creator' ? 'bg-amber-900/30 text-amber-400 border border-amber-600/30' : 'bg-gray-700 text-gray-300'
-                        }`}>
-                          {member.role === 'creator' ? 'Team Creator' : 'Member'}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-6 text-center text-gray-400">
-                  No team members found.
-                </div>
-              )}
-            </div>
-          </motion.div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-6 text-center text-gray-400">
+                    No team members found.
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
         </div>
       </div>
     </DarkThemeProvider>
