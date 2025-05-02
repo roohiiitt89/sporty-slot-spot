@@ -87,14 +87,10 @@ export const useChallengeMode = () => {
   const fetchTeamMembers = async (teamId: string) => {
     setError(null);
     try {
+      // Simplified query to avoid join issues
       const { data, error } = await supabase
         .from('team_members')
-        .select(`
-          *,
-          user_profiles:user_id (
-            profiles(full_name, email)
-          )
-        `)
+        .select('*')
         .eq('team_id', teamId);
 
       if (error) {
@@ -103,25 +99,27 @@ export const useChallengeMode = () => {
         return [];
       }
 
-      // Safe type casting and handling potential profile errors
-      const typedMembers: TeamMember[] = data.map(member => {
-        const profile = member.user_profiles?.profiles;
-        
-        return {
-          id: member.id,
-          team_id: member.team_id,
-          user_id: member.user_id,
-          role: member.role as 'creator' | 'member',
-          joined_at: member.joined_at,
-          profiles: profile ? {
-            full_name: profile.full_name || null,
-            email: profile.email || null
-          } : null
-        };
-      });
+      // Fetch user profiles separately
+      const members: TeamMember[] = await Promise.all(
+        data.map(async (member) => {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('full_name, email')
+            .eq('id', member.user_id)
+            .single();
+          
+          return {
+            ...member,
+            profiles: profileData ? {
+              full_name: profileData.full_name || null,
+              email: profileData.email || null
+            } : null
+          };
+        })
+      );
       
-      setTeamMembers(typedMembers);
-      return typedMembers;
+      setTeamMembers(members);
+      return members;
     } catch (error) {
       console.error('Error in fetchTeamMembers:', error);
       setError('An unexpected error occurred');
@@ -158,16 +156,9 @@ export const useChallengeMode = () => {
     setError(null);
 
     try {
-      // Use the new team_join_requests table we created
+      // Direct query to the team_join_requests table
       const { data, error } = await supabase
-        .from('team_join_requests')
-        .select(`
-          *,
-          user_profile:user_id (
-            profiles(full_name, email)
-          )
-        `)
-        .eq('team_id', teamId)
+        .rpc('get_team_join_requests', { team_id_param: teamId })
         .eq('status', 'pending');
 
       if (error) {
@@ -176,26 +167,34 @@ export const useChallengeMode = () => {
         return [];
       }
 
-      const typedRequests: TeamJoinRequest[] = data.map(request => {
-        const profile = request.user_profile?.profiles;
-        
-        return {
-          id: request.id,
-          team_id: request.team_id,
-          user_id: request.user_id,
-          status: request.status as 'pending' | 'accepted' | 'rejected',
-          message: request.message,
-          created_at: request.created_at,
-          updated_at: request.updated_at,
-          user_profile: profile ? {
-            full_name: profile.full_name || null,
-            email: profile.email || null
-          } : null
-        };
-      });
+      // Process the data for user profiles
+      const teamJoinRequests: TeamJoinRequest[] = await Promise.all(
+        data.map(async (request: any) => {
+          // Fetch profile information separately
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('full_name, email')
+            .eq('id', request.user_id)
+            .single();
+          
+          return {
+            id: request.id,
+            team_id: request.team_id,
+            user_id: request.user_id,
+            status: request.status as 'pending' | 'accepted' | 'rejected',
+            message: request.message,
+            created_at: request.created_at,
+            updated_at: request.updated_at,
+            user_profile: profileData ? {
+              full_name: profileData.full_name || null,
+              email: profileData.email || null
+            } : null
+          };
+        })
+      );
 
-      setJoinRequests(typedRequests);
-      return typedRequests;
+      setJoinRequests(teamJoinRequests);
+      return teamJoinRequests;
     } catch (error) {
       console.error('Error in fetchTeamJoinRequests:', error);
       setError('An unexpected error occurred');
@@ -208,51 +207,20 @@ export const useChallengeMode = () => {
     setError(null);
 
     try {
-      // First get the request to check team details
-      const { data: requestData, error: requestError } = await supabase
-        .from('team_join_requests')
-        .select('*')
-        .eq('id', requestId)
-        .single();
+      // Call RPC function to handle join requests
+      const { data, error } = await supabase
+        .rpc('handle_team_join_request', { 
+          request_id_param: requestId,
+          status_param: status
+        });
 
-      if (requestError) {
-        console.error('Error fetching join request:', requestError);
-        setError('Failed to fetch join request details');
+      if (error) {
+        console.error('Error handling join request:', error);
+        setError('Failed to process join request');
         return false;
       }
 
-      // Update the request status
-      const { error: updateError } = await supabase
-        .from('team_join_requests')
-        .update({ status })
-        .eq('id', requestId);
-
-      if (updateError) {
-        console.error('Error updating join request:', updateError);
-        setError('Failed to update join request');
-        return false;
-      }
-
-      // If accepted, add user to team members
-      if (status === 'accepted') {
-        const { error: memberError } = await supabase
-          .from('team_members')
-          .insert({
-            team_id: requestData.team_id,
-            user_id: requestData.user_id,
-            role: 'member'
-          });
-
-        if (memberError) {
-          console.error('Error adding team member:', memberError);
-          setError('Failed to add user to team');
-          return false;
-        }
-      }
-
-      // Refresh join requests
-      await fetchTeamJoinRequests(requestData.team_id);
-      return true;
+      return data;
     } catch (error) {
       console.error('Error in handleJoinRequest:', error);
       setError('An unexpected error occurred');
@@ -265,26 +233,20 @@ export const useChallengeMode = () => {
     setError(null);
 
     try {
-      const { error } = await supabase
-        .from('team_join_requests')
-        .insert({
-          team_id: teamId,
-          user_id: user.id,
-          message: message || null,
-          status: 'pending'
+      // Call RPC function to create join request
+      const { data, error } = await supabase
+        .rpc('create_team_join_request', {
+          team_id_param: teamId,
+          message_param: message || null
         });
 
       if (error) {
-        if (error.code === '23505') { // Unique violation
-          setError('You have already requested to join this team');
-        } else {
-          console.error('Error requesting to join team:', error);
-          setError('Failed to send join request');
-        }
+        console.error('Error requesting to join team:', error);
+        setError('Failed to send join request');
         return false;
       }
 
-      return true;
+      return data;
     } catch (error) {
       console.error('Error in requestToJoinTeam:', error);
       setError('An unexpected error occurred');

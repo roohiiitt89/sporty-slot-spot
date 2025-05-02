@@ -36,15 +36,10 @@ export const TeamChat = ({ teamId }: TeamChatProps) => {
       setLoading(true);
       
       try {
+        // Simpler query that doesn't rely on complex joins
         const { data, error } = await supabase
           .from('team_chats')
-          .select(`
-            *,
-            sender_profile:user_id (
-              profiles(full_name),
-              player_profiles(profile_name)
-            )
-          `)
+          .select('*')
           .eq('team_id', teamId)
           .order('created_at', { ascending: true });
         
@@ -52,22 +47,37 @@ export const TeamChat = ({ teamId }: TeamChatProps) => {
           console.error('Error fetching team chats:', error);
           return;
         }
-        
-        const typedMessages: TeamChatType[] = data.map((message: any) => {
-          // Safely extract profile data with proper null checking
-          const full_name = message.sender_profile?.profiles?.full_name || null;
-          const profile_name = message.sender_profile?.player_profiles?.profile_name || null;
-          
-          return {
-            ...message,
-            sender: {
-              full_name,
-              profile_name
-            }
-          };
-        });
 
-        setMessages(typedMessages);
+        // Fetch user profiles separately to avoid join issues
+        const messagesWithSenderInfo = await Promise.all(
+          data.map(async (message) => {
+            // Get user profile info
+            const { data: profileData } = await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('id', message.user_id)
+              .single();
+              
+            // Get player profile info  
+            const { data: playerProfileData } = await supabase
+              .from('player_profiles')
+              .select('profile_name')
+              .eq('id', message.user_id)
+              .single();
+              
+            const typedMessage: TeamChatType = {
+              ...message,
+              sender: {
+                full_name: profileData?.full_name || null,
+                profile_name: playerProfileData?.profile_name || null
+              }
+            };
+            
+            return typedMessage;
+          })
+        );
+
+        setMessages(messagesWithSenderInfo);
       } catch (error) {
         console.error('Error in fetchMessages:', error);
       } finally {
@@ -89,27 +99,32 @@ export const TeamChat = ({ teamId }: TeamChatProps) => {
         }, 
         async (payload) => {
           // Fetch the new message with user details
-          const { data, error } = await supabase
+          const { data: messageData } = await supabase
             .from('team_chats')
-            .select(`
-              *,
-              sender_profile:user_id (
-                profiles(full_name),
-                player_profiles(profile_name)
-              )
-            `)
+            .select('*')
             .eq('id', payload.new.id)
             .single();
-
-          if (!error && data) {
-            const full_name = data.sender_profile?.profiles?.full_name || null;
-            const profile_name = data.sender_profile?.player_profiles?.profile_name || null;
             
+          if (messageData) {
+            // Get user profile info
+            const { data: profileData } = await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('id', messageData.user_id)
+              .single();
+              
+            // Get player profile info  
+            const { data: playerProfileData } = await supabase
+              .from('player_profiles')
+              .select('profile_name')
+              .eq('id', messageData.user_id)
+              .single();
+              
             const newMessage: TeamChatType = {
-              ...data,
+              ...messageData,
               sender: {
-                full_name,
-                profile_name
+                full_name: profileData?.full_name || null,
+                profile_name: playerProfileData?.profile_name || null
               }
             };
             
