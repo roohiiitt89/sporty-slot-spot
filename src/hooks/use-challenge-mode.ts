@@ -91,7 +91,9 @@ export const useChallengeMode = () => {
         .from('team_members')
         .select(`
           *,
-          profiles:user_id (full_name, email)
+          user_profiles:user_id (
+            profiles(full_name, email)
+          )
         `)
         .eq('team_id', teamId);
 
@@ -103,17 +105,17 @@ export const useChallengeMode = () => {
 
       // Safe type casting and handling potential profile errors
       const typedMembers: TeamMember[] = data.map(member => {
-        // Check if profiles exists and is not null
-        const hasValidProfile = member.profiles && 
-          typeof member.profiles === 'object' && 
-          !('error' in member.profiles);
-            
+        const profile = member.user_profiles?.profiles;
+        
         return {
-          ...member,
+          id: member.id,
+          team_id: member.team_id,
+          user_id: member.user_id,
           role: member.role as 'creator' | 'member',
-          profiles: hasValidProfile ? {
-            full_name: hasValidProfile && member.profiles ? member.profiles.full_name : null,
-            email: hasValidProfile && member.profiles ? member.profiles.email : null
+          joined_at: member.joined_at,
+          profiles: profile ? {
+            full_name: profile.full_name || null,
+            email: profile.email || null
           } : null
         };
       });
@@ -156,11 +158,14 @@ export const useChallengeMode = () => {
     setError(null);
 
     try {
+      // Use the new team_join_requests table we created
       const { data, error } = await supabase
         .from('team_join_requests')
         .select(`
           *,
-          profiles:user_id (full_name, email)
+          user_profile:user_id (
+            profiles(full_name, email)
+          )
         `)
         .eq('team_id', teamId)
         .eq('status', 'pending');
@@ -171,11 +176,23 @@ export const useChallengeMode = () => {
         return [];
       }
 
-      const typedRequests: TeamJoinRequest[] = data.map(request => ({
-        ...request,
-        status: request.status as 'pending' | 'accepted' | 'rejected',
-        user_profile: request.profiles || null
-      }));
+      const typedRequests: TeamJoinRequest[] = data.map(request => {
+        const profile = request.user_profile?.profiles;
+        
+        return {
+          id: request.id,
+          team_id: request.team_id,
+          user_id: request.user_id,
+          status: request.status as 'pending' | 'accepted' | 'rejected',
+          message: request.message,
+          created_at: request.created_at,
+          updated_at: request.updated_at,
+          user_profile: profile ? {
+            full_name: profile.full_name || null,
+            email: profile.email || null
+          } : null
+        };
+      });
 
       setJoinRequests(typedRequests);
       return typedRequests;
@@ -194,7 +211,7 @@ export const useChallengeMode = () => {
       // First get the request to check team details
       const { data: requestData, error: requestError } = await supabase
         .from('team_join_requests')
-        .select('*, teams:team_id(*)')
+        .select('*')
         .eq('id', requestId)
         .single();
 
@@ -253,7 +270,8 @@ export const useChallengeMode = () => {
         .insert({
           team_id: teamId,
           user_id: user.id,
-          message: message || null
+          message: message || null,
+          status: 'pending'
         });
 
       if (error) {
@@ -289,7 +307,11 @@ export const useChallengeMode = () => {
           name,
           description,
           slug,
-          creator_id: user.id
+          creator_id: user.id,
+          xp: 0,
+          wins: 0,
+          losses: 0,
+          draws: 0
         })
         .select()
         .single();

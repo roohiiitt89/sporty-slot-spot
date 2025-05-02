@@ -4,7 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useChallengeMode } from '@/hooks/use-challenge-mode';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { toast } from '@/components/ui/sonner';
+import { toast } from 'sonner';
 import { Check, X } from 'lucide-react';
 import { TeamJoinRequest } from '@/types/challenge';
 
@@ -27,7 +27,7 @@ export const TeamJoinRequests = ({ teamId }: TeamJoinRequestsProps) => {
     };
 
     loadJoinRequests();
-  }, [teamId]);
+  }, [teamId, fetchTeamJoinRequests]);
 
   const handleAccept = async (requestId: string) => {
     const success = await handleJoinRequest(requestId, 'accepted');

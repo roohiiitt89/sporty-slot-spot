@@ -40,8 +40,10 @@ export const TeamChat = ({ teamId }: TeamChatProps) => {
           .from('team_chats')
           .select(`
             *,
-            profiles:user_id (full_name),
-            player_profiles:user_id (profile_name)
+            sender_profile:user_id (
+              profiles(full_name),
+              player_profiles(profile_name)
+            )
           `)
           .eq('team_id', teamId)
           .order('created_at', { ascending: true });
@@ -51,13 +53,19 @@ export const TeamChat = ({ teamId }: TeamChatProps) => {
           return;
         }
         
-        const typedMessages = data.map((message) => ({
-          ...message,
-          sender: {
-            full_name: message.profiles?.full_name || null,
-            profile_name: message.player_profiles?.profile_name || null
-          }
-        }));
+        const typedMessages: TeamChatType[] = data.map((message: any) => {
+          // Safely extract profile data with proper null checking
+          const full_name = message.sender_profile?.profiles?.full_name || null;
+          const profile_name = message.sender_profile?.player_profiles?.profile_name || null;
+          
+          return {
+            ...message,
+            sender: {
+              full_name,
+              profile_name
+            }
+          };
+        });
 
         setMessages(typedMessages);
       } catch (error) {
@@ -85,18 +93,23 @@ export const TeamChat = ({ teamId }: TeamChatProps) => {
             .from('team_chats')
             .select(`
               *,
-              profiles:user_id (full_name),
-              player_profiles:user_id (profile_name)
+              sender_profile:user_id (
+                profiles(full_name),
+                player_profiles(profile_name)
+              )
             `)
             .eq('id', payload.new.id)
             .single();
 
           if (!error && data) {
-            const newMessage = {
+            const full_name = data.sender_profile?.profiles?.full_name || null;
+            const profile_name = data.sender_profile?.player_profiles?.profile_name || null;
+            
+            const newMessage: TeamChatType = {
               ...data,
               sender: {
-                full_name: data.profiles?.full_name || null,
-                profile_name: data.player_profiles?.profile_name || null
+                full_name,
+                profile_name
               }
             };
             
