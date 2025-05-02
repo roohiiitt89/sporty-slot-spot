@@ -79,6 +79,7 @@ const Index: React.FC = () => {
     sports: true
   });
 
+  // Refs for scroll effects and video
   const videoRef = useRef<HTMLVideoElement>(null);
   const heroSectionRef = useRef<HTMLDivElement>(null);
   const venuesRef = useRef<HTMLDivElement>(null);
@@ -87,26 +88,39 @@ const Index: React.FC = () => {
   const forYouRef = useRef<HTMLDivElement>(null);
   const quotesRef = useRef<HTMLDivElement>(null);
 
-  // Video scroll effects
+  // Video optimization and scroll effects
   useEffect(() => {
     const handleScroll = () => {
       if (videoRef.current && heroSectionRef.current) {
         const scrollPosition = window.scrollY;
         const heroHeight = heroSectionRef.current.offsetHeight;
-        const progress = Math.min(scrollPosition / (heroHeight * 0.5), 1);
+        const scrollPercent = Math.min(scrollPosition / (heroHeight * 0.3), 1);
         
-        videoRef.current.style.filter = `blur(${Math.max(0, 8 - (progress * 8))}px) brightness(${0.7 + (progress * 0.3)})`;
-        videoRef.current.style.transform = `scale(${1 + (progress * 0.15)})`;
+        videoRef.current.style.filter = `blur(${8 - (scrollPercent * 8)}px) brightness(${0.7 + (scrollPercent * 0.3)})`;
+        videoRef.current.style.transform = `scale(${1 + scrollPercent * 0.15})`;
+        
+        const overlay = heroSectionRef.current.querySelector('.hero-overlay');
+        if (overlay) {
+          (overlay as HTMLElement).style.opacity = `${1 - scrollPercent * 0.7}`;
+        }
       }
     };
+
+    // Preload video for better performance
+    if (videoRef.current) {
+      videoRef.current.preload = "auto";
+      videoRef.current.load();
+    }
 
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   useEffect(() => {
+    // Fetch data
     const fetchData = async () => {
       try {
+        // Fetch venues
         const { data: venuesData } = await supabase
           .from('venues')
           .select('id, name, location, image_url, rating')
@@ -115,12 +129,15 @@ const Index: React.FC = () => {
           .limit(4);
         if (venuesData) setVenues(venuesData);
 
+        // Fetch sports
         const { data: sportsData } = await supabase
           .from('sports')
           .select('id, name, description, image_url')
           .eq('is_active', true)
           .limit(4);
         if (sportsData) setSports(sportsData);
+      } catch (error) {
+        console.error("Error fetching data:", error);
       } finally {
         setLoading({ venues: false, sports: false });
       }
@@ -128,6 +145,7 @@ const Index: React.FC = () => {
 
     fetchData();
 
+    // Quotes rotation
     const quoteInterval = setInterval(() => {
       setActiveQuoteIndex(prev => (prev + 1) % sportsQuotes.length);
     }, 5000);
@@ -136,6 +154,7 @@ const Index: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    // Intersection Observer for section animations
     const observerOptions = {
       threshold: 0.2,
     };
@@ -171,7 +190,7 @@ const Index: React.FC = () => {
     <div className="min-h-screen bg-navy-dark text-card-foreground">
       <Header />
 
-      {/* Hero Section with Scroll-Controlled Video */}
+      {/* Enhanced Hero Section with Scroll-Controlled Video */}
       <section 
         ref={heroSectionRef}
         className="relative h-screen w-full overflow-hidden"
@@ -182,7 +201,7 @@ const Index: React.FC = () => {
           muted
           loop
           playsInline
-          className="absolute top-0 left-0 w-full h-full object-cover"
+          className="absolute top-0 left-0 w-full h-full object-cover pointer-events-none"
           style={{
             filter: 'blur(8px) brightness(0.7)',
             transform: 'scale(1)',
@@ -199,6 +218,7 @@ const Index: React.FC = () => {
 
         <div 
           className="hero-overlay absolute inset-0 bg-gradient-to-t from-navy-dark/90 via-navy-dark/40 to-transparent"
+          style={{ opacity: 1, transition: 'opacity 0.4s ease-out' }}
         />
 
         <div className="hero-content container mx-auto px-4 h-full flex flex-col justify-center text-center relative z-10">
@@ -227,7 +247,7 @@ const Index: React.FC = () => {
         </div>
       </section>
 
-      {/* Venues Section */}
+      {/* Venues Section (Keep your existing structure) */}
       <section 
         id="venues" 
         ref={venuesRef}
@@ -277,7 +297,7 @@ const Index: React.FC = () => {
                             </h3>
                           </div>
                           <div className="flex items-center mt-2 text-gray-300">
-                            <MapPin className="w-4 w-4 mr-1" />
+                            <MapPin className="w-4 h-4 mr-1" />
                             <span>{venue.location}</span>
                           </div>
                           <button 
@@ -305,7 +325,7 @@ const Index: React.FC = () => {
         </div>
       </section>
 
-      {/* Sports Section */}
+      {/* Sports Section (Keep your existing structure) */}
       <section 
         id="sports" 
         ref={sportsRef}
@@ -379,7 +399,7 @@ const Index: React.FC = () => {
         </div>
       </section>
 
-      {/* Athletes Section */}
+      {/* Athletes Section (Keep your existing structure) */}
       <section 
         id="athletes" 
         ref={athletesRef}
@@ -443,7 +463,7 @@ const Index: React.FC = () => {
         </div>
       </section>
 
-      {/* For You Section */}
+      {/* For You Section (Keep your existing structure) */}
       <section 
         id="forYou" 
         ref={forYouRef}
@@ -497,7 +517,7 @@ const Index: React.FC = () => {
         </div>
       </section>
 
-      {/* Quotes Section */}
+      {/* Quotes Section (Keep your existing structure) */}
       <section 
         id="quotes" 
         ref={quotesRef}
@@ -521,7 +541,7 @@ const Index: React.FC = () => {
         </div>
       </section>
 
-      {/* Footer */}
+      {/* Footer (Keep your existing structure) */}
       <footer className="bg-navy-dark text-white py-12">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
