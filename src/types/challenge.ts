@@ -31,12 +31,12 @@ export interface TeamMember {
   id: string;
   team_id: string;
   user_id: string;
-  role: 'creator' | 'member' | string; // Adding string to support any role from database
+  role: 'creator' | 'member';
   joined_at: string;
   profiles?: {
     full_name: string | null;
     email: string | null;
-  } | null;
+  };
 }
 
 export interface TeamChallenge {
@@ -53,8 +53,6 @@ export interface TeamChallenge {
   format: string;
   created_at: string;
   updated_at: string;
-  challenger_team?: Team;
-  opponent_team?: Team;
 }
 
 export interface MatchResult {
@@ -78,31 +76,4 @@ export interface PlayerStats {
   is_mvp: boolean | null;
   created_at: string;
   updated_at: string;
-}
-
-export interface TeamJoinRequest {
-  id: string;
-  team_id: string;
-  user_id: string;
-  status: 'pending' | 'accepted' | 'rejected' | string; // Adding string to handle any values from DB
-  message: string | null;
-  created_at: string;
-  updated_at: string;
-  team?: Team;
-  user_profile?: {
-    full_name: string | null;
-    email: string | null;
-  } | null;
-}
-
-export interface TeamChat {
-  id: string;
-  team_id: string;
-  user_id: string;
-  content: string;
-  created_at: string;
-  sender?: {
-    full_name: string | null;
-    profile_name: string | null;
-  };
 }
