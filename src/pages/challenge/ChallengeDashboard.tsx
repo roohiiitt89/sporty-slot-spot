@@ -49,10 +49,10 @@ interface Challenge {
 
 
 const sports = [
-  { id: 1, name: 'Soccer', icon: <Gamepad2 size={24} />, color: 'text-green-500' },
-  { id: 2, name: 'Tennis', icon: <Star size={24} />, color: 'text-yellow-500' },
-  { id: 3, name: 'Volleyball', icon: <Award size={24} />, color: 'text-blue-500' },
-  { id: 4, name: 'Baseball', icon: <Activity size={24} />, color: 'text-red-500' },
+  { id: 1, name: 'Soccer', icon: '⚽', color: 'text-green-500' },
+  { id: 2, name: 'Tennis', icon: '🎾', color: 'text-yellow-500' },
+  { id: 3, name: 'Volleyball', icon: '🏐', color: 'text-blue-500' },
+  { id: 4, name: 'Baseball', icon: '⚾', color: 'text-red-500' },
 ];
 
 const skillCategories = [
