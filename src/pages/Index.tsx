@@ -212,82 +212,124 @@ const Index: React.FC = () => {
         </div>
       </section>
 
-      <section 
-        id="venues" 
-        ref={venuesRef}
-        className="py-16 bg-gradient-to-b from-black/90 to-navy-dark"
-      >
-        <div className="container mx-auto px-4">
-          <div className={`flex justify-between items-center mb-10 ${visibleSections.venues ? 'animate-reveal' : 'opacity-0'}`}>
-            <h2 className="section-title text-white relative">
-              Featured Venues
-              <span className="absolute -bottom-2 left-0 w-20 h-1 bg-indigo-light"></span>
-            </h2>
-            <Link to="/venues" className="text-indigo-light font-semibold flex items-center group hover:text-indigo-dark transition-colors">
-              View All <ChevronRight className="ml-1 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </div>
-          
-          <div className={`${visibleSections.venues ? 'animate-reveal' : 'opacity-0'}`}>
-            {loading.venues ? (
-              <div className="flex justify-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo"></div>
-              </div>
-            ) : venues.length > 0 ? (
-              <Carousel className="w-full">
-                <CarouselContent className="-ml-2 md:-ml-4">
-                  {venues.map((venue, index) => (
-                    <CarouselItem key={venue.id} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/4">
-                      <div 
-                        className="venue-card group hover-3d"
-                        style={{ animationDelay: `${0.1 * (index + 1)}s` }}
-                      >
-                        <div className="h-56 overflow-hidden relative">
-                          <img 
-                            src={venue.image_url || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000'} 
-                            alt={venue.name} 
-                            className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-110"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-0 group-hover:opacity-70 transition-opacity"></div>
-                          <span className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center text-sm font-semibold text-navy-dark">
-                            <Star className="h-4 w-4 text-yellow-500 fill-current mr-1" />
-                            {venue.rating ? venue.rating.toFixed(1) : '4.5'}
-                          </span>
-                        </div>
-                        <div className="p-4 bg-navy-light text-white relative">
-                          <div className="flex justify-between items-start">
-                            <h3 className="text-xl font-bold group-hover:text-indigo-light transition-colors">
-                              {venue.name}
-                            </h3>
-                          </div>
-                          <div className="flex items-center mt-2 text-gray-300">
-                            <MapPin className="w-4 h-4 mr-1" />
-                            <span>{venue.location}</span>
-                          </div>
-                          <button 
-                            onClick={() => navigate(`/venues/${venue.id}`)}
-                            className="mt-4 w-full py-2 bg-indigo text-white rounded-md font-semibold hover:bg-indigo-dark transition-colors transform transition-transform group-hover:scale-105"
-                          >
-                            View Details
-                          </button>
-                        </div>
-                      </div>
-                    </CarouselItem>
-                  ))}
-                </CarouselContent>
-                <div className="flex justify-end mt-6 gap-2">
-                  <CarouselPrevious className="relative inset-0 translate-y-0 bg-navy-light hover:bg-indigo hover:text-white text-white" />
-                  <CarouselNext className="relative inset-0 translate-y-0 bg-navy-light hover:bg-indigo hover:text-white text-white" />
-                </div>
-              </Carousel>
-            ) : (
-              <div className="text-center py-12">
-                <p className="text-white text-lg">No venues available at the moment. Please check back later.</p>
-              </div>
-            )}
-          </div>
+     <section 
+  id="venues" 
+  ref={venuesRef}
+  className="py-16 bg-gradient-to-b from-black/90 to-navy-dark"
+>
+  <div className="container mx-auto px-4">
+    <div className={`flex justify-between items-center mb-10 ${visibleSections.venues ? 'animate-reveal' : 'opacity-0'}`}>
+      <h2 className="section-title text-white relative">
+        Featured Venues
+        <span
+          className="absolute -bottom-2 left-0 h-1 bg-indigo-light"
+          style={{ animation: 'underline-grow 0.6s ease forwards' }}
+        ></span>
+      </h2>
+      <Link to="/venues" className="text-indigo-light font-semibold flex items-center group hover:text-indigo-dark transition-colors">
+        View All <ChevronRight className="ml-1 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+      </Link>
+    </div>
+
+    <div className={`${visibleSections.venues ? 'animate-reveal' : 'opacity-0'}`}>
+      {loading.venues ? (
+        <div className="flex justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo"></div>
         </div>
-      </section>
+      ) : venues.length > 0 ? (
+        <>
+          {/* Grid for Mobile */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:hidden gap-6">
+            {venues.map((venue, index) => (
+              <div
+                key={venue.id}
+                className="group relative rounded-2xl overflow-hidden shadow-lg backdrop-blur-lg bg-white/5 ring-1 ring-white/10 transition-transform hover:scale-[1.03] hover:shadow-2xl hover:ring-indigo duration-300"
+                style={{ animationDelay: `${0.1 * (index + 1)}s` }}
+              >
+                <div className="h-56 relative overflow-hidden rounded-t-2xl">
+                  <img
+                    src={venue.image_url || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000'}
+                    alt={venue.name}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent transition-opacity group-hover:opacity-80" />
+                  <span className="absolute top-3 right-3 bg-white/90 text-navy-dark px-3 py-1 rounded-full text-sm font-semibold shadow flex items-center gap-1 backdrop-blur">
+                    <Star className="w-4 h-4 text-yellow-500 fill-current" />
+                    {venue.rating ? venue.rating.toFixed(1) : '4.5'}
+                  </span>
+                </div>
+                <div className="p-4 bg-navy-light rounded-b-2xl text-white space-y-2">
+                  <h3 className="text-lg font-bold leading-tight group-hover:text-indigo-light transition-colors">{venue.name}</h3>
+                  <div className="flex items-center text-sm text-gray-300">
+                    <MapPin className="w-4 h-4 mr-1" />
+                    <span>{venue.location}</span>
+                  </div>
+                  <button
+                    onClick={() => navigate(`/venues/${venue.id}`)}
+                    className="mt-3 w-full py-2 rounded-lg bg-gradient-to-r from-indigo to-indigo-dark text-white font-semibold shadow-md hover:shadow-lg transition-all duration-300 transform group-hover:scale-[1.03]"
+                  >
+                    View Details
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Carousel for Desktop */}
+          <div className="hidden lg:block">
+            <Carousel className="w-full">
+              <CarouselContent className="-ml-2 md:-ml-4">
+                {venues.map((venue, index) => (
+                  <CarouselItem key={venue.id} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/4">
+                    <div
+                      className="group relative rounded-2xl overflow-hidden shadow-lg backdrop-blur-lg bg-white/5 ring-1 ring-white/10 transition-transform hover:scale-[1.03] hover:shadow-2xl hover:ring-indigo duration-300"
+                      style={{ animationDelay: `${0.1 * (index + 1)}s` }}
+                    >
+                      <div className="h-56 relative overflow-hidden rounded-t-2xl">
+                        <img
+                          src={venue.image_url || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000'}
+                          alt={venue.name}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent transition-opacity group-hover:opacity-80" />
+                        <span className="absolute top-3 right-3 bg-white/90 text-navy-dark px-3 py-1 rounded-full text-sm font-semibold shadow flex items-center gap-1 backdrop-blur">
+                          <Star className="w-4 h-4 text-yellow-500 fill-current" />
+                          {venue.rating ? venue.rating.toFixed(1) : '4.5'}
+                        </span>
+                      </div>
+                      <div className="p-4 bg-navy-light rounded-b-2xl text-white space-y-2">
+                        <h3 className="text-lg font-bold leading-tight group-hover:text-indigo-light transition-colors">{venue.name}</h3>
+                        <div className="flex items-center text-sm text-gray-300">
+                          <MapPin className="w-4 h-4 mr-1" />
+                          <span>{venue.location}</span>
+                        </div>
+                        <button
+                          onClick={() => navigate(`/venues/${venue.id}`)}
+                          className="mt-3 w-full py-2 rounded-lg bg-gradient-to-r from-indigo to-indigo-dark text-white font-semibold shadow-md hover:shadow-lg transition-all duration-300 transform group-hover:scale-[1.03]"
+                        >
+                          View Details
+                        </button>
+                      </div>
+                    </div>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              <div className="flex justify-end mt-6 gap-2">
+                <CarouselPrevious className="relative inset-0 translate-y-0 bg-navy-light hover:bg-indigo hover:text-white text-white" />
+                <CarouselNext className="relative inset-0 translate-y-0 bg-navy-light hover:bg-indigo hover:text-white text-white" />
+              </div>
+            </Carousel>
+          </div>
+        </>
+      ) : (
+        <div className="text-center py-12">
+          <p className="text-white text-lg">No venues available at the moment. Please check back later.</p>
+        </div>
+      )}
+    </div>
+  </div>
+</section>
+
 
       <section 
         id="sports" 
