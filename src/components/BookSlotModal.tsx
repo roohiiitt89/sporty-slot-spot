@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { X } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
@@ -537,18 +536,19 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
           return total + selectedSlotPrices[slot];
         }, 0);
         
-        // Use a transactional approach with our new database function
+        // Use a direct insert with the database-level prevention instead of RPC
         const { data, error } = await supabase
-          .rpc('create_booking_with_lock', {
-            p_court_id: selectedCourt,
-            p_user_id: user.id,
-            p_booking_date: selectedDate,
-            p_start_time: startTime,
-            p_end_time: endTime,
-            p_total_price: blockPrice,
-            p_guest_name: null,
-            p_guest_phone: null
-          });
+          .from('bookings')
+          .insert({
+            court_id: selectedCourt,
+            user_id: user.id,
+            booking_date: selectedDate,
+            start_time: startTime,
+            end_time: endTime,
+            total_price: blockPrice,
+            status: 'confirmed'
+          })
+          .select();
           
         if (error) {
           // If there's a conflict, throw an error to be caught

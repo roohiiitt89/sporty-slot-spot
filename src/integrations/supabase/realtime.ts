@@ -4,35 +4,34 @@ import { supabase } from './client';
 // Enable realtime for specific tables
 export const setupRealtimeSubscriptions = async () => {
   // For team_chats table
-  await supabase
-    .from('team_chats')
-    .on('INSERT', (payload) => {
-      console.log('New chat message:', payload);
-    })
+  const teamChatsChannel = supabase
+    .channel('team_chats_channel')
+    .on(
+      'postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'team_chats' },
+      (payload) => {
+        console.log('New chat message:', payload);
+      }
+    )
     .subscribe();
 
   // For team_join_requests table
-  await supabase
-    .from('team_join_requests')
-    .on('UPDATE', (payload) => {
-      console.log('Join request updated:', payload);
-    })
+  const joinRequestsChannel = supabase
+    .channel('team_join_requests_channel')
+    .on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'team_join_requests' },
+      (payload) => {
+        console.log('Join request updated:', payload);
+      }
+    )
     .subscribe();
 };
 
-// Call this function once when your app initializes
+// This function is no longer needed as we're using the channel API
+// which doesn't require explicit enabling of tables
 export const enableRealtimeForTeamTables = async () => {
   try {
-    // Enable realtime for team_chats
-    await supabase.rpc('supabase_functions.enable_realtime', {
-      table_name: 'team_chats'
-    });
-    
-    // Enable realtime for team_join_requests  
-    await supabase.rpc('supabase_functions.enable_realtime', {
-      table_name: 'team_join_requests'
-    });
-    
     console.log('Realtime enabled for team tables');
   } catch (error) {
     console.error('Error enabling realtime:', error);
