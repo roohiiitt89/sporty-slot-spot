@@ -46,7 +46,7 @@ interface Challenge {
 }
 
 const sports = [
-  { id: 1, name: 'Soccer', icon: <Soccer size={24} />, color: 'text-green-500' },
+  { id: 1, name: 'Box Football', icon: <Soccer size={24} />, color: 'text-green-500' },
   { id: 2, name: 'Tennis', icon: <Tennis size={24} />, color: 'text-yellow-500' },
   { id: 3, name: 'Volleyball', icon: <Volleyball size={24} />, color: 'text-blue-500' },
   { id: 4, name: 'Baseball', icon: <Baseball size={24} />, color: 'text-red-500' },
