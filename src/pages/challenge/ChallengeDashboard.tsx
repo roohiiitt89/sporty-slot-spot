@@ -25,11 +25,7 @@ import {
   Search,
   BadgeCheck,
   Target,
-  HeartHandshake,
-  Football,
-  Tennis,
-  Volleyball,
-  Baseball
+  HeartHandshake
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Team } from '@/types/challenge';
