@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { DarkThemeProvider } from '@/components/challenge/DarkThemeProvider';
-import { HowItWorks } from '@/components/challenge/HowItWorks';
-import { LeaderboardPreview } from '@/components/challenge/LeaderboardPreview';
 import { TeamSection } from '@/components/challenge/TeamSection';
 import { ProfileCard } from '@/components/challenge/ProfileCard';
 import { toast } from '@/components/ui/sonner';
@@ -10,11 +8,12 @@ import { useNavigate } from 'react-router-dom';
 import { useChallengeMode } from '@/hooks/use-challenge-mode';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { useToast } from '@/components/ui/use-toast';
 import { 
   RefreshCcw, 
   ChevronRight,
   Trophy,
-  Award,
   Users,
   Flag,
   ArrowLeft,
@@ -22,19 +21,56 @@ import {
   Zap,
   Shield,
   BarChart2,
-  Clock
+  Clock,
+  Search,
+  BadgeCheck,
+  Target,
+  HeartHandshake,
+  Basketball,
+  Soccer,
+  Tennis,
+  Volleyball,
+  Baseball
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Team } from '@/types/challenge';
 import { motion } from 'framer-motion';
 
+interface Challenge {
+  id: string;
+  status: string;
+  booking_date: string;
+  start_time: string;
+  end_time: string;
+  challenger_team: Team;
+  opponent_team: Team;
+}
+
+const sports = [
+  { id: 1, name: 'Basketball', icon: <Basketball size={24} />, color: 'text-orange-500' },
+  { id: 2, name: 'Soccer', icon: <Soccer size={24} />, color: 'text-green-500' },
+  { id: 3, name: 'Tennis', icon: <Tennis size={24} />, color: 'text-yellow-500' },
+  { id: 4, name: 'Volleyball', icon: <Volleyball size={24} />, color: 'text-blue-500' },
+  { id: 5, name: 'Baseball', icon: <Baseball size={24} />, color: 'text-red-500' },
+];
+
+const skillCategories = [
+  { name: 'Shooting', progress: 75 },
+  { name: 'Defense', progress: 60 },
+  { name: 'Passing', progress: 85 },
+  { name: 'Stamina', progress: 70 },
+  { name: 'Teamwork', progress: 90 },
+];
+
 const ChallengeDashboard = () => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const { error, loading, fetchPlayerProfile, userTeam } = useChallengeMode();
   const navigate = useNavigate();
-  const [upcomingChallenges, setUpcomingChallenges] = useState([]);
+  const [upcomingChallenges, setUpcomingChallenges] = useState<Challenge[]>([]);
   const [topTeams, setTopTeams] = useState<Team[]>([]);
   const [loadingChallenges, setLoadingChallenges] = useState(false);
+  const [selectedSport, setSelectedSport] = useState<number | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -57,7 +93,7 @@ const ChallengeDashboard = () => {
         .limit(5);
 
       if (error) throw error;
-      setTopTeams(data);
+      setTopTeams(data || []);
     } catch (error) {
       console.error('Error fetching top teams:', error);
     }
@@ -79,7 +115,7 @@ const ChallengeDashboard = () => {
         .limit(3);
 
       if (error) throw error;
-      setUpcomingChallenges(data);
+      setUpcomingChallenges(data || []);
     } catch (error) {
       console.error('Error fetching challenges:', error);
     } finally {
@@ -96,6 +132,11 @@ const ChallengeDashboard = () => {
     toast.success('Refreshing data...');
   };
 
+  const handleSportSelect = (sportId: number) => {
+    setSelectedSport(sportId);
+    toast(`Selected ${sports.find(s => s.id === sportId)?.name} for challenges`);
+  };
+
   if (!user) {
     return null;
   }
@@ -103,7 +144,6 @@ const ChallengeDashboard = () => {
   return (
     <DarkThemeProvider>
       <div className="container mx-auto px-4 py-8">
-        {/* Back Button */}
         <Button 
           variant="ghost" 
           onClick={() => navigate('/')}
@@ -155,13 +195,51 @@ const ChallengeDashboard = () => {
             </AlertDescription>
           </Alert>
         )}
+
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="mb-12"
+        >
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold flex items-center gap-2 text-white">
+              <Target size={24} className="text-emerald-400" />
+              Choose Your Battlefield
+            </h2>
+            <Button variant="ghost" className="text-gray-400 hover:text-white flex items-center gap-1">
+              <Search size={16} />
+              Explore All Sports
+            </Button>
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            {sports.map((sport) => (
+              <motion.div
+                key={sport.id}
+                whileHover={{ y: -5 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => handleSportSelect(sport.id)}
+                className={`bg-gray-800/50 border ${selectedSport === sport.id ? 'border-emerald-500' : 'border-gray-700'} rounded-xl p-4 text-center cursor-pointer transition-all`}
+              >
+                <div className={`w-12 h-12 mx-auto mb-3 rounded-full bg-gray-700/50 flex items-center justify-center ${sport.color}`}>
+                  {sport.icon}
+                </div>
+                <h3 className="font-medium text-white">{sport.name}</h3>
+                <p className="text-xs text-gray-400 mt-1">
+                  {selectedSport === sport.id ? 'Selected' : 'Tap to choose'}
+                </p>
+              </motion.div>
+            ))}
+          </div>
+        </motion.section>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 space-y-8">
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-gray-800/50 p-8 rounded-xl border border-gray-700 mb-8 relative overflow-hidden"
+              className="bg-gray-800/50 p-8 rounded-xl border border-gray-700 relative overflow-hidden"
             >
               <div className="absolute -right-10 -top-10 w-32 h-32 bg-emerald-400/10 rounded-full blur-xl"></div>
               <div className="absolute -left-10 -bottom-10 w-32 h-32 bg-teal-400/10 rounded-full blur-xl"></div>
@@ -220,15 +298,55 @@ const ChallengeDashboard = () => {
                 </motion.div>
               </div>
             </motion.div>
+
+            <motion.section
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="bg-gray-800/50 border border-gray-700 rounded-xl p-6"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold flex items-center gap-2 text-white">
+                  <BadgeCheck size={24} className="text-emerald-400" />
+                  Enhance Your Skills
+                </h2>
+                <Button variant="ghost" className="text-gray-400 hover:text-white">
+                  View Training Plans
+                </Button>
+              </div>
+              
+              <p className="text-gray-300 mb-6">
+                Improve your abilities to get noticed by top teams. Complete challenges and training to level up your skills.
+              </p>
+              
+              <div className="space-y-4">
+                {skillCategories.map((skill, index) => (
+                  <div key={index} className="space-y-1">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-300">{skill.name}</span>
+                      <span className="text-emerald-400">{skill.progress}%</span>
+                    </div>
+                    <Progress 
+                      value={skill.progress} 
+                      className="h-2 bg-gray-700/50"
+                      indicatorClassName="bg-gradient-to-r from-emerald-400 to-teal-500" 
+                    />
+                  </div>
+                ))}
+              </div>
+              
+              <Button className="w-full mt-6 bg-emerald-600 hover:bg-emerald-700">
+                Start Skill Challenge
+              </Button>
+            </motion.section>
             
             <TeamSection />
           </div>
           
-          <div>
+          <div className="space-y-8">
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mb-8"
             >
               <h2 className="text-2xl font-bold mb-6 text-center bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-teal-300 flex items-center justify-center gap-2">
                 <Shield size={24} />
@@ -237,10 +355,53 @@ const ChallengeDashboard = () => {
               <ProfileCard />
             </motion.div>
             
-            <motion.div 
+            <motion.section
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
+              className="bg-gray-800/50 border border-gray-700 rounded-xl p-6"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold flex items-center gap-2 text-white">
+                  <HeartHandshake size={20} className="text-emerald-400" />
+                  Team Recruitment
+                </h2>
+              </div>
+              
+              <p className="text-gray-300 mb-4 text-sm">
+                Top teams are looking for players like you! Improve your skills and complete challenges to get noticed.
+              </p>
+              
+              <div className="space-y-3">
+                {topTeams.slice(0, 3).map((team, index) => (
+                  <div key={team.id} className="flex items-center p-3 bg-gray-800/30 rounded-lg border border-gray-700">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-3 text-sm font-bold 
+                      ${index === 0 ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30' : 
+                        index === 1 ? 'bg-gray-400/20 text-gray-300 border border-gray-400/30' : 
+                          'bg-amber-700/20 text-amber-600 border border-amber-700/30'}`}
+                    >
+                      {index + 1}
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-medium">{team.name}</div>
+                      <div className="text-xs text-gray-400">Looking for {['shooters', 'defenders', 'all-rounders'][index]}</div>
+                    </div>
+                    <Button size="sm" variant="outline" className="border-gray-600 text-xs">
+                      Apply
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              
+              <Button variant="ghost" className="w-full mt-4 text-gray-400 hover:text-white">
+                View All Recruiting Teams
+              </Button>
+            </motion.section>
+            
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
             >
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-teal-300 flex items-center gap-2">
@@ -309,8 +470,7 @@ const ChallengeDashboard = () => {
               <motion.div 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="mt-8"
+                transition={{ delay: 0.4 }}
               >
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-teal-300 flex items-center gap-2">
@@ -325,9 +485,9 @@ const ChallengeDashboard = () => {
                       <div className="h-12 bg-gray-700 rounded mb-3"></div>
                       <div className="h-12 bg-gray-700 rounded"></div>
                     </div>
-                  ) : upcomingChallenges && upcomingChallenges.length > 0 ? (
+                  ) : upcomingChallenges.length > 0 ? (
                     <div className="divide-y divide-gray-700">
-                      {upcomingChallenges.map((challenge: any) => (
+                      {upcomingChallenges.map((challenge) => (
                         <motion.div 
                           key={challenge.id}
                           whileHover={{ x: 5 }}
@@ -367,19 +527,17 @@ const ChallengeDashboard = () => {
                       <p className="text-sm mt-1">Issue a challenge to prove your might!</p>
                     </div>
                   )}
-                  {userTeam && (
-                    <div className="border-t border-gray-700 p-2 bg-gray-800/50">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="w-full text-xs text-gray-400 hover:text-white hover:bg-gray-700/50 flex items-center justify-center gap-1"
-                        onClick={() => navigate('/challenges')}
-                      >
-                        View All Battles
-                        <ChevronRight size={14} />
-                      </Button>
-                    </div>
-                  )}
+                  <div className="border-t border-gray-700 p-2 bg-gray-800/50">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="w-full text-xs text-gray-400 hover:text-white hover:bg-gray-700/50 flex items-center justify-center gap-1"
+                      onClick={() => navigate('/challenges')}
+                    >
+                      View All Battles
+                      <ChevronRight size={14} />
+                    </Button>
+                  </div>
                 </div>
               </motion.div>
             )}
