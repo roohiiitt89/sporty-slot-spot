@@ -1,5 +1,5 @@
 
-export interface PlayerProfile {
+export interface Profile {
   id: string;
   xp: number;
   level: number;
