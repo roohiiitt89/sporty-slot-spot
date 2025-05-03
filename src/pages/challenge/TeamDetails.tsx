@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { DarkThemeProvider } from '@/components/challenge/DarkThemeProvider';
@@ -210,23 +209,26 @@ const TeamDetails = () => {
                       </DialogTrigger>
                       <DialogContent className="bg-gray-800 border-gray-700 text-white">
                         <DialogHeader>
-                          <DialogTitle>Join Request</DialogTitle>
-                          <DialogDescription className="text-gray-400">
-                            Send a request to join {team.name}. The team creator will review your request.
+                          <DialogTitle>Send Join Request</DialogTitle>
+                          <DialogDescription>
+                            Write a message to the team creator (optional).
                           </DialogDescription>
                         </DialogHeader>
-                        <Textarea
-                          className="bg-gray-900 border-gray-700 text-white mt-2"
-                          placeholder="Optional message to the team creator..."
+                        <Textarea 
                           value={joinMessage}
                           onChange={(e) => setJoinMessage(e.target.value)}
+                          rows={4}
+                          className="mb-4 bg-gray-700 text-white"
+                          placeholder="Why do you want to join this team?"
                         />
-                        <DialogFooter className="mt-4">
-                          <Button variant="outline" onClick={() => setIsJoinDialogOpen(false)} className="border-gray-600 text-gray-300">
+                        <DialogFooter>
+                          <Button 
+                            variant="secondary" 
+                            onClick={() => setIsJoinDialogOpen(false)}
+                          >
                             Cancel
                           </Button>
                           <Button 
-                            className="bg-emerald-600 hover:bg-emerald-700" 
                             onClick={handleJoinRequest}
                             disabled={submitting}
                           >
@@ -241,130 +243,33 @@ const TeamDetails = () => {
             </div>
           </motion.div>
 
-          {isTeamMember && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="mb-8"
-            >
-              <Tabs defaultValue="members">
-                <TabsList className="grid w-full grid-cols-3 bg-gray-800 border border-gray-700">
-                  <TabsTrigger value="members" className="data-[state=active]:bg-gray-700">
-                    <Users size={16} className="mr-2" /> Members
-                  </TabsTrigger>
-                  <TabsTrigger value="chat" className="data-[state=active]:bg-gray-700">
-                    <MessageSquare size={16} className="mr-2" /> Team Chat
-                  </TabsTrigger>
-                  <TabsTrigger value="challenges" className="data-[state=active]:bg-gray-700">
-                    <Trophy size={16} className="mr-2" /> Challenges
-                  </TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="members" className="mt-4">
-                  <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
-                    <div className="p-4 border-b border-gray-700 flex justify-between items-center">
-                      <h3 className="font-medium">Team Members ({members.length})</h3>
-                      {isCreator && (
-                        <Button size="sm" variant="outline" className="border-gray-600 text-gray-300">
-                          <Plus size={16} className="mr-1" /> Invite
-                        </Button>
-                      )}
-                    </div>
-                    {members.length > 0 ? (
-                      <div className="divide-y divide-gray-700">
-                        {members.map((member) => (
-                          <div key={member.id} className="flex items-center justify-between p-4">
-                            <div className="flex items-center">
-                              <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center mr-3 text-sm font-medium">
-                                {member.profiles?.full_name ? member.profiles.full_name.substring(0, 2).toUpperCase() : 'U'}
-                              </div>
-                              <div>
-                                <div className="font-medium">{member.profiles?.full_name || 'Unknown User'}</div>
-                                <div className="text-sm text-gray-400">{member.profiles?.email || 'No email'}</div>
-                              </div>
-                            </div>
-                            <div>
-                              <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-                                member.role === 'creator' ? 'bg-amber-900/30 text-amber-400 border border-amber-600/30' : 'bg-gray-700 text-gray-300'
-                              }`}>
-                                {member.role === 'creator' ? 'Team Creator' : 'Member'}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="p-6 text-center text-gray-400">
-                        No team members found.
-                      </div>
-                    )}
+          <Tabs defaultValue="members" className="mb-8">
+            <TabsList>
+              <TabsTrigger value="members">Members</TabsTrigger>
+              <TabsTrigger value="chat">Chat</TabsTrigger>
+              {isCreator && (
+                <TabsTrigger value="joinRequests">Join Requests</TabsTrigger>
+              )}
+            </TabsList>
+            <TabsContent value="members">
+              <div className="grid grid-cols-3 gap-6">
+                {members.map((member: TeamMember) => (
+                  <div key={member.id} className="p-4 bg-gray-800/50 border border-gray-700 rounded-lg">
+                    <h4 className="text-lg font-semibold">{member.profiles.full_name}</h4>
+                    <p className="text-sm text-gray-400">{member.profiles.email}</p>
                   </div>
-                  
-                  {isCreator && <TeamJoinRequests teamId={team.id} />}
-                </TabsContent>
-                
-                <TabsContent value="chat" className="mt-4">
-                  <TeamChat teamId={team.id} />
-                </TabsContent>
-                
-                <TabsContent value="challenges" className="mt-4">
-                  <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
-                    <div className="p-4 border-b border-gray-700 flex justify-between items-center">
-                      <h3 className="font-medium">Team Challenges</h3>
-                      {isCreator && (
-                        <Button className="bg-emerald-600 hover:bg-emerald-700">
-                          <Trophy size={16} className="mr-2" /> Challenge a Team
-                        </Button>
-                      )}
-                    </div>
-                    <div className="p-10 text-center text-gray-400">
-                      No challenges yet. Create your first challenge!
-                    </div>
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </motion.div>
-          )}
-
-          {!isTeamMember && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              <h3 className="text-xl font-bold mb-4">Team Members</h3>
-              <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
-                {members.length > 0 ? (
-                  <div className="divide-y divide-gray-700">
-                    {members.map((member) => (
-                      <div key={member.id} className="flex items-center justify-between p-4">
-                        <div className="flex items-center">
-                          <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center mr-3 text-sm font-medium">
-                            {member.profiles?.full_name ? member.profiles.full_name.substring(0, 2).toUpperCase() : 'U'}
-                          </div>
-                          <div>
-                            <div className="font-medium">{member.profiles?.full_name || 'Unknown User'}</div>
-                          </div>
-                        </div>
-                        <div>
-                          <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-                            member.role === 'creator' ? 'bg-amber-900/30 text-amber-400 border border-amber-600/30' : 'bg-gray-700 text-gray-300'
-                          }`}>
-                            {member.role === 'creator' ? 'Team Creator' : 'Member'}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="p-6 text-center text-gray-400">
-                    No team members found.
-                  </div>
-                )}
+                ))}
               </div>
-            </motion.div>
-          )}
+            </TabsContent>
+            <TabsContent value="chat">
+              <TeamChat teamId={team.id} />
+            </TabsContent>
+            {isCreator && (
+              <TabsContent value="joinRequests">
+                <TeamJoinRequests teamId={team.id} />
+              </TabsContent>
+            )}
+          </Tabs>
         </div>
       </div>
     </DarkThemeProvider>
