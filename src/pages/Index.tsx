@@ -227,7 +227,7 @@ const Index: React.FC = () => {
         View All <ChevronRight className="ml-1 w-5 h-5 group-hover:translate-x-1 transition-transform" />
       </Link>
     </div>
-
+    
     <div className={`${visibleSections.venues ? 'animate-reveal' : 'opacity-0'}`}>
       {loading.venues ? (
         <div className="flex justify-center py-12">
@@ -239,8 +239,9 @@ const Index: React.FC = () => {
             {venues.map((venue, index) => (
               <CarouselItem key={venue.id} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/4">
                 <div 
-                  className="venue-card group hover-3d transform transition-transform duration-300"
+                  className="venue-card group cursor-pointer overflow-hidden rounded-xl"
                   style={{ animationDelay: `${0.1 * (index + 1)}s` }}
+                  onClick={() => navigate(`/venues/${venue.id}`)}
                 >
                   <div className="h-56 overflow-hidden relative">
                     <img 
@@ -248,30 +249,26 @@ const Index: React.FC = () => {
                       alt={venue.name} 
                       className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-110"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-0 group-hover:opacity-70 transition-opacity"></div>
-                    <span className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center text-sm font-semibold text-navy-dark">
-                      <Star className="h-4 w-4 text-yellow-500 fill-current mr-1" />
-                      {venue.rating ? venue.rating.toFixed(1) : '4.5'}
-                    </span>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-30 group-hover:opacity-70 transition-opacity"></div>
+                    
+                    {/* New overlay with icon and hover effect */}
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
+                      <div className="bg-indigo/80 backdrop-blur-sm p-3 rounded-full transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">
+                        <Star className="h-8 w-8 text-white" />
+                      </div>
+                    </div>
                   </div>
-
-                  <div className="p-4 bg-navy-light text-white relative">
-                    <div className="flex justify-between items-start">
-                      <h3 className="text-xl font-bold group-hover:text-indigo-light transition-colors">
-                        {venue.name}
-                      </h3>
-                    </div>
-
-                    <div className="flex items-center mt-2 text-gray-300">
-                      <span>{venue.location}</span>
-                    </div>
-
-                    <button 
-                      onClick={() => navigate(`/venues/${venue.id}`)}
-                      className="mt-4 w-full py-2 bg-indigo text-white rounded-md font-semibold hover:bg-indigo-dark transition-colors transform transition-transform group-hover:scale-105"
-                    >
-                      View Details
-                    </button>
+                  <div className="p-4 bg-navy-light text-white relative overflow-hidden group-hover:bg-indigo transition-colors duration-500">
+                    <h3 className="text-xl font-bold group-hover:text-white transition-colors">
+                      {venue.name}
+                    </h3>
+                    <p className="text-gray-300 mt-2 line-clamp-2">{venue.location || 'Find a venue near you'}</p>
+                    
+                    {/* Animated underline effect */}
+                    <div className="absolute bottom-0 left-0 w-full h-1 bg-indigo transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-500"></div>
+                    
+                    {/* Animated card corner flourish */}
+                    <div className="absolute -bottom-12 -right-12 w-24 h-24 bg-indigo-light rounded-full opacity-0 group-hover:opacity-20 transform translate-x-full translate-y-full group-hover:translate-x-0 group-hover:translate-y-0 transition-all duration-700"></div>
                   </div>
                 </div>
               </CarouselItem>
