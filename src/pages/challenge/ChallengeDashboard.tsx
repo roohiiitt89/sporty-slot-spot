@@ -3,7 +3,7 @@ import { useAuth } from '@/context/AuthContext';
 import { DarkThemeProvider } from '@/components/challenge/DarkThemeProvider';
 import { TeamSection } from '@/components/challenge/TeamSection';
 import { ProfileCard } from '@/components/challenge/ProfileCard';
-import { toast } from '@/components/ui/sonner';
+import { toast as sonnerToast } from '@/components/ui/sonner';
 import { useNavigate } from 'react-router-dom';
 import { useChallengeMode } from '@/hooks/use-challenge-mode';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -72,7 +72,7 @@ const ChallengeDashboard = () => {
 
   useEffect(() => {
     if (!user) {
-      toast.error('Please log in to access Challenge Mode');
+      sonnerToast.error('Please log in to access Challenge Mode');
       navigate('/login', { state: { from: '/challenge' } });
     } else {
       fetchTopTeams();
@@ -94,6 +94,11 @@ const ChallengeDashboard = () => {
       setTopTeams(data || []);
     } catch (error) {
       console.error('Error fetching top teams:', error);
+      toast({
+        title: "Error loading teams",
+        description: "Could not fetch team data",
+        variant: "destructive"
+      });
     }
   };
 
@@ -116,6 +121,11 @@ const ChallengeDashboard = () => {
       setUpcomingChallenges(data || []);
     } catch (error) {
       console.error('Error fetching challenges:', error);
+      toast({
+        title: "Error loading challenges",
+        description: "Could not fetch upcoming challenges",
+        variant: "destructive"
+      });
     } finally {
       setLoadingChallenges(false);
     }
@@ -127,12 +137,18 @@ const ChallengeDashboard = () => {
       fetchUpcomingChallenges(userTeam.id);
     }
     fetchTopTeams();
-    toast.success('Refreshing data...');
+    toast({
+      title: "Refreshing data",
+      description: "Updating challenge information...",
+    });
   };
 
   const handleSportSelect = (sportId: number) => {
     setSelectedSport(sportId);
-    toast(`Selected ${sports.find(s => s.id === sportId)?.name} for challenges`);
+    toast({
+      title: "Sport selected",
+      description: `Selected ${sports.find(s => s.id === sportId)?.name} for challenges`,
+    });
   };
 
   if (!user) {
@@ -211,7 +227,7 @@ const ChallengeDashboard = () => {
             </Button>
           </div>
           
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {sports.map((sport) => (
               <motion.div
                 key={sport.id}
