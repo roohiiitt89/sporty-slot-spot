@@ -26,7 +26,6 @@ import {
   BadgeCheck,
   Target,
   HeartHandshake,
-  Basketball,
   Soccer,
   Tennis,
   Volleyball,
@@ -47,11 +46,10 @@ interface Challenge {
 }
 
 const sports = [
-  { id: 1, name: 'Basketball', icon: <Basketball size={24} />, color: 'text-orange-500' },
-  { id: 2, name: 'Soccer', icon: <Soccer size={24} />, color: 'text-green-500' },
-  { id: 3, name: 'Tennis', icon: <Tennis size={24} />, color: 'text-yellow-500' },
-  { id: 4, name: 'Volleyball', icon: <Volleyball size={24} />, color: 'text-blue-500' },
-  { id: 5, name: 'Baseball', icon: <Baseball size={24} />, color: 'text-red-500' },
+  { id: 1, name: 'Soccer', icon: <Soccer size={24} />, color: 'text-green-500' },
+  { id: 2, name: 'Tennis', icon: <Tennis size={24} />, color: 'text-yellow-500' },
+  { id: 3, name: 'Volleyball', icon: <Volleyball size={24} />, color: 'text-blue-500' },
+  { id: 4, name: 'Baseball', icon: <Baseball size={24} />, color: 'text-red-500' },
 ];
 
 const skillCategories = [
