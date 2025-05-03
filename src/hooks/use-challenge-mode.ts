@@ -20,7 +20,7 @@ export const useChallengeMode = () => {
     
     try {
       const { data, error } = await supabase
-        .from('player_profiles')
+        .from('profiles')
         .select('*')
         .eq('id', user.id)
         .single();
@@ -356,7 +356,7 @@ export const useChallengeMode = () => {
     
     try {
       const { error } = await supabase
-        .from('player_profiles')
+        .from('profiles')
         .update({ profile_name: profileName })
         .eq('id', user.id);
         
