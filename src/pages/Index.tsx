@@ -260,10 +260,10 @@ const Index: React.FC = () => {
                               {venue.name}
                             </h3>
                           </div>
-                        </* div className="flex items-center mt-2 text-gray-300">
-                            <MapPin className="w-4 h-4 mr-1" />
+                        <div className="flex items-center mt-2 text-gray-300">
+                        {/* <MapPin className="w-4 h-4 mr-1" /> */}
                             <span>{venue.location}</span>
-                          </div */>
+                          </div >
                           <button 
                             onClick={() => navigate(`/venues/${venue.id}`)}
                             className="mt-4 w-full py-2 bg-indigo text-white rounded-md font-semibold hover:bg-indigo-dark transition-colors transform transition-transform group-hover:scale-105"
