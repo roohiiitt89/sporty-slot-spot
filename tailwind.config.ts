@@ -157,3 +157,21 @@ export default {
 	},
 	plugins: [require("tailwindcss-animate")],
 } satisfies Config;
+
+
+// tailwind.config.js
+module.exports = {
+  theme: {
+    extend: {
+      keyframes: {
+        'underline-grow': {
+          '0%': { width: '0%' },
+          '100%': { width: '5rem' },
+        },
+      },
+      animation: {
+        'underline-grow': 'underline-grow 0.6s ease forwards',
+      },
+    },
+  },
+};
