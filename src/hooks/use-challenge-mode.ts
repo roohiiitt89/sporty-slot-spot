@@ -171,7 +171,7 @@ export const useChallengeMode = () => {
 
       // Process the data for user profiles
       const teamJoinRequests: TeamJoinRequest[] = await Promise.all(
-        data.map(async (request: any) => {
+        data.map(async (request) => {
           // Fetch profile information separately
           const { data: profileData } = await supabase
             .from('profiles')
@@ -265,7 +265,7 @@ export const useChallengeMode = () => {
 
     try {
       // Direct insert instead of RPC
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('team_join_requests')
         .insert({
           team_id: teamId,
