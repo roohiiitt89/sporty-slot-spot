@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { DarkThemeProvider } from '@/components/challenge/DarkThemeProvider';
+import { HowItWorks } from '@/components/challenge/HowItWorks';
+import { LeaderboardPreview } from '@/components/challenge/LeaderboardPreview';
 import { TeamSection } from '@/components/challenge/TeamSection';
 import { ProfileCard } from '@/components/challenge/ProfileCard';
 import { toast } from '@/components/ui/sonner';
@@ -8,12 +10,11 @@ import { useNavigate } from 'react-router-dom';
 import { useChallengeMode } from '@/hooks/use-challenge-mode';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { useToast } from '@/components/ui/use-toast';
 import { 
   RefreshCcw, 
   ChevronRight,
   Trophy,
+  Award,
   Users,
   Flag,
   ArrowLeft,
@@ -36,16 +37,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { Team } from '@/types/challenge';
 import { motion } from 'framer-motion';
 
-interface Challenge {
-  id: string;
-  status: string;
-  booking_date: string;
-  start_time: string;
-  end_time: string;
-  challenger_team: Team;
-  opponent_team: Team;
-}
-
 const sports = [
   { id: 1, name: 'Basketball', icon: <Basketball size={24} />, color: 'text-orange-500' },
   { id: 2, name: 'Soccer', icon: <Soccer size={24} />, color: 'text-green-500' },
@@ -64,10 +55,9 @@ const skillCategories = [
 
 const ChallengeDashboard = () => {
   const { user } = useAuth();
-  const { toast } = useToast();
   const { error, loading, fetchPlayerProfile, userTeam } = useChallengeMode();
   const navigate = useNavigate();
-  const [upcomingChallenges, setUpcomingChallenges] = useState<Challenge[]>([]);
+  const [upcomingChallenges, setUpcomingChallenges] = useState([]);
   const [topTeams, setTopTeams] = useState<Team[]>([]);
   const [loadingChallenges, setLoadingChallenges] = useState(false);
   const [selectedSport, setSelectedSport] = useState<number | null>(null);
@@ -93,7 +83,7 @@ const ChallengeDashboard = () => {
         .limit(5);
 
       if (error) throw error;
-      setTopTeams(data || []);
+      setTopTeams(data);
     } catch (error) {
       console.error('Error fetching top teams:', error);
     }
@@ -115,7 +105,7 @@ const ChallengeDashboard = () => {
         .limit(3);
 
       if (error) throw error;
-      setUpcomingChallenges(data || []);
+      setUpcomingChallenges(data);
     } catch (error) {
       console.error('Error fetching challenges:', error);
     } finally {
@@ -144,6 +134,7 @@ const ChallengeDashboard = () => {
   return (
     <DarkThemeProvider>
       <div className="container mx-auto px-4 py-8">
+        {/* Back Button */}
         <Button 
           variant="ghost" 
           onClick={() => navigate('/')}
@@ -196,6 +187,7 @@ const ChallengeDashboard = () => {
           </Alert>
         )}
 
+        {/* New: Featured Sports Section */}
         <motion.section
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -236,6 +228,7 @@ const ChallengeDashboard = () => {
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">
+            {/* Welcome Section */}
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -299,6 +292,7 @@ const ChallengeDashboard = () => {
               </div>
             </motion.div>
 
+            {/* New: Skill Development Section */}
             <motion.section
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -340,10 +334,13 @@ const ChallengeDashboard = () => {
               </Button>
             </motion.section>
             
+            {/* Team Section */}
             <TeamSection />
           </div>
           
+          {/* Right Column */}
           <div className="space-y-8">
+            {/* Profile Card */}
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -355,6 +352,7 @@ const ChallengeDashboard = () => {
               <ProfileCard />
             </motion.div>
             
+            {/* New: Team Recruitment Section */}
             <motion.section
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -398,6 +396,7 @@ const ChallengeDashboard = () => {
               </Button>
             </motion.section>
             
+            {/* Elite Teams */}
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -466,6 +465,7 @@ const ChallengeDashboard = () => {
               </div>
             </motion.div>
 
+            {/* Scheduled Battles */}
             {userTeam && (
               <motion.div 
                 initial={{ opacity: 0, y: 20 }}
@@ -485,9 +485,9 @@ const ChallengeDashboard = () => {
                       <div className="h-12 bg-gray-700 rounded mb-3"></div>
                       <div className="h-12 bg-gray-700 rounded"></div>
                     </div>
-                  ) : upcomingChallenges.length > 0 ? (
+                  ) : upcomingChallenges && upcomingChallenges.length > 0 ? (
                     <div className="divide-y divide-gray-700">
-                      {upcomingChallenges.map((challenge) => (
+                      {upcomingChallenges.map((challenge: any) => (
                         <motion.div 
                           key={challenge.id}
                           whileHover={{ x: 5 }}
@@ -527,17 +527,19 @@ const ChallengeDashboard = () => {
                       <p className="text-sm mt-1">Issue a challenge to prove your might!</p>
                     </div>
                   )}
-                  <div className="border-t border-gray-700 p-2 bg-gray-800/50">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="w-full text-xs text-gray-400 hover:text-white hover:bg-gray-700/50 flex items-center justify-center gap-1"
-                      onClick={() => navigate('/challenges')}
-                    >
-                      View All Battles
-                      <ChevronRight size={14} />
-                    </Button>
-                  </div>
+                  {userTeam && (
+                    <div className="border-t border-gray-700 p-2 bg-gray-800/50">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="w-full text-xs text-gray-400 hover:text-white hover:bg-gray-700/50 flex items-center justify-center gap-1"
+                        onClick={() => navigate('/challenges')}
+                      >
+                        View All Battles
+                        <ChevronRight size={14} />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </motion.div>
             )}
