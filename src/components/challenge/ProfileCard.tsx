@@ -15,27 +15,34 @@ import {
   Skull,
   Shield,
   BarChart2,
-  Zap
+  Zap,
+  ChevronRight
 } from 'lucide-react';
 
 export const getLevelTitle = (level: number): string => {
-  if (level < 5) return 'Novice Warrior';
-  if (level < 10) return 'Battle-Tested';
-  if (level < 15) return 'Elite Champion';
-  if (level < 20) return 'Legendary Gladiator';
-  return 'Mythic Overlord';
+  const titles = [
+    { threshold: 5, title: 'Novice Warrior' },
+    { threshold: 10, title: 'Battle-Tested' },
+    { threshold: 15, title: 'Elite Champion' },
+    { threshold: 20, title: 'Legendary Gladiator' },
+    { threshold: Infinity, title: 'Mythic Overlord' }
+  ];
+  return titles.find(t => level < t.threshold)?.title || 'Mythic Overlord';
 };
 
 export const getXpForNextLevel = (level: number): number => {
-  return level * 100;
+  return Math.pow(level, 2) * 100;
 };
 
 export const getRankColor = (level: number) => {
-  if (level < 5) return { bg: 'bg-gray-600', text: 'text-gray-300', border: 'border-gray-500' };
-  if (level < 10) return { bg: 'bg-blue-600/20', text: 'text-blue-400', border: 'border-blue-500' };
-  if (level < 15) return { bg: 'bg-emerald-600/20', text: 'text-emerald-400', border: 'border-emerald-500' };
-  if (level < 20) return { bg: 'bg-purple-600/20', text: 'text-purple-400', border: 'border-purple-500' };
-  return { bg: 'bg-amber-600/20', text: 'text-amber-400', border: 'border-amber-500' };
+  const ranks = [
+    { threshold: 5, bg: 'bg-gray-600/20', text: 'text-gray-300', border: 'border-gray-500', glow: 'shadow-gray-500/20' },
+    { threshold: 10, bg: 'bg-blue-600/20', text: 'text-blue-400', border: 'border-blue-500', glow: 'shadow-blue-500/20' },
+    { threshold: 15, bg: 'bg-emerald-600/20', text: 'text-emerald-400', border: 'border-emerald-500', glow: 'shadow-emerald-500/20' },
+    { threshold: 20, bg: 'bg-purple-600/20', text: 'text-purple-400', border: 'border-purple-500', glow: 'shadow-purple-500/20' },
+    { threshold: Infinity, bg: 'bg-amber-600/20', text: 'text-amber-400', border: 'border-amber-500', glow: 'shadow-amber-500/20' }
+  ];
+  return ranks.find(r => level < r.threshold) || ranks[ranks.length - 1];
 };
 
 export const ProfileCard = () => {
@@ -59,8 +66,8 @@ export const ProfileCard = () => {
   const handleSaveProfileName = async () => {
     if (!profileName.trim()) {
       toast({
-        title: "Profile name required",
-        description: "Please enter a name for your profile",
+        title: "Warrior name required",
+        description: "You must have a name to enter the arena",
         variant: "destructive"
       });
       return;
@@ -73,13 +80,13 @@ export const ProfileCard = () => {
     if (success) {
       setShowNameDialog(false);
       toast({
-        title: "Profile updated",
-        description: "Your warrior name has been set!",
+        title: "Warrior christened!",
+        description: "Your name echoes through the arena halls",
       });
     } else {
       toast({
-        title: "Error",
-        description: "Failed to update your profile. Please try again.",
+        title: "Battlefield error",
+        description: "The scribes failed to record your name. Try again!",
         variant: "destructive"
       });
     }
@@ -105,14 +112,17 @@ export const ProfileCard = () => {
   const nextLevelXp = getXpForNextLevel(playerProfile.level);
   const progressPercentage = (playerProfile.xp / nextLevelXp) * 100;
   const rankColors = getRankColor(playerProfile.level);
-  
+  const winRate = playerProfile.wins + playerProfile.losses > 0 
+    ? Math.round((playerProfile.wins / (playerProfile.wins + playerProfile.losses)) * 100)
+    : 0;
+
   const copyProfileLink = () => {
     const profileLink = `${window.location.origin}/player/${playerProfile.id}`;
     navigator.clipboard.writeText(profileLink);
     setCopied(true);
     toast({
-      title: "Battle Profile Copied!",
-      description: "Share your warrior profile with allies.",
+      title: "Battle standard copied!",
+      description: "Share your warrior profile with allies",
     });
     setTimeout(() => setCopied(false), 2000);
   };
@@ -122,17 +132,13 @@ export const ProfileCard = () => {
     setShowNameDialog(true);
   };
 
-  const winRate = playerProfile.wins + playerProfile.losses > 0 
-    ? Math.round((playerProfile.wins / (playerProfile.wins + playerProfile.losses)) * 100
-    : 0;
-
   return (
     <>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className={`bg-gradient-to-br from-gray-900 to-gray-800/50 ${rankColors.border} border rounded-xl p-6 shadow-lg relative overflow-hidden`}
+        className={`bg-gradient-to-br from-gray-900 to-gray-800/50 ${rankColors.border} border rounded-xl p-6 shadow-lg relative overflow-hidden ${rankColors.glow}`}
       >
         {/* Decorative elements */}
         <div className="absolute -right-10 -top-10 w-32 h-32 bg-emerald-400/10 rounded-full blur-xl"></div>
@@ -204,36 +210,46 @@ export const ProfileCard = () => {
         
         {/* Stats grid */}
         <div className="grid grid-cols-4 gap-3 mt-6">
-          <div className={`bg-gray-900/30 border ${rankColors.border} rounded-lg p-3 text-center`}>
-            <div className="text-green-400 text-xl font-bold flex items-center justify-center">
+          <div className={`bg-gray-900/30 border ${rankColors.border} rounded-lg p-3 text-center group hover:bg-gray-800/50 transition-colors`}>
+            <div className="text-green-400 text-xl font-bold flex items-center justify-center group-hover:text-green-300 transition-colors">
               <Swords size={18} className="mr-1" /> {playerProfile.wins}
             </div>
-            <div className="text-xs text-gray-400 mt-1">Victories</div>
+            <div className="text-xs text-gray-400 mt-1 group-hover:text-gray-300 transition-colors">Victories</div>
           </div>
-          <div className={`bg-gray-900/30 border ${rankColors.border} rounded-lg p-3 text-center`}>
-            <div className="text-red-400 text-xl font-bold flex items-center justify-center">
+          <div className={`bg-gray-900/30 border ${rankColors.border} rounded-lg p-3 text-center group hover:bg-gray-800/50 transition-colors`}>
+            <div className="text-red-400 text-xl font-bold flex items-center justify-center group-hover:text-red-300 transition-colors">
               <Skull size={18} className="mr-1" /> {playerProfile.losses}
             </div>
-            <div className="text-xs text-gray-400 mt-1">Defeats</div>
+            <div className="text-xs text-gray-400 mt-1 group-hover:text-gray-300 transition-colors">Defeats</div>
           </div>
-          <div className={`bg-gray-900/30 border ${rankColors.border} rounded-lg p-3 text-center`}>
-            <div className="text-gray-300 text-xl font-bold flex items-center justify-center">
+          <div className={`bg-gray-900/30 border ${rankColors.border} rounded-lg p-3 text-center group hover:bg-gray-800/50 transition-colors`}>
+            <div className="text-gray-300 text-xl font-bold flex items-center justify-center group-hover:text-white transition-colors">
               <Shield size={18} className="mr-1" /> {playerProfile.draws}
             </div>
-            <div className="text-xs text-gray-400 mt-1">Standoffs</div>
+            <div className="text-xs text-gray-400 mt-1 group-hover:text-gray-300 transition-colors">Standoffs</div>
           </div>
-          <div className={`bg-gray-900/30 border ${rankColors.border} rounded-lg p-3 text-center`}>
-            <div className="text-amber-400 text-xl font-bold flex items-center justify-center">
+          <div className={`bg-gray-900/30 border ${rankColors.border} rounded-lg p-3 text-center group hover:bg-gray-800/50 transition-colors`}>
+            <div className="text-amber-400 text-xl font-bold flex items-center justify-center group-hover:text-amber-300 transition-colors">
               <BarChart2 size={18} className="mr-1" /> {winRate}%
             </div>
-            <div className="text-xs text-gray-400 mt-1">Win Rate</div>
+            <div className="text-xs text-gray-400 mt-1 group-hover:text-gray-300 transition-colors">Win Rate</div>
           </div>
         </div>
+
+        {/* View full profile button */}
+        <motion.button
+          whileHover={{ x: 5 }}
+          onClick={() => window.location.href = `/player/${playerProfile.id}`}
+          className={`w-full mt-6 py-2 px-4 rounded-lg flex items-center justify-center ${rankColors.bg} ${rankColors.border} border hover:opacity-90 transition-opacity`}
+        >
+          <span className={`text-sm font-medium ${rankColors.text}`}>View Full Battle Profile</span>
+          <ChevronRight size={16} className={`ml-2 ${rankColors.text}`} />
+        </motion.button>
       </motion.div>
 
       {/* Edit Profile Dialog */}
       <Dialog open={showNameDialog} onOpenChange={setShowNameDialog}>
-        <DialogContent className="bg-gray-800 border border-gray-700 text-white">
+        <DialogContent className="bg-gray-800 border border-gray-700 text-white max-w-md">
           <DialogHeader>
             <DialogTitle className="text-center text-xl flex items-center justify-center gap-2">
               <Swords size={20} />
@@ -242,12 +258,12 @@ export const ProfileCard = () => {
           </DialogHeader>
           
           {!playerProfile.profile_name && (
-            <p className="text-gray-300 text-center">
+            <p className="text-gray-300 text-center px-4">
               Choose a mighty name to represent you in the Challenge Arena!
             </p>
           )}
           
-          <div className="mt-6">
+          <div className="mt-6 px-4">
             <label htmlFor="profile-name" className="block text-sm font-medium text-gray-400 mb-2">
               Warrior Name
             </label>
@@ -256,12 +272,16 @@ export const ProfileCard = () => {
               value={profileName}
               onChange={(e) => setProfileName(e.target.value)}
               placeholder="Enter your warrior name"
-              className="bg-gray-900 border-gray-700 text-white text-center text-lg py-5"
+              className="bg-gray-900 border-gray-700 text-white text-center text-lg py-5 font-medium"
               autoFocus
+              maxLength={20}
             />
+            <p className="text-xs text-gray-500 mt-1 text-center">
+              Max 20 characters. Choose wisely!
+            </p>
           </div>
           
-          <DialogFooter className="mt-4">
+          <DialogFooter className="mt-6 px-4 pb-4">
             {playerProfile.profile_name && (
               <Button 
                 onClick={() => setShowNameDialog(false)} 
@@ -274,9 +294,17 @@ export const ProfileCard = () => {
             <Button 
               onClick={handleSaveProfileName}
               disabled={saving || !profileName.trim()}
-              className={`bg-gradient-to-r ${rankColors.text.replace('text', 'from')} to-teal-600 hover:opacity-90`}
+              className={`bg-gradient-to-r ${rankColors.text.replace('text', 'from')} to-teal-600 hover:opacity-90 min-w-[120px]`}
             >
-              {saving ? 'Carving Stone...' : 'Claim Name'}
+              {saving ? (
+                <span className="flex items-center">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Carving Stone...
+                </span>
+              ) : 'Claim Name'}
             </Button>
           </DialogFooter>
         </DialogContent>
