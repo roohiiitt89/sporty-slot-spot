@@ -2,19 +2,19 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { PlayerProfile, Team, TeamMember, TeamJoinRequest } from '@/types/challenge';
+import { profile, Team, TeamMember, TeamJoinRequest } from '@/types/challenge';
 
 export const useChallengeMode = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [playerProfile, setPlayerProfile] = useState<PlayerProfile | null>(null);
+  const [profile, setprofile] = useState<profile | null>(null);
   const [userTeam, setUserTeam] = useState<Team | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [topTeams, setTopTeams] = useState<Team[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [joinRequests, setJoinRequests] = useState<TeamJoinRequest[]>([]);
 
-  const fetchPlayerProfile = async () => {
+  const fetchprofile = async () => {
     if (!user) return null;
     setError(null);
     
@@ -31,10 +31,10 @@ export const useChallengeMode = () => {
         return null;
       }
 
-      setPlayerProfile(data);
+      setprofile(data);
       return data;
     } catch (error) {
-      console.error('Error in fetchPlayerProfile:', error);
+      console.error('Error in fetchprofile:', error);
       setError('An unexpected error occurred');
       return null;
     }
@@ -367,7 +367,7 @@ export const useChallengeMode = () => {
       }
       
       // Refresh the player profile
-      await fetchPlayerProfile();
+      await fetchprofile();
       return true;
     } catch (error) {
       console.error('Error in updateProfileName:', error);
@@ -380,7 +380,7 @@ export const useChallengeMode = () => {
     if (user) {
       const loadData = async () => {
         setLoading(true);
-        await fetchPlayerProfile();
+        await fetchprofile();
         const team = await fetchUserTeam();
         if (team) {
           await fetchTeamMembers(team.id);
@@ -396,12 +396,12 @@ export const useChallengeMode = () => {
   return {
     loading,
     error,
-    playerProfile,
+    profile,
     userTeam,
     teamMembers,
     topTeams,
     joinRequests,
-    fetchPlayerProfile,
+    fetchprofile,
     fetchUserTeam,
     fetchTeamMembers,
     fetchTopTeams,
