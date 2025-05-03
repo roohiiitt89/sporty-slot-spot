@@ -46,7 +46,7 @@ export const getRankColor = (level: number) => {
 };
 
 export const ProfileCard = () => {
-  const { playerProfile, loading, fetchPlayerProfile, updateProfileName } = useChallengeMode();
+  const { profile, loading, fetchprofile, updateProfileName } = useChallengeMode();
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
   const [showNameDialog, setShowNameDialog] = useState(false);
@@ -54,14 +54,14 @@ export const ProfileCard = () => {
   const [saving, setSaving] = useState(false);
   
   useEffect(() => {
-    fetchPlayerProfile();
+    fetchprofile();
   }, []);
 
   useEffect(() => {
-    if (playerProfile && !playerProfile.profile_name) {
+    if (profile && !profile.profile_name) {
       setShowNameDialog(true);
     }
-  }, [playerProfile]);
+  }, [profile]);
 
   const handleSaveProfileName = async () => {
     if (!profileName.trim()) {
@@ -92,7 +92,7 @@ export const ProfileCard = () => {
     }
   };
 
-  if (loading || !playerProfile) {
+  if (loading || !profile) {
     return (
       <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6 animate-pulse">
         <div className="flex items-center mb-4">
@@ -108,16 +108,16 @@ export const ProfileCard = () => {
     );
   }
 
-  const levelTitle = getLevelTitle(playerProfile.level);
-  const nextLevelXp = getXpForNextLevel(playerProfile.level);
-  const progressPercentage = (playerProfile.xp / nextLevelXp) * 100;
-  const rankColors = getRankColor(playerProfile.level);
-  const winRate = playerProfile.wins + playerProfile.losses > 0 
-    ? Math.round((playerProfile.wins / (playerProfile.wins + playerProfile.losses)) * 100)
+  const levelTitle = getLevelTitle(profile.level);
+  const nextLevelXp = getXpForNextLevel(profile.level);
+  const progressPercentage = (profile.xp / nextLevelXp) * 100;
+  const rankColors = getRankColor(profile.level);
+  const winRate = profile.wins + profile.losses > 0 
+    ? Math.round((profile.wins / (profile.wins + profile.losses)) * 100)
     : 0;
 
   const copyProfileLink = () => {
-    const profileLink = `${window.location.origin}/player/${playerProfile.id}`;
+    const profileLink = `${window.location.origin}/player/${profile.id}`;
     navigator.clipboard.writeText(profileLink);
     setCopied(true);
     toast({
@@ -128,7 +128,7 @@ export const ProfileCard = () => {
   };
 
   const handleEditProfile = () => {
-    setProfileName(playerProfile.profile_name || '');
+    setProfileName(profile.profile_name || '');
     setShowNameDialog(true);
   };
 
@@ -153,14 +153,14 @@ export const ProfileCard = () => {
               className={`flex items-center justify-center w-16 h-16 rounded-full ${rankColors.bg} ${rankColors.border} border-2 font-bold text-2xl cursor-pointer hover:opacity-90 shadow-lg`}
               title="Edit warrior profile"
             >
-              {playerProfile.profile_name ? 
-                playerProfile.profile_name.substring(0, 2).toUpperCase() : 
+              {profile.profile_name ? 
+                profile.profile_name.substring(0, 2).toUpperCase() : 
                 <Swords size={24} className="opacity-80" />}
             </motion.div>
             <div className="ml-4">
               <div className="flex items-center">
                 <h3 className={`font-bold text-xl ${rankColors.text}`}>
-                  {playerProfile.profile_name || 'Unnamed Warrior'}
+                  {profile.profile_name || 'Unnamed Warrior'}
                 </h3>
                 <button
                   onClick={handleEditProfile}
@@ -172,7 +172,7 @@ export const ProfileCard = () => {
               </div>
               <div className={`flex items-center text-sm font-medium ${rankColors.text}`}>
                 <Trophy size={14} className="mr-1" />
-                {levelTitle} • Level {playerProfile.level}
+                {levelTitle} • Level {profile.level}
               </div>
             </div>
           </div>
@@ -198,7 +198,7 @@ export const ProfileCard = () => {
               <Zap size={14} className="mr-1" /> Battle XP
             </span>
             <span className="text-gray-300">
-              {playerProfile.xp} / {nextLevelXp} XP
+              {profile.xp} / {nextLevelXp} XP
             </span>
           </div>
           <Progress 
@@ -212,19 +212,19 @@ export const ProfileCard = () => {
         <div className="grid grid-cols-4 gap-3 mt-6">
           <div className={`bg-gray-900/30 border ${rankColors.border} rounded-lg p-3 text-center group hover:bg-gray-800/50 transition-colors`}>
             <div className="text-green-400 text-xl font-bold flex items-center justify-center group-hover:text-green-300 transition-colors">
-              <Swords size={18} className="mr-1" /> {playerProfile.wins}
+              <Swords size={18} className="mr-1" /> {profile.wins}
             </div>
             <div className="text-xs text-gray-400 mt-1 group-hover:text-gray-300 transition-colors">Victories</div>
           </div>
           <div className={`bg-gray-900/30 border ${rankColors.border} rounded-lg p-3 text-center group hover:bg-gray-800/50 transition-colors`}>
             <div className="text-red-400 text-xl font-bold flex items-center justify-center group-hover:text-red-300 transition-colors">
-              <Skull size={18} className="mr-1" /> {playerProfile.losses}
+              <Skull size={18} className="mr-1" /> {profile.losses}
             </div>
             <div className="text-xs text-gray-400 mt-1 group-hover:text-gray-300 transition-colors">Defeats</div>
           </div>
           <div className={`bg-gray-900/30 border ${rankColors.border} rounded-lg p-3 text-center group hover:bg-gray-800/50 transition-colors`}>
             <div className="text-gray-300 text-xl font-bold flex items-center justify-center group-hover:text-white transition-colors">
-              <Shield size={18} className="mr-1" /> {playerProfile.draws}
+              <Shield size={18} className="mr-1" /> {profile.draws}
             </div>
             <div className="text-xs text-gray-400 mt-1 group-hover:text-gray-300 transition-colors">Standoffs</div>
           </div>
@@ -239,7 +239,7 @@ export const ProfileCard = () => {
         {/* View full profile button */}
         <motion.button
           whileHover={{ x: 5 }}
-          onClick={() => window.location.href = `/player/${playerProfile.id}`}
+          onClick={() => window.location.href = `/player/${profile.id}`}
           className={`w-full mt-6 py-2 px-4 rounded-lg flex items-center justify-center ${rankColors.bg} ${rankColors.border} border hover:opacity-90 transition-opacity`}
         >
           <span className={`text-sm font-medium ${rankColors.text}`}>View Full Battle Profile</span>
@@ -253,11 +253,11 @@ export const ProfileCard = () => {
           <DialogHeader>
             <DialogTitle className="text-center text-xl flex items-center justify-center gap-2">
               <Swords size={20} />
-              {playerProfile.profile_name ? 'Edit Warrior Name' : 'Claim Your Warrior Identity'}
+              {profile.profile_name ? 'Edit Warrior Name' : 'Claim Your Warrior Identity'}
             </DialogTitle>
           </DialogHeader>
           
-          {!playerProfile.profile_name && (
+          {!profile.profile_name && (
             <p className="text-gray-300 text-center px-4">
               Choose a mighty name to represent you in the Challenge Arena!
             </p>
@@ -282,7 +282,7 @@ export const ProfileCard = () => {
           </div>
           
           <DialogFooter className="mt-6 px-4 pb-4">
-            {playerProfile.profile_name && (
+            {profile.profile_name && (
               <Button 
                 onClick={() => setShowNameDialog(false)} 
                 variant="outline"
