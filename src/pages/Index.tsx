@@ -251,12 +251,13 @@ const Index: React.FC = () => {
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-30 group-hover:opacity-70 transition-opacity"></div>
                     
-                    {/* New overlay with icon and hover effect */}
                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
-                      <div className="bg-indigo/80 backdrop-blur-sm p-3 rounded-full transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">
-                        <Star className="h-8 w-8 text-white" />
-                      </div>
-                    </div>
+  <div className="bg-indigo/80 backdrop-blur-sm p-3 rounded-full transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">
+    <Link to={`/venues/${venue.id}`} className="text-white font-semibold">
+      Details
+    </Link>
+  </div>
+</div>
                   </div>
                   <div className="p-4 bg-navy-light text-white relative overflow-hidden group-hover:bg-indigo transition-colors duration-500">
                     <h3 className="text-xl font-bold group-hover:text-white transition-colors">
