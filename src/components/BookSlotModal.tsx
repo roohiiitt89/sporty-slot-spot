@@ -67,6 +67,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
   const [courtRate, setCourtRate] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [bookingInProgress, setBookingInProgress] = useState(false);
 
   useEffect(() => {
     // Check if user is logged in, if not redirect to login
@@ -91,6 +92,26 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     if (venueId) {
       setSelectedVenue(venueId);
     }
+    
+    // Setup real-time subscription for bookings
+    const bookingChannel = supabase
+      .channel('booking-updates')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'bookings'
+      }, (payload) => {
+        console.log('Booking change detected:', payload);
+        // Refresh availability data when a booking is created/updated/deleted
+        if (selectedCourt && selectedDate) {
+          setRefreshKey(prev => prev + 1);
+        }
+      })
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(bookingChannel);
+    };
   }, [venueId, user, navigate, onClose]);
 
   useEffect(() => {
@@ -121,10 +142,10 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
   // Add periodic refresh of availability data
   useEffect(() => {
     if (currentStep === 2 && selectedCourt && selectedDate) {
-      // Refresh availability data every 30 seconds
+      // Refresh availability data every 15 seconds
       const intervalId = setInterval(() => {
         setRefreshKey(prev => prev + 1);
-      }, 30000);
+      }, 15000);
       
       return () => clearInterval(intervalId);
     }
@@ -475,11 +496,16 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     }
     
     // Prevent double submissions
-    if (isSubmitting) {
+    if (isSubmitting || bookingInProgress) {
+      toast({
+        title: "Booking in progress",
+        description: "Please wait while we process your booking.",
+      });
       return;
     }
     
     setIsSubmitting(true);
+    setBookingInProgress(true);
     setLoading(prev => ({ ...prev, booking: true }));
     
     try {
@@ -496,6 +522,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
         setCurrentStep(2);
         setLoading(prev => ({ ...prev, booking: false }));
         setIsSubmitting(false);
+        setBookingInProgress(false);
         return;
       }
       
@@ -526,7 +553,9 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       // Add the last block
       bookingBlocks.push(currentBlock);
       
-      // Create a booking for each continuous block using our new function
+      // Use a transaction to ensure all bookings succeed or fail together
+      const bookingResults = [];
+      
       for (const block of bookingBlocks) {
         const startTime = convertTo24Hour(block[0].split(' - ')[0]);
         const endTime = convertTo24Hour(block[block.length - 1].split(' - ')[1]);
@@ -536,25 +565,28 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
           return total + selectedSlotPrices[slot];
         }, 0);
         
-        // Use a direct insert with the database-level prevention instead of RPC
-        const { data, error } = await supabase
-          .from('bookings')
-          .insert({
-            court_id: selectedCourt,
-            user_id: user.id,
-            booking_date: selectedDate,
-            start_time: startTime,
-            end_time: endTime,
-            total_price: blockPrice,
-            status: 'confirmed'
-          })
-          .select();
+        try {
+          // Use our enhanced create_booking_with_lock function for concurrency safety
+          const { data, error } = await supabase.rpc('create_booking_with_lock', {
+            p_court_id: selectedCourt,
+            p_user_id: user.id,
+            p_booking_date: selectedDate,
+            p_start_time: startTime,
+            p_end_time: endTime,
+            p_total_price: blockPrice
+          });
           
-        if (error) {
-          // If there's a conflict, throw an error to be caught
-          if (error.message.includes('conflicts with an existing reservation') || 
-              error.message.includes('This slot has already been booked')) {
-            throw new Error("One or more selected slots are no longer available. Please refresh and try again.");
+          if (error) {
+            throw new Error(error.message || 'Error creating booking');
+          }
+          
+          bookingResults.push(data);
+        } catch (error: any) {
+          // If there's a conflict or lock issue, propagate the error
+          if (error.message?.includes('conflicts with an existing reservation') || 
+              error.message?.includes('already been booked') ||
+              error.message?.includes('Another user is currently booking')) {
+            throw new Error(error.message);
           }
           throw error;
         }
@@ -562,7 +594,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       
       toast({
         title: "Booking successful!",
-        description: "You have successfully booked your slots.",
+        description: `You have successfully booked ${bookingResults.length} slot(s).`,
       });
       
       navigate('/profile');
@@ -572,16 +604,18 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       
       // Special handling for conflict errors
       if (error.message?.includes('conflicts with an existing reservation') || 
-          error.message?.includes('This slot has already been booked')) {
+          error.message?.includes('already been booked')) {
         toast({
           title: "Booking unavailable",
           description: "Someone just booked one of your selected slots. Please refresh and select available times.",
           variant: "destructive",
         });
-        
-        // Refresh availability and go back to step 2
-        setCurrentStep(2);
-        setRefreshKey(prev => prev + 1);
+      } else if (error.message?.includes('Another user is currently booking')) {
+        toast({
+          title: "Booking in progress",
+          description: "Another user is currently booking this time slot. Please wait a moment and try again.",
+          variant: "destructive",
+        });
       } else {
         toast({
           title: "Booking failed",
@@ -589,9 +623,14 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
           variant: "destructive",
         });
       }
+      
+      // Refresh availability and go back to step 2
+      setCurrentStep(2);
+      setRefreshKey(prev => prev + 1);
     } finally {
       setLoading(prev => ({ ...prev, booking: false }));
       setIsSubmitting(false);
+      setBookingInProgress(false);
     }
   };
 
@@ -736,17 +775,15 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
             
             <div className="mb-4">
               <p className="font-medium text-gray-700">Selected Date: <span className="text-sport-green">{selectedDate}</span></p>
-              {refreshKey > 0 && (
-                <div className="flex items-center text-xs mt-1 text-blue-600">
-                  <span>Availability automatically refreshes every 30 seconds.</span>
-                  <button 
-                    onClick={() => setRefreshKey(prev => prev + 1)}
-                    className="ml-2 text-blue-700 underline"
-                  >
-                    Refresh now
-                  </button>
-                </div>
-              )}
+              <div className="flex items-center text-xs mt-1 text-blue-600">
+                <span>Availability automatically refreshes every 15 seconds.</span>
+                <button 
+                  onClick={() => setRefreshKey(prev => prev + 1)}
+                  className="ml-2 text-blue-700 underline"
+                >
+                  Refresh now
+                </button>
+              </div>
             </div>
             
             {loading.availability ? (
@@ -874,7 +911,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
             <Button
               onClick={handlePreviousStep}
               variant="outline"
-              disabled={isSubmitting}
+              disabled={isSubmitting || bookingInProgress}
               className="py-3 px-6 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors font-medium"
             >
               Previous
@@ -887,7 +924,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
             <Button
               onClick={handleNextStep}
               variant="default"
-              disabled={isSubmitting}
+              disabled={isSubmitting || bookingInProgress}
               className="py-3 px-6 bg-sport-green text-white rounded-md hover:bg-sport-green-dark transition-colors font-medium"
             >
               Next
@@ -895,7 +932,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
           ) : (
             <Button
               onClick={handleBooking}
-              disabled={isSubmitting || loading.booking}
+              disabled={isSubmitting || bookingInProgress || loading.booking}
               variant="default"
               className="py-3 px-6 bg-sport-green text-white rounded-md hover:bg-sport-green-dark transition-colors flex items-center font-medium"
             >
