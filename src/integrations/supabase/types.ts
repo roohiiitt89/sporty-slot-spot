@@ -18,6 +18,8 @@ export type Database = {
           guest_name: string | null
           guest_phone: string | null
           id: string
+          payment_reference: string | null
+          payment_status: string | null
           start_time: string
           status: Database["public"]["Enums"]["booking_status"]
           total_price: number
@@ -32,6 +34,8 @@ export type Database = {
           guest_name?: string | null
           guest_phone?: string | null
           id?: string
+          payment_reference?: string | null
+          payment_status?: string | null
           start_time: string
           status?: Database["public"]["Enums"]["booking_status"]
           total_price: number
@@ -46,6 +50,8 @@ export type Database = {
           guest_name?: string | null
           guest_phone?: string | null
           id?: string
+          payment_reference?: string | null
+          payment_status?: string | null
           start_time?: string
           status?: Database["public"]["Enums"]["booking_status"]
           total_price?: number
@@ -292,45 +298,6 @@ export type Database = {
           },
         ]
       }
-      player_profiles: {
-        Row: {
-          created_at: string
-          draws: number
-          id: string
-          level: number
-          losses: number
-          profile_name: string | null
-          share_link: string | null
-          updated_at: string
-          wins: number
-          xp: number
-        }
-        Insert: {
-          created_at?: string
-          draws?: number
-          id: string
-          level?: number
-          losses?: number
-          profile_name?: string | null
-          share_link?: string | null
-          updated_at?: string
-          wins?: number
-          xp?: number
-        }
-        Update: {
-          created_at?: string
-          draws?: number
-          id?: string
-          level?: number
-          losses?: number
-          profile_name?: string | null
-          share_link?: string | null
-          updated_at?: string
-          wins?: number
-          xp?: number
-        }
-        Relationships: []
-      }
       player_stats: {
         Row: {
           assists: number
@@ -378,27 +345,48 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
+          draws: number
           email: string | null
           full_name: string | null
           id: string
+          level: number
+          losses: number
           phone: string | null
+          profile_name: string | null
+          share_link: string | null
           updated_at: string
+          wins: number
+          xp: number
         }
         Insert: {
           created_at?: string
+          draws?: number
           email?: string | null
           full_name?: string | null
           id: string
+          level?: number
+          losses?: number
           phone?: string | null
+          profile_name?: string | null
+          share_link?: string | null
           updated_at?: string
+          wins?: number
+          xp?: number
         }
         Update: {
           created_at?: string
+          draws?: number
           email?: string | null
           full_name?: string | null
           id?: string
+          level?: number
+          losses?: number
           phone?: string | null
+          profile_name?: string | null
+          share_link?: string | null
           updated_at?: string
+          wins?: number
+          xp?: number
         }
         Relationships: []
       }
@@ -850,16 +838,29 @@ export type Database = {
     }
     Functions: {
       create_booking_with_lock: {
-        Args: {
-          p_court_id: string
-          p_user_id: string
-          p_booking_date: string
-          p_start_time: string
-          p_end_time: string
-          p_total_price: number
-          p_guest_name?: string
-          p_guest_phone?: string
-        }
+        Args:
+          | {
+              p_court_id: string
+              p_user_id: string
+              p_booking_date: string
+              p_start_time: string
+              p_end_time: string
+              p_total_price: number
+              p_guest_name?: string
+              p_guest_phone?: string
+            }
+          | {
+              p_court_id: string
+              p_user_id: string
+              p_booking_date: string
+              p_start_time: string
+              p_end_time: string
+              p_total_price: number
+              p_payment_reference?: string
+              p_payment_status?: string
+              p_guest_name?: string
+              p_guest_phone?: string
+            }
         Returns: string
       }
       gbt_bit_compress: {

@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
-import { LogOut, Edit, Calendar, User, Phone, Mail } from 'lucide-react';
+import { LogOut, Edit, Calendar, User, Phone, Mail, CreditCard } from 'lucide-react';
 import SportDisplayName from '@/components/SportDisplayName';
 
 interface Booking {
@@ -13,6 +14,8 @@ interface Booking {
   end_time: string;
   total_price: number;
   status: 'confirmed' | 'cancelled' | 'completed';
+  payment_reference: string | null;
+  payment_status: string | null;
   court: {
     name: string;
     venue: {
@@ -90,6 +93,8 @@ const Profile: React.FC = () => {
           end_time, 
           total_price, 
           status,
+          payment_reference,
+          payment_status,
           court:courts (
             name,
             venue:venues (name, id),
@@ -166,6 +171,21 @@ const Profile: React.FC = () => {
         return 'bg-red-100 text-red-800';
       case 'completed':
         return 'bg-blue-100 text-blue-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getPaymentStatusColor = (status: string | null) => {
+    if (!status) return 'bg-gray-100 text-gray-800';
+    
+    switch (status.toLowerCase()) {
+      case 'completed':
+        return 'bg-green-100 text-green-800';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'failed':
+        return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -408,7 +428,25 @@ const Profile: React.FC = () => {
                                 </div>
                               </div>
                               
-                              {/* Actions row - Removed cancel button */}
+                              {/* Payment information */}
+                              {booking.payment_reference && (
+                                <div className="mt-3 p-3 bg-blue-50 rounded-md flex items-center">
+                                  <CreditCard className="text-blue-500 mr-2" size={18} />
+                                  <div>
+                                    <p className="text-blue-700 text-sm">
+                                      <span className="font-medium">Payment Reference:</span> {booking.payment_reference}
+                                    </p>
+                                    <div className="flex items-center mt-1">
+                                      <span className="text-xs font-medium mr-2">Status:</span>
+                                      <span className={`text-xs px-2 py-0.5 rounded-full ${getPaymentStatusColor(booking.payment_status)}`}>
+                                        {booking.payment_status || 'Unknown'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {/* Actions row */}
                               <div className="mt-4 flex justify-end">
                                 <a 
                                   href={`/venues/${booking.court.venue.id}`} 

@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
-import { Check, Calendar, BookCheck, BookX, Ban } from 'lucide-react';
+import { Check, Calendar, BookCheck, BookX, Ban, CreditCard } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -25,6 +25,8 @@ interface Booking {
   end_time: string;
   total_price: number;
   status: 'confirmed' | 'cancelled' | 'completed';
+  payment_reference: string | null;
+  payment_status: string | null;
   user_id: string | null;
   guest_name: string | null;
   guest_phone: string | null;
@@ -47,10 +49,11 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'confirmed' | 'cancelled' | 'completed'>('all');
+  const [paymentFilter, setPaymentFilter] = useState<'all' | 'completed' | 'pending' | 'failed'>('all');
 
   useEffect(() => {
     fetchBookings();
-  }, [filter, userRole, adminVenues]);
+  }, [filter, paymentFilter, userRole, adminVenues]);
 
   const fetchBookings = async () => {
     setLoading(true);
@@ -67,6 +70,8 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
           end_time,
           total_price,
           status,
+          payment_reference,
+          payment_status,
           user_id,
           guest_name,
           guest_phone,
@@ -90,6 +95,11 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
       // Apply status filter if not "all"
       if (filter !== 'all') {
         query = query.eq('status', filter);
+      }
+      
+      // Apply payment status filter if not "all"
+      if (paymentFilter !== 'all') {
+        query = query.eq('payment_status', paymentFilter);
       }
 
       // If admin (not super admin), filter to only show their venue bookings
@@ -191,6 +201,22 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
     return `${hour12}:${minutes} ${ampm}`;
   };
 
+  // Function to get color for payment status badges
+  const getPaymentStatusColor = (status: string | null) => {
+    if (!status) return 'bg-gray-100 text-gray-800';
+    
+    switch (status.toLowerCase()) {
+      case 'completed':
+        return 'bg-green-100 text-green-800';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'failed':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
@@ -243,6 +269,54 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
         </div>
       </div>
       
+      {/* Payment filter controls */}
+      <div className="mb-6">
+        <h3 className="text-sm font-medium text-gray-700 mb-2">Filter by Payment Status:</h3>
+        <div className="flex space-x-2">
+          <button
+            onClick={() => setPaymentFilter('all')}
+            className={`px-3 py-1 text-xs rounded-md ${
+              paymentFilter === 'all' 
+                ? 'bg-sport-green text-white' 
+                : 'bg-gray-100 text-gray-800'
+            }`}
+          >
+            All Payments
+          </button>
+          <button
+            onClick={() => setPaymentFilter('completed')}
+            className={`px-3 py-1 text-xs rounded-md ${
+              paymentFilter === 'completed' 
+                ? 'bg-green-600 text-white' 
+                : 'bg-gray-100 text-gray-800'
+            }`}
+          >
+            <CreditCard className="inline-block w-3 h-3 mr-1" />
+            Completed
+          </button>
+          <button
+            onClick={() => setPaymentFilter('pending')}
+            className={`px-3 py-1 text-xs rounded-md ${
+              paymentFilter === 'pending' 
+                ? 'bg-yellow-600 text-white' 
+                : 'bg-gray-100 text-gray-800'
+            }`}
+          >
+            Pending
+          </button>
+          <button
+            onClick={() => setPaymentFilter('failed')}
+            className={`px-3 py-1 text-xs rounded-md ${
+              paymentFilter === 'failed' 
+                ? 'bg-red-600 text-white' 
+                : 'bg-gray-100 text-gray-800'
+            }`}
+          >
+            Failed
+          </button>
+        </div>
+      </div>
+      
       {loading ? (
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-sport-green"></div>
@@ -261,6 +335,7 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
                 <TableHead>Venue / Court / Sport</TableHead>
                 <TableHead>User</TableHead>
                 <TableHead>Price</TableHead>
+                <TableHead>Payment</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -294,6 +369,20 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
                     )}
                   </TableCell>
                   <TableCell>₹{booking.total_price.toFixed(2)}</TableCell>
+                  <TableCell>
+                    {booking.payment_reference ? (
+                      <div>
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPaymentStatusColor(booking.payment_status)}`}>
+                          {booking.payment_status}
+                        </span>
+                        <p className="text-xs text-gray-500 mt-1 truncate max-w-[100px]" title={booking.payment_reference}>
+                          Ref: {booking.payment_reference}
+                        </p>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-500">No payment info</span>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                       booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
