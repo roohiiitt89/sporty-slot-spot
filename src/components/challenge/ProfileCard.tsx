@@ -46,7 +46,7 @@ export const getRankColor = (level: number) => {
 };
 
 export const ProfileCard = () => {
-  const { profile, loading, fetchprofile, updateProfileName } = useChallengeMode();
+  const { profile, loading, fetchProfile, updateProfileName } = useChallengeMode();
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
   const [showNameDialog, setShowNameDialog] = useState(false);
@@ -54,7 +54,7 @@ export const ProfileCard = () => {
   const [saving, setSaving] = useState(false);
   
   useEffect(() => {
-    fetchprofile();
+    fetchProfile();
   }, []);
 
   useEffect(() => {
