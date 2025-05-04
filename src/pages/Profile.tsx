@@ -3,7 +3,7 @@ import Header from '../components/Header';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
-import { LogOut, Edit, Calendar, User, Phone, Mail, CreditCard, ChevronRight } from 'lucide-react';
+import { LogOut, Edit, Calendar, User, Phone, Mail, CreditCard, ChevronRight, ArrowLeft } from 'lucide-react';
 import SportDisplayName from '@/components/SportDisplayName';
 import { useNavigate } from 'react-router-dom';
 
