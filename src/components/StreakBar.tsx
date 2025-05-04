@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 interface StreakData {
   days: boolean[];
   currentStreak: number;
+  streakCount: number;
 }
 
 export const StreakBar: React.FC = () => {
@@ -21,8 +22,9 @@ export const StreakBar: React.FC = () => {
     const fetchStreakData = async () => {
       try {
         const today = new Date();
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(today.getDate() - 6);
+        const pastWeeks = 4; // Track 4 weeks of history
+        const startDate = new Date();
+        startDate.setDate(today.getDate() - (pastWeeks * 7 - 1));
 
         const formatDate = (date: Date) => date.toISOString().split('T')[0];
 
@@ -30,40 +32,59 @@ export const StreakBar: React.FC = () => {
           .from('bookings')
           .select('booking_date')
           .eq('user_id', user.id)
-          .gte('booking_date', formatDate(sevenDaysAgo))
-          .lte('booking_date', formatDate(today))
-          .order('booking_date', { ascending: true });
+          .gte('booking_date', formatDate(startDate))
+          .lte('booking_date', formatDate(today));
 
         if (error) throw error;
 
         const bookingDates = Array.from(
-          new Set((data || []).map(booking => booking.booking_date))
+          new Set((data || []).map(b => b.booking_date))
         );
 
+        // Generate days boolean for past 7 days (visual bar)
         const days: boolean[] = [];
-        let currentStreak = 0;
-        let checkingStreak = true;
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(today.getDate() - 6);
 
         for (let i = 0; i < 7; i++) {
-          const date = new Date(sevenDaysAgo);
-          date.setDate(sevenDaysAgo.getDate() + i);
-          const dateStr = formatDate(date);
+          const d = new Date(sevenDaysAgo);
+          d.setDate(sevenDaysAgo.getDate() + i);
+          const dateStr = formatDate(d);
+          days.push(bookingDates.includes(dateStr));
+        }
 
-          const hasBooking = bookingDates.includes(dateStr);
-          days.push(hasBooking);
+        // Calculate streak count (number of weeks with at least 1 booking)
+        let streakCount = 0;
+        let broken = false;
 
-          if (checkingStreak) {
-            if (hasBooking) {
-              currentStreak++;
-            } else {
-              checkingStreak = false;
-            }
+        for (let w = 0; w < pastWeeks; w++) {
+          const weekStart = new Date(today);
+          weekStart.setDate(today.getDate() - w * 7);
+          const weekEnd = new Date(weekStart);
+          weekEnd.setDate(weekStart.getDate() - 6);
+
+          const weekDates: string[] = [];
+          for (let i = 0; i < 7; i++) {
+            const d = new Date(weekEnd);
+            d.setDate(weekEnd.getDate() + i);
+            weekDates.push(formatDate(d));
+          }
+
+          const booked = weekDates.some(date => bookingDates.includes(date));
+          if (booked && !broken) {
+            streakCount++;
+          } else {
+            broken = true;
           }
         }
 
-        setStreakData({ days, currentStreak });
-      } catch (error) {
-        console.error('Error fetching streak data:', error);
+        setStreakData({
+          days,
+          currentStreak: days.filter(Boolean).length,
+          streakCount,
+        });
+      } catch (err) {
+        console.error('Error fetching streak:', err);
       } finally {
         setLoading(false);
       }
@@ -75,31 +96,32 @@ export const StreakBar: React.FC = () => {
   if (!user || loading || !streakData) return null;
 
   return (
-    <div className="streak-container mb-6 p-4 bg-zinc-900 rounded-xl shadow-lg">
-      <h4 className="text-lg font-semibold mb-2 text-white">📅 Booking Streak</h4>
-      
+    <div className="streak-container mb-6 p-4 bg-zinc-900 rounded-xl shadow-md">
+      <h4 className="text-lg font-semibold mb-2 text-white">🔥 Weekly Booking Streak</h4>
+
       <div className="flex justify-between gap-1 mb-2">
         {streakData.days.map((hasBooking, index) => (
           <div
             key={index}
             className={`flex-1 h-3 rounded-sm ${hasBooking ? 'bg-green-500' : 'bg-gray-600'}`}
-            title={hasBooking ? 'Booked' : 'Not booked'}
           />
         ))}
       </div>
 
-      <div className="text-center mb-1">
-        {streakData.currentStreak === 7 ? (
-          <p className="text-green-400 font-semibold">🔥 7-Day Streak Achieved!</p>
-        ) : streakData.currentStreak > 0 ? (
-          <p className="text-white">You're on a {streakData.currentStreak}-day streak!</p>
+      <div className="text-center text-white mb-1">
+        {streakData.streakCount > 0 ? (
+          <p>
+            🏆 You’ve maintained your streak for{' '}
+            <span className="font-bold text-green-400">{streakData.streakCount}</span>{' '}
+            {streakData.streakCount === 1 ? 'week' : 'weeks'} in a row!
+          </p>
         ) : (
-          <p className="text-gray-400">Start your streak today!</p>
+          <p className="text-gray-400">Start your booking streak today!</p>
         )}
       </div>
 
       <p className="text-xs text-gray-400 text-center">
-        Don't lose your streak! 1-week streak = 1 slot booking every day 🔒
+        Keep the streak alive! ✅ Just 1 slot per week keeps your streak going.
       </p>
     </div>
   );
