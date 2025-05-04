@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -148,10 +147,11 @@ export const useChallengeMode = () => {
         .select('*, user_profile:profiles(full_name, email)')
         .eq('team_id', teamId)
         .eq('status', 'pending');
-        
+      
       if (error) throw error;
       
-      return requests as TeamJoinRequest[];
+      // Explicitly cast the data to the correct type
+      return (requests || []) as unknown as TeamJoinRequest[];
     } catch (err: any) {
       console.error('Error fetching team join requests:', err);
       return [];

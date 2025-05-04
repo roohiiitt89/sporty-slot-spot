@@ -8,6 +8,13 @@ import { format } from 'date-fns';
 import SportDisplayName from './SportDisplayName';
 import { Button } from '@/components/ui/button';
 
+// Declare Razorpay types based on their SDK
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
+
 interface BookSlotModalProps {
   onClose: () => void;
   venueId?: string;
@@ -62,12 +69,14 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     sports: false,
     courts: false,
     availability: false,
-    booking: false
+    booking: false,
+    payment: false
   });
   const [courtRate, setCourtRate] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [bookingInProgress, setBookingInProgress] = useState(false);
+  const [razorpayOrderId, setRazorpayOrderId] = useState('');
 
   useEffect(() => {
     // Check if user is logged in, if not redirect to login
@@ -113,6 +122,26 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       supabase.removeChannel(bookingChannel);
     };
   }, [venueId, user, navigate, onClose]);
+
+  // Dynamic Razorpay script loading
+  useEffect(() => {
+    const loadRazorpayScript = () => {
+      return new Promise((resolve) => {
+        const script = document.createElement('script');
+        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+        script.onload = () => {
+          resolve(true);
+        };
+        script.onerror = () => {
+          resolve(false);
+        };
+        document.body.appendChild(script);
+      });
+    };
+
+    // Load Razorpay script
+    loadRazorpayScript();
+  }, []);
 
   useEffect(() => {
     if (selectedVenue) {
@@ -474,7 +503,99 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     setCurrentStep(currentStep - 1);
   };
 
-  const handleBooking = async () => {
+  const createRazorpayOrder = async () => {
+    setLoading(prev => ({ ...prev, payment: true }));
+    try {
+      const totalAmount = calculateTotalPrice();
+      const receipt = `booking_${Date.now()}`;
+      
+      const response = await supabase.functions.invoke('create-razorpay-order', {
+        body: {
+          amount: totalAmount,
+          receipt: receipt,
+          notes: {
+            court_id: selectedCourt,
+            date: selectedDate,
+            slots: selectedSlots.join(', '),
+          }
+        }
+      });
+      
+      if (response.error) {
+        throw new Error(response.error);
+      }
+      
+      return response.data;
+    } catch (error) {
+      console.error('Error creating Razorpay order:', error);
+      toast({
+        title: "Payment Error",
+        description: "Could not initialize payment. Please try again.",
+        variant: "destructive",
+      });
+      return null;
+    } finally {
+      setLoading(prev => ({ ...prev, payment: false }));
+    }
+  };
+
+  const handlePayment = async () => {
+    if (!user || !selectedCourt || !selectedDate || selectedSlots.length === 0) {
+      toast({
+        title: "Missing information",
+        description: "Please complete all booking details.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      // Create Razorpay order
+      const orderData = await createRazorpayOrder();
+      if (!orderData) return;
+      
+      const { order, key_id } = orderData;
+      
+      // Initialize Razorpay options
+      const options = {
+        key: key_id, 
+        amount: order.amount,
+        currency: order.currency,
+        name: venues.find(v => v.id === selectedVenue)?.name || "Sports Venue",
+        description: `Court Booking for ${selectedDate}`,
+        order_id: order.id,
+        prefill: {
+          name: name,
+          email: user.email,
+          contact: phone,
+        },
+        notes: {
+          address: "Sports Venue Address"
+        },
+        theme: {
+          color: "#10b981"
+        },
+        handler: function(response: any) {
+          // On successful payment, call the booking function
+          handleBooking(response.razorpay_payment_id, response.razorpay_order_id);
+        }
+      };
+      
+      // Open Razorpay checkout
+      const razorpayInstance = new window.Razorpay(options);
+      razorpayInstance.open();
+      
+    } catch (error) {
+      console.error("Payment initialization error:", error);
+      toast({
+        title: "Payment Error",
+        description: "Failed to initialize payment. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleBooking = async (paymentId: string, orderId: string) => {
     if (!selectedCourt || !selectedDate || selectedSlots.length === 0) {
       toast({
         title: "Missing information",
@@ -573,7 +694,9 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
             p_booking_date: selectedDate,
             p_start_time: startTime,
             p_end_time: endTime,
-            p_total_price: blockPrice
+            p_total_price: blockPrice,
+            p_payment_reference: paymentId,
+            p_payment_status: 'completed'
           });
           
           if (error) {
@@ -902,6 +1025,18 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
                 {phone && <p><span className="font-medium">Phone:</span> {phone}</p>}
                 <p className="text-sm text-gray-600">You're signed in. Your booking will be linked to your account.</p>
               </div>
+
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
+                <h4 className="text-sm font-medium text-blue-800 flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Payment Information
+                </h4>
+                <p className="mt-2 text-sm text-blue-700">
+                  You'll be redirected to Razorpay's secure payment gateway to complete your booking payment.
+                </p>
+              </div>
             </div>
           </div>
         )}
@@ -931,12 +1066,12 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
             </Button>
           ) : (
             <Button
-              onClick={handleBooking}
-              disabled={isSubmitting || bookingInProgress || loading.booking}
+              onClick={handlePayment}
+              disabled={isSubmitting || bookingInProgress || loading.booking || loading.payment}
               variant="default"
               className="py-3 px-6 bg-sport-green text-white rounded-md hover:bg-sport-green-dark transition-colors flex items-center font-medium"
             >
-              {loading.booking ? (
+              {loading.booking || loading.payment ? (
                 <>
                   <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -945,7 +1080,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
                   Processing...
                 </>
               ) : (
-                'Book Now'
+                'Pay & Book Now'
               )}
             </Button>
           )}
