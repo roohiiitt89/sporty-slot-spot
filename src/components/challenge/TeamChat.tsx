@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -53,14 +54,7 @@ export const TeamChat = ({ teamId }: TeamChatProps) => {
             // Get user profile info
             const { data: profileData } = await supabase
               .from('profiles')
-              .select('full_name')
-              .eq('id', message.user_id)
-              .single();
-              
-            // Get player profile info  
-            const { data: playerProfileData } = await supabase
-              .from('player_profiles')
-              .select('profile_name')
+              .select('full_name, profile_name')
               .eq('id', message.user_id)
               .single();
               
@@ -68,7 +62,7 @@ export const TeamChat = ({ teamId }: TeamChatProps) => {
               ...message,
               sender: {
                 full_name: profileData?.full_name || null,
-                profile_name: playerProfileData?.profile_name || null
+                profile_name: profileData?.profile_name || null
               }
             } as TeamChatType;
           })
@@ -106,14 +100,7 @@ export const TeamChat = ({ teamId }: TeamChatProps) => {
             // Get user profile info
             const { data: profileData } = await supabase
               .from('profiles')
-              .select('full_name')
-              .eq('id', messageData.user_id)
-              .single();
-              
-            // Get player profile info  
-            const { data: playerProfileData } = await supabase
-              .from('player_profiles')
-              .select('profile_name')
+              .select('full_name, profile_name')
               .eq('id', messageData.user_id)
               .single();
               
@@ -121,7 +108,7 @@ export const TeamChat = ({ teamId }: TeamChatProps) => {
               ...messageData,
               sender: {
                 full_name: profileData?.full_name || null,
-                profile_name: playerProfileData?.profile_name || null
+                profile_name: profileData?.profile_name || null
               }
             };
             

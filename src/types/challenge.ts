@@ -106,3 +106,8 @@ export interface TeamChat {
     profile_name: string | null;
   };
 }
+
+export interface Challenge extends TeamChallenge {
+  challenger_team: Team;
+  opponent_team: Team;
+}

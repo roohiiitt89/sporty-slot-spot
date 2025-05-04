@@ -32,21 +32,8 @@ import {
   Activity
 } from 'lucide-react'; // Using only valid Lucide icons
 import { supabase } from '@/integrations/supabase/client';
-import { Team } from '@/types/challenge';
+import { Team, Challenge } from '@/types/challenge';
 import { motion } from 'framer-motion';
-
-interface Challenge {
-  id: string;
-  status: string;
-  booking_date: string;
-  start_time: string;
-  end_time: string;
-  challenger_team: Team;
-  opponent_team: Team;
-}
-
-
-
 
 const sports = [
   { id: 1, name: 'Box Football', icon: '⚽', color: 'text-green-500' },
@@ -66,7 +53,7 @@ const skillCategories = [
 const ChallengeDashboard = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { error, loading, fetchPlayerProfile, userTeam } = useChallengeMode();
+  const { error, loading, fetchProfile, userTeam } = useChallengeMode();
   const navigate = useNavigate();
   const [upcomingChallenges, setUpcomingChallenges] = useState<Challenge[]>([]);
   const [topTeams, setTopTeams] = useState<Team[]>([]);
@@ -121,7 +108,7 @@ const ChallengeDashboard = () => {
         .limit(3);
 
       if (error) throw error;
-      setUpcomingChallenges(data || []);
+      setUpcomingChallenges(data as unknown as Challenge[]);
     } catch (error) {
       console.error('Error fetching challenges:', error);
       toast({
@@ -135,7 +122,7 @@ const ChallengeDashboard = () => {
   };
 
   const handleRefresh = () => {
-    fetchPlayerProfile();
+    fetchProfile();
     if (userTeam) {
       fetchUpcomingChallenges(userTeam.id);
     }

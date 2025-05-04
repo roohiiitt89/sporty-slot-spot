@@ -2,19 +2,19 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { profile, Team, TeamMember, TeamJoinRequest } from '@/types/challenge';
+import { Profile, Team, TeamMember, TeamJoinRequest } from '@/types/challenge';
 
 export const useChallengeMode = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [profile, setprofile] = useState<profile | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [userTeam, setUserTeam] = useState<Team | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [topTeams, setTopTeams] = useState<Team[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [joinRequests, setJoinRequests] = useState<TeamJoinRequest[]>([]);
 
-  const fetchprofile = async () => {
+  const fetchProfile = async () => {
     if (!user) return null;
     setError(null);
     
@@ -31,10 +31,10 @@ export const useChallengeMode = () => {
         return null;
       }
 
-      setprofile(data);
+      setProfile(data);
       return data;
     } catch (error) {
-      console.error('Error in fetchprofile:', error);
+      console.error('Error in fetchProfile:', error);
       setError('An unexpected error occurred');
       return null;
     }
@@ -367,7 +367,7 @@ export const useChallengeMode = () => {
       }
       
       // Refresh the player profile
-      await fetchprofile();
+      await fetchProfile();
       return true;
     } catch (error) {
       console.error('Error in updateProfileName:', error);
@@ -380,7 +380,7 @@ export const useChallengeMode = () => {
     if (user) {
       const loadData = async () => {
         setLoading(true);
-        await fetchprofile();
+        await fetchProfile();
         const team = await fetchUserTeam();
         if (team) {
           await fetchTeamMembers(team.id);
@@ -401,7 +401,7 @@ export const useChallengeMode = () => {
     teamMembers,
     topTeams,
     joinRequests,
-    fetchprofile,
+    fetchProfile,
     fetchUserTeam,
     fetchTeamMembers,
     fetchTopTeams,
