@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -79,14 +80,15 @@ export const useChallengeMode = () => {
         // Fetch team members
         let { data: members, error: membersError } = await supabase
           .from('team_members')
-          .select('*, profiles(full_name, email)')
+          .select('*, profiles:profiles(full_name, email)')
           .eq('team_id', teamMember.team_id);
 
         if (membersError) {
           throw membersError;
         }
 
-        setTeamMembers(members);
+        // Type casting to ensure the data matches expected structure
+        setTeamMembers(members as unknown as TeamMember[]);
       } else {
         setUserTeam(null);
         setTeamMembers([]);
@@ -95,7 +97,7 @@ export const useChallengeMode = () => {
       // Fetch pending join requests for the user
       let { data: requests, error: requestsError } = await supabase
         .from('team_join_requests')
-        .select('*, team(name, slug, logo_url)')
+        .select('*, team:teams(name, slug, logo_url)')
         .eq('user_id', user.id)
         .eq('status', 'pending');
 
@@ -103,20 +105,12 @@ export const useChallengeMode = () => {
         throw requestsError;
       }
 
-      setJoinRequests(requests);
+      // Type casting to ensure the data matches expected structure
+      setJoinRequests(requests as unknown as TeamJoinRequest[]);
 
       // Fetch top teams
-      let { data: topTeamsData, error: topTeamsError } = await supabase
-        .from('teams')
-        .select('*')
-        .order('xp', { ascending: false })
-        .limit(5);
-
-      if (topTeamsError) {
-        throw topTeamsError;
-      }
-
-      setTopTeams(topTeamsData);
+      await fetchTopTeams(5);
+      
     } catch (err: any) {
       setError(err.message || 'An unexpected error occurred.');
       console.error('Error fetching data:', err);
@@ -125,11 +119,50 @@ export const useChallengeMode = () => {
     }
   }, [user]);
 
+  // Add the fetchTopTeams function
+  const fetchTopTeams = async (limit: number = 5) => {
+    try {
+      let { data: topTeamsData, error: topTeamsError } = await supabase
+        .from('teams')
+        .select('*')
+        .order('xp', { ascending: false })
+        .limit(limit);
+
+      if (topTeamsError) {
+        throw topTeamsError;
+      }
+
+      setTopTeams(topTeamsData);
+      return topTeamsData;
+    } catch (err: any) {
+      console.error('Error fetching top teams:', err);
+      return [];
+    }
+  };
+
+  // Add fetchTeamJoinRequests function
+  const fetchTeamJoinRequests = async (teamId: string) => {
+    try {
+      const { data: requests, error } = await supabase
+        .from('team_join_requests')
+        .select('*, user_profile:profiles(full_name, email)')
+        .eq('team_id', teamId)
+        .eq('status', 'pending');
+        
+      if (error) throw error;
+      
+      return requests as TeamJoinRequest[];
+    } catch (err: any) {
+      console.error('Error fetching team join requests:', err);
+      return [];
+    }
+  };
+
   useEffect(() => {
     fetchProfile();
   }, [fetchProfile]);
 
-  const createTeam = async (teamName: string, teamLogoUrl: string, teamDescription: string) => {
+  const createTeam = async (teamName: string, teamLogoUrl: string = '', teamDescription: string = '') => {
     setIsCreatingTeam(true);
     try {
       if (!user) {
@@ -358,6 +391,8 @@ export const useChallengeMode = () => {
     isCreatingTeam,
     isUpdatingProfileName,
     fetchProfile,
+    fetchTopTeams,
+    fetchTeamJoinRequests,
     createTeam,
     requestToJoinTeam,
     leaveTeam,

@@ -9,8 +9,9 @@ export const LeaderboardPreview = () => {
   const { topTeams, fetchTopTeams } = useChallengeMode();
   
   useEffect(() => {
+    // Fetch top teams when component mounts
     fetchTopTeams(5);
-  }, []);
+  }, [fetchTopTeams]);
 
   return (
     <div className="py-8">

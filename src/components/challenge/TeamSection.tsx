@@ -32,7 +32,8 @@ export const TeamSection = () => {
     setSubmitting(true);
     
     try {
-      const result = await createTeam(teamName, teamDescription || undefined);
+      // Pass all three parameters to createTeam
+      const result = await createTeam(teamName, '', teamDescription);
       if (result) {
         toast({
           title: "Team Created!",
