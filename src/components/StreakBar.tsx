@@ -40,7 +40,8 @@ export const StreakBar: React.FC = () => {
         if (error) throw error;
 
         // Create an array of unique booking dates
-        const bookingDates = Array.from(new Set(data?.map(booking => booking.booking_date)) || []);
+        const bookingDates = Array.from(new Set((data || []).map(booking => booking.booking_date)));
+
 
         // Create streak data for the last 7 days (including today)
         const days: boolean[] = [];
