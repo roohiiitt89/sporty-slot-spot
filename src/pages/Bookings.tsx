@@ -44,7 +44,7 @@ const Bookings: React.FC = () => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const todayStr = today.toISOString().split('T')[0];
-
+      
       const { data: upcomingData, error: upcomingError } = await supabase
         .from('bookings')
         .select(`
@@ -58,15 +58,16 @@ const Bookings: React.FC = () => {
             name,
             venue:venues (name, location),
             sport:sports (name)
+          )
         `)
         .eq('user_id', user?.id)
         .gte('booking_date', todayStr)
         .in('status', ['pending', 'confirmed'])
-        .order('booking_date', { ascending: true })
+        .order('booking_date', { ascending: false })
         .order('start_time', { ascending: true });
-
+      
       if (upcomingError) throw upcomingError;
-
+      
       const { data: pastData, error: pastError } = await supabase
         .from('bookings')
         .select(`
@@ -80,15 +81,16 @@ const Bookings: React.FC = () => {
             name,
             venue:venues (name, location),
             sport:sports (name)
+          )
         `)
         .eq('user_id', user?.id)
         .or(`booking_date.lt.${todayStr},status.eq.cancelled,status.eq.completed`)
         .order('booking_date', { ascending: false })
         .order('start_time', { ascending: true })
-        .limit(10);
-
+        .limit(5);
+      
       if (pastError) throw pastError;
-
+      
       setUpcomingBookings(upcomingData || []);
       setPastBookings(pastData || []);
     } catch (error) {
@@ -119,8 +121,11 @@ const Bookings: React.FC = () => {
   };
 
   const formatDate = (dateStr: string) => {
-    const options: Intl.DateTimeFormatOptions = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
-    return new Date(dateStr).toLocaleDateString(undefined, options);
+    return new Date(dateStr).toLocaleDateString('en-US', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
   };
 
   const formatTime = (timeStr: string) => {
@@ -129,13 +134,6 @@ const Bookings: React.FC = () => {
     const amPm = hour >= 12 ? 'PM' : 'AM';
     const hour12 = hour % 12 || 12;
     return `${hour12}:${minutes} ${amPm}`;
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
   };
 
   return (
@@ -223,7 +221,7 @@ const Bookings: React.FC = () => {
                                 </span>
                               </div>
                               <div className="flex items-center text-gray-700">
-                                <span className="font-medium">{formatCurrency(booking.total_price)}</span>
+                                <span className="font-medium">₹{booking.total_price.toFixed(2)}</span>
                               </div>
                             </div>
 
@@ -231,14 +229,6 @@ const Bookings: React.FC = () => {
                               <MapPin className="w-4 h-4 mr-2 text-gray-400" />
                               <span>{booking.court.venue.location}</span>
                             </div>
-                          </div>
-                          <div className="bg-gray-50 px-6 py-3 flex justify-end border-t border-gray-100">
-                            <button
-                              onClick={() => navigate(`/booking/${booking.id}`)}
-                              className="text-indigo-600 hover:text-indigo-800 text-sm font-medium flex items-center"
-                            >
-                              View details <ChevronRight className="w-4 h-4 ml-1" />
-                            </button>
                           </div>
                         </div>
                       ))}
@@ -257,45 +247,44 @@ const Bookings: React.FC = () => {
                       <p className="text-gray-500">No past bookings found</p>
                     </div>
                   ) : (
-                    <div className="space-y-4">
-                      {pastBookings.map((booking) => (
-                        <div 
-                          key={booking.id}
-                          className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-100"
-                        >
-                          <div className="p-6">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                              <div>
-                                <h3 className="text-lg font-medium text-gray-900">
-                                  {booking.court.venue.name} - {booking.court.name}
-                                </h3>
-                                <p className="text-sm text-gray-500 flex items-center mt-1">
-                                  <span className="capitalize">{booking.court.sport.name.toLowerCase()}</span>
-                                </p>
-                              </div>
-                              <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>
-                                {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-                              </span>
-                            </div>
-
-                            <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-                              <div className="flex items-center text-gray-700">
-                                <Calendar className="w-4 h-4 mr-2 text-gray-400" />
-                                <span>{formatDate(booking.booking_date)}</span>
-                              </div>
-                              <div className="flex items-center text-gray-700">
-                                <Clock className="w-4 h-4 mr-2 text-gray-400" />
-                                <span>
+                    <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="text-left py-3 px-4 font-medium text-gray-700">Date</th>
+                              <th className="text-left py-3 px-4 font-medium text-gray-700">Venue & Court</th>
+                              <th className="text-left py-3 px-4 font-medium text-gray-700">Time</th>
+                              <th className="text-left py-3 px-4 font-medium text-gray-700">Price</th>
+                              <th className="text-left py-3 px-4 font-medium text-gray-700">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-200">
+                            {pastBookings.map((booking) => (
+                              <tr key={booking.id} className="hover:bg-gray-50">
+                                <td className="py-3 px-4">
+                                  {formatDate(booking.booking_date)}
+                                </td>
+                                <td className="py-3 px-4">
+                                  <p className="font-medium">{booking.court.venue.name}</p>
+                                  <p className="text-sm text-gray-500">{booking.court.name}</p>
+                                </td>
+                                <td className="py-3 px-4">
                                   {formatTime(booking.start_time)} - {formatTime(booking.end_time)}
-                                </span>
-                              </div>
-                              <div className="flex items-center text-gray-700">
-                                <span className="font-medium">{formatCurrency(booking.total_price)}</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                                </td>
+                                <td className="py-3 px-4">
+                                  ₹{booking.total_price.toFixed(2)}
+                                </td>
+                                <td className="py-3 px-4">
+                                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(booking.status)}`}>
+                                    {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   )}
                 </section>
