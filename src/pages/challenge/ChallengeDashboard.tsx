@@ -155,7 +155,7 @@ const ChallengeDashboard = () => {
             Challenge Mode Coming Soon!
           </h2>
           <p className="text-gray-300 mb-6 text-lg">
-            We're building an exciting competitive experience! Stay tuned for the beta launch.
+            Our most anticipated feature – Challenge Mode – is under development! Compete with others, unlock achievements, and win real rewards. We're working hard to bring it to you soon
           </p>
           <button
             onClick={() => navigate('/')}
