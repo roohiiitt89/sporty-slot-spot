@@ -99,14 +99,16 @@ export const StreakBar: React.FC = () => {
     <div className="streak-container mb-6 p-4 bg-zinc-900 rounded-xl shadow-md">
       <h4 className="text-lg font-semibold mb-2 text-white">🔥 Weekly Booking Streak</h4>
 
-      <div className="flex justify-between gap-1 mb-2">
-        {streakData.days.map((hasBooking, index) => (
-          <div
-            key={index}
-            className={`flex-1 h-3 rounded-sm ${hasBooking ? 'bg-green-500' : 'bg-gray-600'}`}
-          />
-        ))}
-      </div>
+      <div className="flex flex-row gap-1 mb-2">
+  {streakData.days.map((hasBooking, index) => (
+    <div key={index} className="flex-1">
+      <div
+        className={`h-3 rounded-sm ${hasBooking ? 'bg-green-500' : 'bg-gray-600'}`}
+      />
+    </div>
+  ))}
+</div>
+
 
       <div className="text-center text-white mb-1">
         {streakData.streakCount > 0 ? (
