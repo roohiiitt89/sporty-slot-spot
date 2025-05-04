@@ -212,7 +212,7 @@ const Index: React.FC = () => {
         </div>
       </section>
 
-      <section 
+     <section 
   id="venues" 
   ref={venuesRef}
   className="py-16 bg-gradient-to-b from-black/90 to-navy-dark"
@@ -227,7 +227,7 @@ const Index: React.FC = () => {
         View All <ChevronRight className="ml-1 w-5 h-5 group-hover:translate-x-1 transition-transform" />
       </Link>
     </div>
-
+    
     <div className={`${visibleSections.venues ? 'animate-reveal' : 'opacity-0'}`}>
       {loading.venues ? (
         <div className="flex justify-center py-12">
@@ -239,7 +239,7 @@ const Index: React.FC = () => {
             {venues.map((venue, index) => (
               <CarouselItem key={venue.id} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/4">
                 <div 
-                  className="venue-card group hover-3d transform transition-transform duration-300"
+                  className="venue-card group hover-3d"
                   style={{ animationDelay: `${0.1 * (index + 1)}s` }}
                 >
                   <div className="h-56 overflow-hidden relative">
@@ -249,28 +249,22 @@ const Index: React.FC = () => {
                       className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-110"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-0 group-hover:opacity-70 transition-opacity"></div>
-                    <span className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center text-sm font-semibold text-navy-dark">
-                      <Star className="h-4 w-4 text-yellow-500 fill-current mr-1" />
-                      {venue.rating ? venue.rating.toFixed(1) : '4.5'}
-                    </span>
                   </div>
-
                   <div className="p-4 bg-navy-light text-white relative">
                     <div className="flex justify-between items-start">
                       <h3 className="text-xl font-bold group-hover:text-indigo-light transition-colors">
                         {venue.name}
                       </h3>
                     </div>
-
                     <div className="flex items-center mt-2 text-gray-300">
+                      {/* <MapPin className="w-4 h-4 mr-1" /> */}
                       <span>{venue.location}</span>
                     </div>
-
                     <button 
                       onClick={() => navigate(`/venues/${venue.id}`)}
                       className="mt-4 w-full py-2 bg-indigo text-white rounded-md font-semibold hover:bg-indigo-dark transition-colors transform transition-transform group-hover:scale-105"
                     >
-                      View Details
+                      Details
                     </button>
                   </div>
                 </div>
