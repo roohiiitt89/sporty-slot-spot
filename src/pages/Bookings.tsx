@@ -157,7 +157,7 @@ const Bookings: React.FC = () => {
                 <h1 className="text-3xl font-bold text-gray-900">My Bookings</h1>
                 <button
                   onClick={() => navigate('/venues')}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors flex items-center"
+                  className="px-4 py-2 bg-green-700 text-white rounded-md hover:bg-green-800 transition-colors flex items-center"
                 >
                   <Calendar className="w-4 h-4 mr-2" />
                   Book New Slot
