@@ -1,33 +1,3 @@
-import { Lock } from 'lucide-react';
-
-const ChallengeDashboard = () => {
-  return (
-    <div className="relative min-h-screen">
-      {/* Blurred overlay that prevents interaction */}
-      <div className="absolute inset-0 bg-black/20 backdrop-blur-lg z-50 flex flex-col items-center justify-center">
-        <div className="text-center bg-black/70 p-8 rounded-xl border border-yellow-500/30 max-w-md mx-4">
-          <Lock className="mx-auto h-12 w-12 text-yellow-400 mb-4 animate-pulse" />
-          <h2 className="text-2xl font-bold text-white mb-2">
-            🚀 Challenge Mode Coming Soon!
-          </h2>
-          <p className="text-gray-300 mb-6">
-            We're building something epic! Compete with friends, earn rewards, and climb the leaderboard.
-          </p>
-          <div className="text-xs text-yellow-400">
-            Beta launch planned for Q4 2025
-          </div>
-        </div>
-      </div>
-
-      {/* Your actual challenge dashboard content - visible but blurred */}
-      
-
-
-
-
-
-
-
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { DarkThemeProvider } from '@/components/challenge/DarkThemeProvider';
@@ -40,8 +10,8 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/components/ui/use-toast';
-import { 
-  RefreshCcw, 
+import {
+  RefreshCcw,
   ChevronRight,
   Trophy,
   Users,
@@ -59,8 +29,9 @@ import {
   Gamepad2,
   Star,
   Award,
-  Activity
-} from 'lucide-react'; // Using only valid Lucide icons
+  Activity,
+  Lock // Added Lock icon
+} from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Team, Challenge } from '@/types/challenge';
 import { motion } from 'framer-motion';
@@ -80,15 +51,6 @@ const skillCategories = [
   { name: 'Teamwork', progress: 90 },
 ];
 
-      
-
-
-<div className="blur-lg pointer-events-none">
-
-
-  
-
-  
 const ChallengeDashboard = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -136,8 +98,7 @@ const ChallengeDashboard = () => {
     try {
       const { data, error } = await supabase
         .from('team_challenges')
-        .select(`
-          *,
+        .select(`*,
           challenger_team:challenger_team_id(*),
           opponent_team:opponent_team_id(*)
         `)
@@ -186,9 +147,30 @@ const ChallengeDashboard = () => {
 
   return (
     <DarkThemeProvider>
-      <div className="container mx-auto px-4 py-8">
-        <Button 
-          variant="ghost" 
+      {/* START OF COMING SOON OVERLAY - REMOVE THESE LINES TO WORK ON THE PAGE */}
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-lg">
+        <div className="text-center p-8 max-w-md">
+          <Lock className="mx-auto h-16 w-16 text-yellow-400 mb-6 animate-pulse" />
+          <h2 className="text-3xl font-bold text-white mb-4">
+            Challenge Mode Coming Soon!
+          </h2>
+          <p className="text-gray-300 mb-6 text-lg">
+            We're building an exciting competitive experience! Stay tuned for the beta launch.
+          </p>
+          <button
+            onClick={() => navigate('/')}
+            className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+          >
+            Back to Home
+          </button>
+        </div>
+      </div>
+      {/* END OF COMING SOON OVERLAY */}
+
+      {/* START OF ACTUAL CONTENT - REMOVE blur-lg AND pointer-events-none WHEN READY TO LAUNCH */}
+      <div className="container mx-auto px-4 py-8 blur-lg pointer-events-none">
+        <Button
+          variant="ghost"
           onClick={() => navigate('/')}
           className="mb-6 flex items-center gap-2 text-gray-300 hover:text-white"
         >
@@ -220,6 +202,7 @@ const ChallengeDashboard = () => {
             Prove your team's dominance in competitive battles. Challenge rivals, track your progress, and climb to the top!
           </motion.p>
         </header>
+        
         
         {error && (
           <Alert className="mb-6 bg-red-900/20 border-red-800 text-red-300">
