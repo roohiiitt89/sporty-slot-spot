@@ -20,15 +20,12 @@ export const StreakBar: React.FC = () => {
 
     const fetchStreakData = async () => {
       try {
-        // Get the current date and calculate the past 7 days
         const today = new Date();
         const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(today.getDate() - 6); // 6 days ago + today = 7 days
+        sevenDaysAgo.setDate(today.getDate() - 6);
 
-        // Format dates for query
         const formatDate = (date: Date) => date.toISOString().split('T')[0];
 
-        // Query to get bookings in the last 7 days
         const { data, error } = await supabase
           .from('bookings')
           .select('booking_date')
@@ -39,11 +36,10 @@ export const StreakBar: React.FC = () => {
 
         if (error) throw error;
 
-        // Create an array of unique booking dates
-        const bookingDates = Array.from(new Set((data || []).map(booking => booking.booking_date)));
+        const bookingDates = Array.from(
+          new Set((data || []).map(booking => booking.booking_date))
+        );
 
-
-        // Create streak data for the last 7 days (including today)
         const days: boolean[] = [];
         let currentStreak = 0;
         let checkingStreak = true;
@@ -56,16 +52,11 @@ export const StreakBar: React.FC = () => {
           const hasBooking = bookingDates.includes(dateStr);
           days.push(hasBooking);
 
-          // Calculate current streak (only if we're still checking)
           if (checkingStreak) {
             if (hasBooking) {
               currentStreak++;
             } else {
-              // If today is the last day and has no booking, don't break streak yet
-              if (i < 6 || !dateStr === formatDate(today)) {
-                checkingStreak = false;
-                currentStreak = 0;
-              }
+              checkingStreak = false;
             }
           }
         }
@@ -81,39 +72,35 @@ export const StreakBar: React.FC = () => {
     fetchStreakData();
   }, [user]);
 
-  if (!user) return null;
-
-  if (loading) {
-    return (
-      <div className="flex justify-center py-4">
-        <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-indigo"></div>
-      </div>
-    );
-  }
-
-  if (!streakData) return null;
+  if (!user || loading || !streakData) return null;
 
   return (
-    <div className="streak-container mb-6">
-      <h4 className="text-lg font-semibold mb-3 text-white">Booking Streak</h4>
-      <div className="flex justify-between gap-1">
+    <div className="streak-container mb-6 p-4 bg-zinc-900 rounded-xl shadow-lg">
+      <h4 className="text-lg font-semibold mb-2 text-white">📅 Booking Streak</h4>
+      
+      <div className="flex justify-between gap-1 mb-2">
         {streakData.days.map((hasBooking, index) => (
-          <div 
+          <div
             key={index}
-            className={`flex-1 h-3 rounded-sm ${hasBooking ? 'bg-green-500' : 'bg-gray-500'}`}
+            className={`flex-1 h-3 rounded-sm ${hasBooking ? 'bg-green-500' : 'bg-gray-600'}`}
             title={hasBooking ? 'Booked' : 'Not booked'}
           />
         ))}
       </div>
-      <div className="mt-2 text-center">
+
+      <div className="text-center mb-1">
         {streakData.currentStreak === 7 ? (
-          <p className="text-green-400 font-medium">🔥 7-Day Streak Achieved!</p>
+          <p className="text-green-400 font-semibold">🔥 7-Day Streak Achieved!</p>
         ) : streakData.currentStreak > 0 ? (
           <p className="text-white">You're on a {streakData.currentStreak}-day streak!</p>
         ) : (
-          <p className="text-gray-300">Start a booking streak!</p>
+          <p className="text-gray-400">Start your streak today!</p>
         )}
       </div>
+
+      <p className="text-xs text-gray-400 text-center">
+        Don't lose your streak! 1-week streak = 1 slot booking every day 🔒
+      </p>
     </div>
   );
 };
