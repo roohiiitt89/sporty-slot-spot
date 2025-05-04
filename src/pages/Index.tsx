@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Calendar, MapPin, Clock, User, ChevronRight, Activity, Star } from 'lucide-react';
@@ -14,6 +13,7 @@ import {
   CarouselNext, 
   CarouselPrevious 
 } from "@/components/ui/carousel";
+import { StreakBar } from '@/components/StreakBar';
 
 interface Venue {
   id: string;
@@ -207,91 +207,84 @@ const Index: React.FC = () => {
             </Link>
           </div>
           
-          {/* EnterChallengeButton placed below the main CTA buttons */}
           <EnterChallengeButton />
         </div>
       </section>
 
-     <section 
-  id="venues" 
-  ref={venuesRef}
-  className="py-16 bg-gradient-to-b from-black/90 to-navy-dark"
->
-  <div className="container mx-auto px-4">
-    <div className={`flex justify-between items-center mb-10 ${visibleSections.venues ? 'animate-reveal' : 'opacity-0'}`}>
-      <h2 className="section-title text-white relative">
-        Featured Venues
-        <span className="absolute -bottom-2 left-0 w-20 h-1 bg-indigo-light"></span>
-      </h2>
-      <Link to="/venues" className="text-indigo-light font-semibold flex items-center group hover:text-indigo-dark transition-colors">
-        View All <ChevronRight className="ml-1 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-      </Link>
-    </div>
-    
-    <div className={`${visibleSections.venues ? 'animate-reveal' : 'opacity-0'}`}>
-      {loading.venues ? (
-        <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo"></div>
-        </div>
-      ) : venues.length > 0 ? (
-        <Carousel className="w-full">
-          <CarouselContent className="-ml-2 md:-ml-4">
-            {venues.map((venue, index) => (
-              <CarouselItem key={venue.id} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/4">
-                <div 
-                  className="venue-card group cursor-pointer overflow-hidden rounded-xl"
-                  style={{ animationDelay: `${0.1 * (index + 1)}s` }}
-                  onClick={() => navigate(`/venues/${venue.id}`)}
-                >
-                  <div className="h-56 overflow-hidden relative">
-                    <img 
-                      src={venue.image_url || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000'} 
-                      alt={venue.name} 
-                      className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-110"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-30 group-hover:opacity-70 transition-opacity"></div>
-                    
-                    {/* New overlay with "Details" link */}
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
-                   <div className="bg-indigo/80 backdrop-blur-sm p-3 rounded-full transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">
-                    <Link to={`/venues/${venue.id}`} className="text-white font-semibold">
-                     Details
-                   </Link>
-                  </div>
-                   </div>
-
-                  </div>
-                  <div className="p-4 bg-navy-light text-white relative overflow-hidden group-hover:bg-indigo transition-colors duration-500">
-                    <h3 className="text-xl font-bold group-hover:text-white transition-colors">
-                      {venue.name}
-                    </h3>
-                    <p className="text-gray-300 mt-2 line-clamp-2">{venue.location || 'Find a venue near you'}</p>
-                    
-                    {/* Animated underline effect */}
-                    <div className="absolute bottom-0 left-0 w-full h-1 bg-indigo transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-500"></div>
-                    
-                    {/* Animated card corner flourish */}
-                    <div className="absolute -bottom-12 -right-12 w-24 h-24 bg-indigo-light rounded-full opacity-0 group-hover:opacity-20 transform translate-x-full translate-y-full group-hover:translate-x-0 group-hover:translate-y-0 transition-all duration-700"></div>
-                  </div>
-                </div>
-              </CarouselItem>
-            ))}
-          </CarouselContent>
-          <div className="flex justify-end mt-6 gap-2">
-            <CarouselPrevious className="relative inset-0 translate-y-0 bg-navy-light hover:bg-indigo hover:text-white text-white" />
-            <CarouselNext className="relative inset-0 translate-y-0 bg-navy-light hover:bg-indigo hover:text-white text-white" />
+      <section 
+        id="venues" 
+        ref={venuesRef}
+        className="py-16 bg-gradient-to-b from-black/90 to-navy-dark"
+      >
+        <div className="container mx-auto px-4">
+          <div className={`flex justify-between items-center mb-10 ${visibleSections.venues ? 'animate-reveal' : 'opacity-0'}`}>
+            <h2 className="section-title text-white relative">
+              Featured Venues
+              <span className="absolute -bottom-2 left-0 w-20 h-1 bg-indigo-light"></span>
+            </h2>
+            <Link to="/venues" className="text-indigo-light font-semibold flex items-center group hover:text-indigo-dark transition-colors">
+              View All <ChevronRight className="ml-1 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </Link>
           </div>
-        </Carousel>
-      ) : (
-        <div className="text-center py-12">
-          <p className="text-white text-lg">No venues available at the moment. Please check back later.</p>
+          
+          <div className={`${visibleSections.venues ? 'animate-reveal' : 'opacity-0'}`}>
+            {loading.venues ? (
+              <div className="flex justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo"></div>
+              </div>
+            ) : venues.length > 0 ? (
+              <Carousel className="w-full">
+                <CarouselContent className="-ml-2 md:-ml-4">
+                  {venues.map((venue, index) => (
+                    <CarouselItem key={venue.id} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/4">
+                      <div 
+                        className="venue-card group cursor-pointer overflow-hidden rounded-xl"
+                        style={{ animationDelay: `${0.1 * (index + 1)}s` }}
+                        onClick={() => navigate(`/venues/${venue.id}`)}
+                      >
+                        <div className="h-56 overflow-hidden relative">
+                          <img 
+                            src={venue.image_url || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000'} 
+                            alt={venue.name} 
+                            className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-110"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-30 group-hover:opacity-70 transition-opacity"></div>
+                          
+                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
+                            <div className="bg-indigo/80 backdrop-blur-sm p-3 rounded-full transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">
+                              <Link to={`/venues/${venue.id}`} className="text-white font-semibold">
+                                Details
+                              </Link>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="p-4 bg-navy-light text-white relative overflow-hidden group-hover:bg-indigo transition-colors duration-500">
+                          <h3 className="text-xl font-bold group-hover:text-white transition-colors">
+                            {venue.name}
+                          </h3>
+                          <p className="text-gray-300 mt-2 line-clamp-2">{venue.location || 'Find a venue near you'}</p>
+                          
+                          <div className="absolute bottom-0 left-0 w-full h-1 bg-indigo transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-500"></div>
+                          
+                          <div className="absolute -bottom-12 -right-12 w-24 h-24 bg-indigo-light rounded-full opacity-0 group-hover:opacity-20 transform translate-x-full translate-y-full group-hover:translate-x-0 group-hover:translate-y-0 transition-all duration-700"></div>
+                        </div>
+                      </div>
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+                <div className="flex justify-end mt-6 gap-2">
+                  <CarouselPrevious className="relative inset-0 translate-y-0 bg-navy-light hover:bg-indigo hover:text-white text-white" />
+                  <CarouselNext className="relative inset-0 translate-y-0 bg-navy-light hover:bg-indigo hover:text-white text-white" />
+                </div>
+              </Carousel>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-white text-lg">No venues available at the moment. Please check back later.</p>
+              </div>
+            )}
+          </div>
         </div>
-      )}
-    </div>
-  </div>
-</section>
-
-
+      </section>
 
       <section 
         id="sports" 
@@ -332,7 +325,6 @@ const Index: React.FC = () => {
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-30 group-hover:opacity-70 transition-opacity"></div>
                           
-                          {/* New overlay with icon and hover effect */}
                           <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
                             <div className="bg-indigo/80 backdrop-blur-sm p-3 rounded-full transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">
                               <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -348,10 +340,8 @@ const Index: React.FC = () => {
                           </h3>
                           <p className="text-gray-300 mt-2 line-clamp-2">{sport.description || 'Find venues for this sport'}</p>
                           
-                          {/* Animated underline effect */}
                           <div className="absolute bottom-0 left-0 w-full h-1 bg-indigo transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-500"></div>
                           
-                          {/* Animated card corner flourish */}
                           <div className="absolute -bottom-12 -right-12 w-24 h-24 bg-indigo-light rounded-full opacity-0 group-hover:opacity-20 transform translate-x-full translate-y-full group-hover:translate-x-0 group-hover:translate-y-0 transition-all duration-700"></div>
                         </div>
                       </div>
@@ -396,17 +386,14 @@ const Index: React.FC = () => {
                 style={{ animationDelay: `${0.15 * (index + 1)}s` }}
               >
                 <div className="overflow-hidden rounded-lg bg-navy relative h-80">
-                  {/* Black and white filtered image */}
                   <img 
                     src={benefit.image} 
                     alt={benefit.title} 
                     className="w-full h-full object-cover filter grayscale group-hover:grayscale-0 transition-all duration-500"
                   />
                   
-                  {/* Info Overlay */}
                   <div className="absolute inset-0 bg-gradient-to-t from-navy to-transparent opacity-70"></div>
                   
-                  {/* Tech overlay - these are the circles and tech lines */}
                   <div className="absolute inset-0">
                     <svg className="w-full h-full opacity-0 group-hover:opacity-40 transition-opacity duration-700" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
                       <circle cx="20" cy="20" r="2" fill="#4CAF50" className="animate-pulse-light" />
@@ -420,7 +407,6 @@ const Index: React.FC = () => {
                     </svg>
                   </div>
                   
-                  {/* Content */}
                   <div className="absolute inset-0 p-6 flex flex-col justify-end">
                     <h3 className="text-xl font-bold text-white mb-2">{benefit.title}</h3>
                     <p className="text-gray-300 opacity-0 group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">{benefit.description}</p>
@@ -457,6 +443,9 @@ const Index: React.FC = () => {
                   <Activity className="w-8 h-8 text-indigo-light mr-3" />
                   <h3 className="text-2xl font-bold text-white">Recommended For You</h3>
                 </div>
+                
+                {/* Added StreakBar component here */}
+                <StreakBar />
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="flex flex-col items-center text-center p-4 rounded-lg border border-indigo-light hover:bg-indigo hover:text-white transition-all">
