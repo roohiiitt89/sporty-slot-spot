@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
-import { Calendar, Clock, MapPin, ChevronRight } from 'lucide-react';
+import { Calendar, Clock, MapPin, ChevronRight, ArrowLeft, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface Booking {
@@ -45,8 +44,7 @@ const Bookings: React.FC = () => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const todayStr = today.toISOString().split('T')[0];
-      
-      // Fetch upcoming bookings - Changed to descending order
+
       const { data: upcomingData, error: upcomingError } = await supabase
         .from('bookings')
         .select(`
@@ -60,17 +58,15 @@ const Bookings: React.FC = () => {
             name,
             venue:venues (name, location),
             sport:sports (name)
-          )
         `)
         .eq('user_id', user?.id)
         .gte('booking_date', todayStr)
         .in('status', ['pending', 'confirmed'])
-        .order('booking_date', { ascending: false }) // Changed to descending
+        .order('booking_date', { ascending: true })
         .order('start_time', { ascending: true });
-      
+
       if (upcomingError) throw upcomingError;
-      
-      // Fetch past bookings - Changed to descending order for dates
+
       const { data: pastData, error: pastError } = await supabase
         .from('bookings')
         .select(`
@@ -84,16 +80,15 @@ const Bookings: React.FC = () => {
             name,
             venue:venues (name, location),
             sport:sports (name)
-          )
         `)
         .eq('user_id', user?.id)
         .or(`booking_date.lt.${todayStr},status.eq.cancelled,status.eq.completed`)
-        .order('booking_date', { ascending: false }) // Already descending
+        .order('booking_date', { ascending: false })
         .order('start_time', { ascending: true })
-        .limit(5);
-      
+        .limit(10);
+
       if (pastError) throw pastError;
-      
+
       setUpcomingBookings(upcomingData || []);
       setPastBookings(pastData || []);
     } catch (error) {
@@ -107,8 +102,6 @@ const Bookings: React.FC = () => {
       setLoading(false);
     }
   };
-
-  // Removed cancelBooking function since users should no longer be able to cancel bookings
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -125,6 +118,11 @@ const Bookings: React.FC = () => {
     }
   };
 
+  const formatDate = (dateStr: string) => {
+    const options: Intl.DateTimeFormatOptions = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
+    return new Date(dateStr).toLocaleDateString(undefined, options);
+  };
+
   const formatTime = (timeStr: string) => {
     const [hours, minutes] = timeStr.split(':');
     const hour = parseInt(hours, 10);
@@ -133,164 +131,183 @@ const Bookings: React.FC = () => {
     return `${hour12}:${minutes} ${amPm}`;
   };
 
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(amount);
+  };
+
   return (
-    <div className="min-h-screen bg-sport-gray-light">
+    <div className="min-h-screen bg-gray-50">
       <Header />
-      
-      <div className="pt-24 pb-16">
-        <div className="container mx-auto px-4">
+
+      <main className="pt-24 pb-16">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-4xl mx-auto">
-            <div className="flex justify-between items-center mb-8">
-              <h1 className="text-3xl font-bold text-sport-gray-dark">My Bookings</h1>
+            {/* Back Button and Header */}
+            <div className="mb-8">
               <button
-                onClick={() => navigate('/venues')}
-                className="px-4 py-2 bg-sport-green text-white rounded-md hover:bg-sport-green-dark transition-colors"
+                onClick={() => navigate('/')}
+                className="flex items-center text-gray-700 hover:text-gray-900 transition-colors mb-6"
               >
-                Book New Slot
+                <ArrowLeft className="w-5 h-5 mr-2" />
+                Back to Home
               </button>
+
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <h1 className="text-3xl font-bold text-gray-900">My Bookings</h1>
+                <button
+                  onClick={() => navigate('/venues')}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors flex items-center"
+                >
+                  <Calendar className="w-4 h-4 mr-2" />
+                  Book New Slot
+                </button>
+              </div>
             </div>
-            
+
             {loading ? (
-              <div className="bg-white rounded-xl shadow-md p-8 flex justify-center items-center min-h-[300px]">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-sport-green"></div>
+              <div className="flex justify-center items-center min-h-[300px]">
+                <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
               </div>
             ) : (
-              <div className="space-y-10">
+              <div className="space-y-12">
                 {/* Upcoming Bookings */}
-                <div>
-                  <h2 className="text-xl font-semibold text-sport-gray-dark mb-4">Upcoming Bookings</h2>
+                <section>
+                  <h2 className="text-xl font-semibold text-gray-800 mb-6 pb-2 border-b border-gray-200">
+                    Upcoming Bookings
+                  </h2>
                   
                   {upcomingBookings.length === 0 ? (
-                    <div className="bg-white rounded-xl shadow-md p-8 text-center">
-                      <p className="text-sport-gray mb-4">You don't have any upcoming bookings</p>
-                      <a 
-                        href="/venues" 
-                        className="inline-block px-6 py-3 bg-sport-green text-white rounded-md hover:bg-sport-green-dark transition-colors"
+                    <div className="bg-white rounded-lg shadow-sm p-6 text-center">
+                      <p className="text-gray-500">No upcoming bookings found</p>
+                      <button
+                        onClick={() => navigate('/venues')}
+                        className="mt-4 text-indigo-600 hover:text-indigo-800 font-medium"
                       >
-                        Browse Venues
-                      </a>
+                        Book your first slot
+                      </button>
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {upcomingBookings.map(booking => (
-                        <div key={booking.id} className="bg-white rounded-xl shadow-md overflow-hidden flex flex-col md:flex-row">
-                          {/* Date Column */}
-                          <div className="bg-sport-green text-white p-4 md:p-6 md:w-1/5 flex flex-col justify-center items-center">
-                            <Calendar className="h-8 w-8 mb-2" />
-                            <p className="text-xl font-bold">{new Date(booking.booking_date).toLocaleDateString('en-US', { day: 'numeric' })}</p>
-                            <p className="text-sm">{new Date(booking.booking_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</p>
-                            <p className="mt-2 text-xs uppercase tracking-wider">{new Date(booking.booking_date).toLocaleDateString('en-US', { weekday: 'long' })}</p>
-                          </div>
-                          
-                          {/* Details Column */}
-                          <div className="p-4 md:p-6 md:w-3/5 flex-grow">
-                            <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-3">
-                              <h3 className="text-lg font-semibold text-sport-gray-dark">
-                                {booking.court.sport.name} at {booking.court.venue.name}
-                              </h3>
-                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full mt-2 md:mt-0 ${getStatusColor(booking.status)}`}>
+                      {upcomingBookings.map((booking) => (
+                        <div 
+                          key={booking.id}
+                          className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-100 hover:shadow-md transition-shadow"
+                        >
+                          <div className="p-6">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                              <div>
+                                <h3 className="text-lg font-medium text-gray-900">
+                                  {booking.court.venue.name} - {booking.court.name}
+                                </h3>
+                                <p className="text-sm text-gray-500 flex items-center mt-1">
+                                  <span className="capitalize">{booking.court.sport.name.toLowerCase()}</span>
+                                </p>
+                              </div>
+                              <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>
                                 {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                               </span>
                             </div>
-                            
-                            <p className="text-sport-gray-dark">{booking.court.name}</p>
-                            
-                            <div className="mt-4 space-y-2">
-                              <div className="flex items-center text-sport-gray">
-                                <Clock className="h-4 w-4 mr-2" />
-                                <span>{formatTime(booking.start_time)} - {formatTime(booking.end_time)}</span>
+
+                            <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div className="flex items-center text-gray-700">
+                                <Calendar className="w-4 h-4 mr-2 text-gray-400" />
+                                <span>{formatDate(booking.booking_date)}</span>
                               </div>
-                              <div className="flex items-center text-sport-gray">
-                                <MapPin className="h-4 w-4 mr-2" />
-                                <span>{booking.court.venue.location}</span>
+                              <div className="flex items-center text-gray-700">
+                                <Clock className="w-4 h-4 mr-2 text-gray-400" />
+                                <span>
+                                  {formatTime(booking.start_time)} - {formatTime(booking.end_time)}
+                                </span>
+                              </div>
+                              <div className="flex items-center text-gray-700">
+                                <span className="font-medium">{formatCurrency(booking.total_price)}</span>
                               </div>
                             </div>
+
+                            <div className="mt-4 flex items-center text-sm text-gray-500">
+                              <MapPin className="w-4 h-4 mr-2 text-gray-400" />
+                              <span>{booking.court.venue.location}</span>
+                            </div>
                           </div>
-                          
-                          {/* Price Column - Removed cancel button */}
-                          <div className="p-4 md:p-6 md:w-1/5 bg-gray-50 flex flex-row md:flex-col items-center justify-between md:justify-center">
-                            <p className="font-bold text-lg text-sport-gray-dark">₹{booking.total_price.toFixed(2)}</p>
-                            {/* Cancel button removed */}
+                          <div className="bg-gray-50 px-6 py-3 flex justify-end border-t border-gray-100">
+                            <button
+                              onClick={() => navigate(`/booking/${booking.id}`)}
+                              className="text-indigo-600 hover:text-indigo-800 text-sm font-medium flex items-center"
+                            >
+                              View details <ChevronRight className="w-4 h-4 ml-1" />
+                            </button>
                           </div>
                         </div>
                       ))}
                     </div>
                   )}
-                </div>
-                
+                </section>
+
                 {/* Past Bookings */}
-                <div>
-                  <h2 className="text-xl font-semibold text-sport-gray-dark mb-4">Past Bookings</h2>
+                <section>
+                  <h2 className="text-xl font-semibold text-gray-800 mb-6 pb-2 border-b border-gray-200">
+                    Past Bookings
+                  </h2>
                   
                   {pastBookings.length === 0 ? (
-                    <div className="bg-white rounded-xl shadow-md p-8 text-center">
-                      <p className="text-sport-gray">You don't have any past bookings</p>
+                    <div className="bg-white rounded-lg shadow-sm p-6 text-center">
+                      <p className="text-gray-500">No past bookings found</p>
                     </div>
                   ) : (
-                    <div>
-                      <div className="bg-white rounded-xl shadow-md overflow-hidden">
-                        <div className="overflow-x-auto">
-                          <table className="w-full">
-                            <thead className="bg-gray-50">
-                              <tr>
-                                <th className="text-left py-3 px-4 font-medium text-sport-gray-dark">Date</th>
-                                <th className="text-left py-3 px-4 font-medium text-sport-gray-dark">Venue & Court</th>
-                                <th className="text-left py-3 px-4 font-medium text-sport-gray-dark">Time</th>
-                                <th className="text-left py-3 px-4 font-medium text-sport-gray-dark">Price</th>
-                                <th className="text-left py-3 px-4 font-medium text-sport-gray-dark">Status</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200">
-                              {pastBookings.map(booking => (
-                                <tr key={booking.id} className="hover:bg-gray-50">
-                                  <td className="py-3 px-4">
-                                    {new Date(booking.booking_date).toLocaleDateString()}
-                                  </td>
-                                  <td className="py-3 px-4">
-                                    <p>{booking.court.venue.name}</p>
-                                    <p className="text-sm text-sport-gray">{booking.court.name}</p>
-                                  </td>
-                                  <td className="py-3 px-4">
-                                    {formatTime(booking.start_time)} - {formatTime(booking.end_time)}
-                                  </td>
-                                  <td className="py-3 px-4">
-                                    ₹{booking.total_price.toFixed(2)}
-                                  </td>
-                                  <td className="py-3 px-4">
-                                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(booking.status)}`}>
-                                      {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-                                    </span>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
+                    <div className="space-y-4">
+                      {pastBookings.map((booking) => (
+                        <div 
+                          key={booking.id}
+                          className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-100"
+                        >
+                          <div className="p-6">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                              <div>
+                                <h3 className="text-lg font-medium text-gray-900">
+                                  {booking.court.venue.name} - {booking.court.name}
+                                </h3>
+                                <p className="text-sm text-gray-500 flex items-center mt-1">
+                                  <span className="capitalize">{booking.court.sport.name.toLowerCase()}</span>
+                                </p>
+                              </div>
+                              <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>
+                                {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                              </span>
+                            </div>
+
+                            <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div className="flex items-center text-gray-700">
+                                <Calendar className="w-4 h-4 mr-2 text-gray-400" />
+                                <span>{formatDate(booking.booking_date)}</span>
+                              </div>
+                              <div className="flex items-center text-gray-700">
+                                <Clock className="w-4 h-4 mr-2 text-gray-400" />
+                                <span>
+                                  {formatTime(booking.start_time)} - {formatTime(booking.end_time)}
+                                </span>
+                              </div>
+                              <div className="flex items-center text-gray-700">
+                                <span className="font-medium">{formatCurrency(booking.total_price)}</span>
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                      
-                      {pastBookings.length > 0 && (
-                        <div className="mt-4 text-right">
-                          <a 
-                            href="/profile?tab=bookings"
-                            className="inline-flex items-center text-sport-green hover:text-sport-green-dark"
-                          >
-                            View All Bookings 
-                            <ChevronRight className="ml-1 h-4 w-4" />
-                          </a>
-                        </div>
-                      )}
+                      ))}
                     </div>
                   )}
-                </div>
+                </section>
               </div>
             )}
           </div>
         </div>
-      </div>
-      
-      <footer className="bg-white py-6">
+      </main>
+
+      <footer className="bg-white py-6 border-t border-gray-200">
         <div className="container mx-auto px-4 text-center">
-          <p className="text-sport-gray">&copy; 2025 SportySlot. All rights reserved.</p>
+          <p className="text-gray-500 text-sm">&copy; {new Date().getFullYear()} SportySlot. All rights reserved.</p>
         </div>
       </footer>
     </div>
