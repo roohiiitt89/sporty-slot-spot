@@ -1,9 +1,12 @@
+
 import React, { useState, useEffect } from 'react';
-import { MapPin, Star, Filter, Search } from 'lucide-react';
+import { MapPin, Star, Filter, Search, Navigation, Clock, ArrowUpDown } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Header from '../components/Header';
 import BookSlotModal from '../components/BookSlotModal';
 import { supabase } from '@/integrations/supabase/client';
+import { useGeolocation, calculateDistance } from '@/hooks/use-geolocation';
+import { toast } from '@/components/ui/use-toast';
 
 interface Venue {
   id: string;
@@ -12,8 +15,10 @@ interface Venue {
   description: string;
   image_url: string;
   rating: number;
+  latitude: number | null;
+  longitude: number | null;
   facilities?: string[];
-  distance?: string;
+  distance?: number | null;
 }
 
 interface Sport {
@@ -24,6 +29,7 @@ interface Sport {
 const Venues: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { latitude, longitude, hasPermission } = useGeolocation();
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSports, setSelectedSports] = useState<string[]>([]);
@@ -32,6 +38,7 @@ const Venues: React.FC = () => {
   const [venues, setVenues] = useState<Venue[]>([]);
   const [sports, setSports] = useState<Sport[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sortOption, setSortOption] = useState<'distance' | 'rating'>('distance');
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -43,7 +50,7 @@ const Venues: React.FC = () => {
     
     fetchVenues();
     fetchSports();
-  }, [location.search]);
+  }, [location.search, latitude, longitude]);
 
   const fetchVenues = async () => {
     try {
@@ -60,7 +67,9 @@ const Venues: React.FC = () => {
           location, 
           description, 
           image_url, 
-          rating
+          rating,
+          latitude,
+          longitude
         `)
         .eq('is_active', true);
       
@@ -88,11 +97,32 @@ const Venues: React.FC = () => {
       if (error) throw error;
       
       if (data) {
-        const venuesWithDistance = data.map(venue => ({
-          ...venue,
-          distance: `${(Math.random() * 10).toFixed(1)} km`,
-          facilities: [] as string[]
-        }));
+        const venuesWithDistance = data.map(venue => {
+          // Calculate real distance if we have coordinates
+          const distance = calculateDistance(
+            latitude,
+            longitude,
+            venue.latitude,
+            venue.longitude
+          );
+
+          return {
+            ...venue,
+            distance: distance,
+            facilities: [] as string[]
+          };
+        });
+        
+        // Sort by distance if we have user location and by rating otherwise
+        if (latitude && longitude) {
+          venuesWithDistance.sort((a, b) => {
+            if (a.distance === null) return 1;
+            if (b.distance === null) return -1;
+            return a.distance - b.distance;
+          });
+        } else {
+          venuesWithDistance.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+        }
         
         for (const venue of venuesWithDistance) {
           const { data: courtsData, error: courtsError } = await supabase
@@ -165,6 +195,45 @@ const Venues: React.FC = () => {
     }
   };
 
+  const toggleSortOption = () => {
+    const newSortOption = sortOption === 'distance' ? 'rating' : 'distance';
+    setSortOption(newSortOption);
+    
+    const sortedVenues = [...venues];
+    if (newSortOption === 'distance' && latitude && longitude) {
+      sortedVenues.sort((a, b) => {
+        if (a.distance === null) return 1;
+        if (b.distance === null) return -1;
+        return a.distance - b.distance;
+      });
+    } else {
+      sortedVenues.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    }
+    
+    setVenues(sortedVenues);
+  };
+
+  const enableLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          toast({
+            title: "Location access granted",
+            description: "We can now show venues near you.",
+          });
+          setTimeout(() => fetchVenues(), 1000); // Refresh venues after getting position
+        },
+        (error) => {
+          toast({
+            title: "Location access denied",
+            description: "We can't sort venues by distance without your location.",
+            variant: "destructive",
+          });
+        }
+      );
+    }
+  };
+
   const filteredVenues = venues.filter(venue => {
     const matchesSearch = venue.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          venue.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -184,11 +253,12 @@ const Venues: React.FC = () => {
   });
 
   return (
-    <div className="min-h-screen bg-[#f8f8f8]">
+    <div className="min-h-screen bg-black">
       <Header />
       
-      <div className="bg-[#1e3b2c] pt-32 pb-12 md:pb-16">
-        <div className="container mx-auto px-4">
+      <div className="bg-gradient-to-b from-[#1e3b2c] to-black pt-32 pb-12 md:pb-16 relative">
+        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1485395037613-e83d5c1f5290?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80')] opacity-10 bg-center bg-cover"></div>
+        <div className="container mx-auto px-4 relative z-10">
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 text-center">Explore Venues</h1>
           <p className="text-xl text-white opacity-90 max-w-3xl mx-auto text-center mb-8">
             Find the perfect sports venue for your next game or training session
@@ -216,7 +286,7 @@ const Venues: React.FC = () => {
             </div>
             
             {isFilterOpen && (
-              <div className="mt-4 bg-white backdrop-blur-md p-6 rounded-md shadow-lg animate-fade-in border border-[#1e3b2c]/30">
+              <div className="mt-4 bg-white/90 backdrop-blur-md p-6 rounded-md shadow-lg animate-fade-in border border-[#1e3b2c]/30">
                 <div className="mb-6">
                   <h3 className="text-lg font-semibold text-[#1e3b2c] mb-3">Filter by Sport</h3>
                   <div className="flex flex-wrap gap-2">
@@ -277,16 +347,27 @@ const Venues: React.FC = () => {
       
       <div className="container mx-auto px-4 py-12">
         <div className="mb-6 flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-[#1e3b2c]">
+          <h2 className="text-2xl font-bold text-white">
             {loading ? 'Loading venues...' : `${filteredVenues.length} Venues Found`}
           </h2>
           <div className="flex space-x-2">
-            <button className="px-3 py-1 border border-[#1e3b2c] rounded-md text-[#1e3b2c] hover:bg-[#1e3b2c]/10 transition-colors">
-              Sort by Distance
+            <button 
+              onClick={toggleSortOption}
+              className="px-3 py-1.5 bg-[#1e3b2c] text-white rounded-md hover:bg-[#2a4d3a] transition-colors flex items-center"
+            >
+              <ArrowUpDown className="h-4 w-4 mr-2" />
+              Sort by {sortOption === 'distance' ? 'Rating' : 'Distance'}
             </button>
-            <button className="px-3 py-1 border border-[#1e3b2c] rounded-md text-[#1e3b2c] hover:bg-[#1e3b2c]/10 transition-colors">
-              Sort by Rating
-            </button>
+            
+            {!hasPermission && (
+              <button
+                onClick={enableLocation}
+                className="px-3 py-1.5 border border-[#1e3b2c] text-[#1e3b2c] rounded-md hover:bg-[#1e3b2c]/10 transition-colors flex items-center"
+              >
+                <Navigation className="h-4 w-4 mr-2" />
+                Enable Location
+              </button>
+            )}
           </div>
         </div>
         
@@ -295,9 +376,9 @@ const Venues: React.FC = () => {
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#1e3b2c]"></div>
           </div>
         ) : filteredVenues.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-xl border border-[#1e3b2c]/20">
-            <h3 className="text-2xl font-semibold text-[#1e3b2c] mb-2">No venues found</h3>
-            <p className="text-[#1e3b2c]/80 mb-6">Try adjusting your filters or search term</p>
+          <div className="text-center py-16 bg-navy-light rounded-xl border border-[#1e3b2c]/20">
+            <h3 className="text-2xl font-semibold text-white mb-2">No venues found</h3>
+            <p className="text-gray-300 mb-6">Try adjusting your filters or search term</p>
             <button
               onClick={clearFilters}
               className="px-6 py-3 bg-[#1e3b2c] text-white rounded-md hover:bg-[#2a4d3a] transition-colors"
@@ -306,52 +387,60 @@ const Venues: React.FC = () => {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredVenues.map((venue) => (
               <div
                 key={venue.id}
-                className="bg-white rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-1 flex flex-col h-full border border-[#1e3b2c]/10"
+                className="bg-navy-light rounded-lg overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 border border-navy/30 hover:border-[#1e3b2c]/50 h-full flex flex-col group"
               >
-                <div className="h-32 relative overflow-hidden">
+                <div className="h-48 relative overflow-hidden">
                   <img 
                     src={venue.image_url || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000'} 
                     alt={venue.name} 
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                   />
-                  <div className="absolute top-0 right-0 bg-white px-2 py-0.5 rounded-bl-lg shadow-sm flex items-center">
-                    <Star className="h-3 w-3 text-yellow-400 fill-current" />
-                    <span className="text-xs font-semibold text-[#1e3b2c] ml-0.5">{venue.rating ? venue.rating.toFixed(1) : '4.5'}</span>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
+                  
+                  <div className="absolute top-3 right-3 bg-white/90 backdrop-blur px-2 py-1 rounded-full shadow-sm flex items-center">
+                    <Star className="h-4 w-4 text-yellow-500 fill-yellow-500 mr-1" />
+                    <span className="text-xs font-bold text-navy">{venue.rating?.toFixed(1) || '4.5'}</span>
                   </div>
                 </div>
                 
-                <div className="p-3 flex-grow flex flex-col">
-                  <div className="flex justify-between items-start mb-1">
-                    <h3 className="text-base font-semibold text-[#1e3b2c] line-clamp-1" title={venue.name}>
-                      {venue.name}
-                    </h3>
-                    <span className="text-xs text-white bg-[#1e3b2c] px-1.5 py-0.5 rounded-full">
-                      {venue.distance}
-                    </span>
+                <div className="p-5 flex flex-col flex-grow">
+                  <h3 className="text-lg font-bold text-white mb-2 line-clamp-1 group-hover:text-[#2def80] transition-colors">
+                    {venue.name}
+                  </h3>
+                  
+                  <div className="flex items-start gap-2 mb-3">
+                    <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
+                    <span className="text-sm text-gray-300 line-clamp-2">{venue.location}</span>
                   </div>
                   
-                  <div className="flex items-center text-gray-600 text-xs mb-1">
-                    <MapPin className="w-3 h-3 mr-0.5" />
-                    <span className="line-clamp-1" title={venue.location}>{venue.location}</span>
-                  </div>
+                  {venue.distance !== null && (
+                    <div className="mb-3 flex items-center">
+                      <Navigation className="w-4 h-4 text-[#2def80] mr-1" />
+                      <span className="text-sm text-gray-300">
+                        {venue.distance < 1 
+                          ? `${(venue.distance * 1000).toFixed(0)} m away` 
+                          : `${venue.distance.toFixed(1)} km away`}
+                      </span>
+                    </div>
+                  )}
                   
                   {venue.facilities && venue.facilities.length > 0 && (
-                    <div className="mb-2 flex-grow">
+                    <div className="mb-4 flex-grow">
                       <div className="flex flex-wrap gap-1 mt-1">
                         {venue.facilities.slice(0, 3).map(facility => (
                           <span
                             key={facility}
-                            className="inline-block text-xs bg-[#1e3b2c]/10 text-[#1e3b2c] px-1.5 py-0.5 rounded"
+                            className="inline-block text-xs bg-navy/50 text-[#2def80] px-2 py-1 rounded-full border border-[#1e3b2c]/30"
                           >
                             {facility}
                           </span>
                         ))}
                         {venue.facilities.length > 3 && (
-                          <span className="inline-block text-xs text-gray-500">
+                          <span className="inline-block text-xs text-gray-400">
                             +{venue.facilities.length - 3} more
                           </span>
                         )}
@@ -359,18 +448,18 @@ const Venues: React.FC = () => {
                     </div>
                   )}
                   
-                  <div className="grid grid-cols-2 gap-1 mt-auto">
+                  <div className="mt-auto pt-4 grid grid-cols-2 gap-2">
                     <button
                       onClick={() => navigate(`/venues/${venue.id}`)}
-                      className="py-1 border border-[#1e3b2c] text-[#1e3b2c] rounded text-xs font-medium hover:bg-[#1e3b2c] hover:text-white transition-colors"
+                      className="py-2 border border-[#1e3b2c] text-[#2def80] rounded-md text-sm font-medium hover:bg-[#1e3b2c]/20 transition-all"
                     >
                       Details
                     </button>
                     <button
                       onClick={() => setIsBookModalOpen(true)}
-                      className="py-1 bg-[#1e3b2c] text-white rounded text-xs font-medium hover:bg-[#2a4d3a] transition-colors"
+                      className="py-2 bg-[#1e3b2c] text-white rounded-md text-sm font-medium hover:bg-[#2a4d3a] transition-colors"
                     >
-                      Book
+                      Book Now
                     </button>
                   </div>
                 </div>

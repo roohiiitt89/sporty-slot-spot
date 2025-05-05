@@ -390,6 +390,54 @@ export type Database = {
         }
         Relationships: []
       }
+      reviews: {
+        Row: {
+          booking_id: string | null
+          comment: string | null
+          created_at: string | null
+          id: string
+          is_approved: boolean | null
+          rating: number
+          user_id: string
+          venue_id: string
+        }
+        Insert: {
+          booking_id?: string | null
+          comment?: string | null
+          created_at?: string | null
+          id?: string
+          is_approved?: boolean | null
+          rating: number
+          user_id: string
+          venue_id: string
+        }
+        Update: {
+          booking_id?: string | null
+          comment?: string | null
+          created_at?: string | null
+          id?: string
+          is_approved?: boolean | null
+          rating?: number
+          user_id?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sports: {
         Row: {
           created_at: string
@@ -796,7 +844,9 @@ export type Database = {
           id: string
           image_url: string | null
           is_active: boolean
+          latitude: number | null
           location: string
+          longitude: number | null
           name: string
           opening_hours: string | null
           rating: number | null
@@ -810,7 +860,9 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_active?: boolean
+          latitude?: number | null
           location: string
+          longitude?: number | null
           name: string
           opening_hours?: string | null
           rating?: number | null
@@ -824,7 +876,9 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_active?: boolean
+          latitude?: number | null
           location?: string
+          longitude?: number | null
           name?: string
           opening_hours?: string | null
           rating?: number | null

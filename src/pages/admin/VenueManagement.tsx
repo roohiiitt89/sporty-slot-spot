@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
-import { Plus, Edit, MapPin, Phone, Clock, Trash2, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, Edit, MapPin, Phone, Clock, Trash2, CheckCircle, XCircle, Navigation } from 'lucide-react';
 
 interface VenueManagementProps {
   userRole: string | null;
@@ -19,6 +18,8 @@ interface Venue {
   opening_hours: string | null;
   image_url: string | null;
   is_active: boolean;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 const VenueManagement: React.FC<VenueManagementProps> = ({ userRole, adminVenues = [] }) => {
@@ -33,7 +34,9 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ userRole, adminVenues
     contact_number: '',
     opening_hours: '',
     image_url: '',
-    is_active: true
+    is_active: true,
+    latitude: null,
+    longitude: null
   });
   const [isEditing, setIsEditing] = useState(false);
   const isSuperAdmin = userRole === 'super_admin';
@@ -85,6 +88,12 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ userRole, adminVenues
       setCurrentVenue({ ...currentVenue, [name]: value ? parseInt(value) : null });
       return;
     }
+
+    // Handle latitude and longitude inputs
+    if (name === 'latitude' || name === 'longitude') {
+      setCurrentVenue({ ...currentVenue, [name]: value ? parseFloat(value) : null });
+      return;
+    }
     
     // Handle other inputs
     setCurrentVenue({ ...currentVenue, [name]: value });
@@ -103,7 +112,9 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ userRole, adminVenues
         contact_number: '',
         opening_hours: '',
         image_url: '',
-        is_active: true
+        is_active: true,
+        latitude: null,
+        longitude: null
       });
       setIsEditing(false);
     }
@@ -152,7 +163,9 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ userRole, adminVenues
             contact_number: currentVenue.contact_number,
             opening_hours: currentVenue.opening_hours,
             image_url: currentVenue.image_url,
-            is_active: currentVenue.is_active
+            is_active: currentVenue.is_active,
+            latitude: currentVenue.latitude,
+            longitude: currentVenue.longitude
           })
           .eq('id', currentVenue.id);
           
@@ -174,7 +187,9 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ userRole, adminVenues
             contact_number: currentVenue.contact_number,
             opening_hours: currentVenue.opening_hours,
             image_url: currentVenue.image_url,
-            is_active: currentVenue.is_active
+            is_active: currentVenue.is_active,
+            latitude: currentVenue.latitude,
+            longitude: currentVenue.longitude
           })
           .select();
           
@@ -494,6 +509,36 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ userRole, adminVenues
                       name="contact_number"
                       value={currentVenue.contact_number || ''}
                       onChange={handleChange}
+                      className="w-full p-2 border rounded-md"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Latitude
+                    </label>
+                    <input
+                      type="number"
+                      step="any"
+                      name="latitude"
+                      value={currentVenue.latitude === null ? '' : currentVenue.latitude}
+                      onChange={handleChange}
+                      placeholder="e.g., 40.7128"
+                      className="w-full p-2 border rounded-md"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Longitude
+                    </label>
+                    <input
+                      type="number"
+                      step="any"
+                      name="longitude"
+                      value={currentVenue.longitude === null ? '' : currentVenue.longitude}
+                      onChange={handleChange}
+                      placeholder="e.g., -74.0060"
                       className="w-full p-2 border rounded-md"
                     />
                   </div>

@@ -1,12 +1,15 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MapPin, Star, ArrowLeft, MessageCircle } from 'lucide-react';
+import { MapPin, Star, ArrowLeft, MessageCircle, Navigation } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
+import { useGeolocation, calculateDistance } from '@/hooks/use-geolocation';
 import Header from '../components/Header';
 import BookSlotModal from '../components/BookSlotModal';
 import ChatModal from '../components/ChatModal';
+import { ReviewModal } from '@/components/ReviewModal';
+import { VenueReviews } from '@/components/VenueReviews';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import SportDisplayName from '@/components/SportDisplayName';
@@ -21,6 +24,8 @@ interface Venue {
   rating: number;
   contact_number: string;
   opening_hours: string;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 interface Sport {
@@ -47,13 +52,16 @@ const VenueDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { latitude, longitude } = useGeolocation();
   const [venue, setVenue] = useState<Venue | null>(null);
   const [courts, setCourts] = useState<Court[]>([]);
   const [sports, setSports] = useState<Sport[]>([]);
   const [loading, setLoading] = useState(true);
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [sportDisplayNames, setSportDisplayNames] = useState<Record<string, string>>({});
+  const [distance, setDistance] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchVenueDetails = async () => {
@@ -69,6 +77,17 @@ const VenueDetails: React.FC = () => {
 
         if (venueError) throw venueError;
         setVenue(venueData);
+
+        // Calculate distance if we have coordinates
+        if (latitude && longitude && venueData.latitude && venueData.longitude) {
+          const calculatedDistance = calculateDistance(
+            latitude,
+            longitude,
+            venueData.latitude,
+            venueData.longitude
+          );
+          setDistance(calculatedDistance);
+        }
 
         // Fetch custom sport display names for this venue
         const customNames = await getVenueSportDisplayNames(id);
@@ -115,11 +134,11 @@ const VenueDetails: React.FC = () => {
     };
 
     fetchVenueDetails();
-  }, [id]);
+  }, [id, latitude, longitude]);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-sport-gray-light">
+      <div className="min-h-screen bg-black">
         <Header />
         <div className="container mx-auto px-4 py-32">
           <div className="flex justify-center items-center h-64">
@@ -132,11 +151,11 @@ const VenueDetails: React.FC = () => {
 
   if (!venue) {
     return (
-      <div className="min-h-screen bg-sport-gray-light">
+      <div className="min-h-screen bg-black">
         <Header />
         <div className="container mx-auto px-4 py-32">
           <div className="text-center">
-            <h2 className="text-2xl font-bold text-sport-gray-dark mb-4">Venue not found</h2>
+            <h2 className="text-2xl font-bold text-white mb-4">Venue not found</h2>
             <button
               onClick={() => navigate('/venues')}
               className="px-4 py-2 bg-indigo text-white rounded-md hover:bg-indigo-dark transition-colors"
@@ -150,7 +169,7 @@ const VenueDetails: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-sport-gray-light">
+    <div className="min-h-screen bg-black">
       <Header />
       
       {/* Hero Section with Venue Image */}
@@ -161,7 +180,7 @@ const VenueDetails: React.FC = () => {
             alt={venue?.name} 
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-70"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-80"></div>
         </div>
         
         <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
@@ -181,6 +200,17 @@ const VenueDetails: React.FC = () => {
                   <MapPin className="w-4 h-4 mr-1" />
                   <span>{venue?.location}</span>
                 </div>
+                
+                {distance !== null && (
+                  <div className="flex items-center text-[#2def80] mb-2">
+                    <Navigation className="w-4 h-4 mr-1" />
+                    <span>
+                      {distance < 1 
+                        ? `${(distance * 1000).toFixed(0)} meters away` 
+                        : `${distance.toFixed(1)} km away`}
+                    </span>
+                  </div>
+                )}
               </div>
               
               <div className="flex items-center bg-white/90 backdrop-blur-sm rounded-full px-3 py-1.5 text-navy-dark">
@@ -196,26 +226,26 @@ const VenueDetails: React.FC = () => {
       <div className="container mx-auto px-4 py-10">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
-            <Card>
+            <Card className="bg-navy-light border-navy shadow-lg mb-8">
               <CardContent className="p-6">
-                <h2 className="text-2xl font-bold text-sport-gray-dark mb-4">About This Venue</h2>
-                <p className="text-sport-gray-dark mb-6">
+                <h2 className="text-2xl font-bold text-white mb-4">About This Venue</h2>
+                <p className="text-gray-300 mb-6">
                   {venue?.description || 'This venue offers state-of-the-art facilities for multiple sports activities. Perfect for both casual play and professional training.'}
                 </p>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Opening Hours */}
                   <div>
-                    <h3 className="font-semibold text-lg mb-2 text-sport-gray-dark">Opening Hours</h3>
-                    <p className="text-sport-gray-dark">
+                    <h3 className="font-semibold text-lg mb-2 text-white">Opening Hours</h3>
+                    <p className="text-gray-300 whitespace-pre-line">
                       {venue?.opening_hours || 'Monday - Friday: 6:00 AM - 10:00 PM\nSaturday - Sunday: 8:00 AM - 8:00 PM'}
                     </p>
                   </div>
                   
                   {/* Contact Info */}
                   <div>
-                    <h3 className="font-semibold text-lg mb-2 text-sport-gray-dark">Contact</h3>
-                    <p className="text-sport-gray-dark">
+                    <h3 className="font-semibold text-lg mb-2 text-white">Contact</h3>
+                    <p className="text-gray-300">
                       {venue?.contact_number || 'Phone not available'}
                     </p>
                   </div>
@@ -224,14 +254,14 @@ const VenueDetails: React.FC = () => {
             </Card>
             
             {/* Sports Available */}
-            <Card className="mt-8">
+            <Card className="bg-navy-light border-navy shadow-lg mb-8">
               <CardContent className="p-6">
-                <h2 className="text-2xl font-bold text-sport-gray-dark mb-4">Sports Available</h2>
+                <h2 className="text-2xl font-bold text-white mb-4">Sports Available</h2>
                 
                 {sports.length > 0 ? (
                   <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
                     {sports.map(sport => (
-                      <div key={sport.id} className="bg-navy-light text-white p-3 rounded-lg text-center hover:bg-sport-green transition-colors">
+                      <div key={sport.id} className="bg-navy/70 text-white p-3 rounded-lg text-center hover:bg-[#1e3b2c] transition-colors border border-navy">
                         <h3 className="font-semibold text-sm">
                           {id && (
                             <SportDisplayName 
@@ -245,22 +275,22 @@ const VenueDetails: React.FC = () => {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sport-gray-dark">No sports information available for this venue.</p>
+                  <p className="text-gray-300">No sports information available for this venue.</p>
                 )}
               </CardContent>
             </Card>
             
             {/* Courts Available */}
-            <Card className="mt-8">
+            <Card className="bg-navy-light border-navy shadow-lg mb-8">
               <CardContent className="p-6">
-                <h2 className="text-2xl font-bold text-sport-gray-dark mb-4">Courts Available</h2>
+                <h2 className="text-2xl font-bold text-white mb-4">Courts Available</h2>
                 
                 {courts.length > 0 ? (
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     {courts.map(court => (
-                      <div key={court.id} className="border border-gray-200 rounded-lg p-3 hover:border-sport-green transition-colors">
-                        <h3 className="font-semibold text-sport-gray-dark text-sm">{court.name}</h3>
-                        <p className="text-sport-gray-dark text-xs">
+                      <div key={court.id} className="border border-navy bg-navy/50 rounded-lg p-4 hover:border-[#1e3b2c] transition-colors">
+                        <h3 className="font-semibold text-white text-sm">{court.name}</h3>
+                        <p className="text-gray-300 text-xs mt-1">
                           Sport: {id && (
                             <SportDisplayName
                               venueId={id}
@@ -273,22 +303,43 @@ const VenueDetails: React.FC = () => {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sport-gray-dark">No court information available for this venue.</p>
+                  <p className="text-gray-300">No court information available for this venue.</p>
                 )}
+              </CardContent>
+            </Card>
+            
+            {/* Reviews Section */}
+            <Card className="bg-navy-light border-navy shadow-lg">
+              <CardContent className="p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-2xl font-bold text-white">Reviews</h2>
+                  {user && (
+                    <Button
+                      onClick={() => setIsReviewModalOpen(true)}
+                      className="bg-[#1e3b2c] hover:bg-[#2a4d3a] text-white"
+                    >
+                      Write a Review
+                    </Button>
+                  )}
+                </div>
+                
+                <div className="bg-navy/50 rounded-lg p-4 border border-navy">
+                  <VenueReviews venueId={id || ''} />
+                </div>
               </CardContent>
             </Card>
           </div>
           
           {/* Booking Section */}
           <div className="lg:col-span-1">
-            <Card className="sticky top-24">
+            <Card className="bg-navy-light border-navy shadow-lg sticky top-24">
               <CardContent className="p-6">
-                <h2 className="text-2xl font-bold text-sport-gray-dark mb-4">Book this Venue</h2>
-                <p className="text-sport-gray-dark mb-6">Ready to play? Book a slot at this venue now.</p>
+                <h2 className="text-2xl font-bold text-white mb-4">Book this Venue</h2>
+                <p className="text-gray-300 mb-6">Ready to play? Book a slot at this venue now.</p>
                 
                 <Button
                   onClick={() => setIsBookModalOpen(true)}
-                  className="w-full py-6 bg-sport-green text-white font-semibold hover:bg-sport-green-dark transition-colors"
+                  className="w-full py-6 bg-[#1e3b2c] text-white font-semibold hover:bg-[#2a4d3a] transition-colors"
                 >
                   Book Now
                 </Button>
@@ -297,12 +348,37 @@ const VenueDetails: React.FC = () => {
                   <Button
                     onClick={() => setIsChatModalOpen(true)}
                     variant="outline"
-                    className="w-full mt-3 flex items-center justify-center"
+                    className="w-full mt-3 flex items-center justify-center border-gray-600 text-gray-300 hover:bg-navy hover:text-white"
                   >
                     <MessageCircle className="mr-2 h-4 w-4" />
                     Chat with Venue
                   </Button>
                 )}
+                
+                {/* Info Card */}
+                <div className="mt-6 bg-navy/50 rounded-lg p-4 border border-navy">
+                  <h3 className="font-medium text-white mb-2">Venue Highlights</h3>
+                  <ul className="space-y-2 text-sm text-gray-300">
+                    <li className="flex items-start gap-2">
+                      <Star className="h-4 w-4 text-[#2def80] flex-shrink-0 mt-0.5" />
+                      <span>Rated {venue?.rating?.toFixed(1) || '4.5'}/5.0 by users</span>
+                    </li>
+                    {distance !== null && (
+                      <li className="flex items-start gap-2">
+                        <Navigation className="h-4 w-4 text-[#2def80] flex-shrink-0 mt-0.5" />
+                        <span>
+                          {distance < 1 
+                            ? `${(distance * 1000).toFixed(0)} meters from your location` 
+                            : `${distance.toFixed(1)} km from your location`}
+                        </span>
+                      </li>
+                    )}
+                    <li className="flex items-start gap-2">
+                      <Clock className="h-4 w-4 text-[#2def80] flex-shrink-0 mt-0.5" />
+                      <span>Booking slots available daily</span>
+                    </li>
+                  </ul>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -310,7 +386,7 @@ const VenueDetails: React.FC = () => {
       </div>
       
       {/* Footer */}
-      <footer className="bg-sport-gray-dark text-white py-8 mt-12">
+      <footer className="bg-[#1e3b2c] text-white py-8 mt-12">
         <div className="container mx-auto px-4 text-center">
           <p>&copy; 2025 SportySlot. All rights reserved.</p>
         </div>
@@ -330,6 +406,16 @@ const VenueDetails: React.FC = () => {
           venueId={venue.id}
           venueName={venue.name}
           onClose={() => setIsChatModalOpen(false)}
+        />
+      )}
+      
+      {/* Review Modal */}
+      {isReviewModalOpen && venue && (
+        <ReviewModal
+          bookingId="" // This is optional and would be filled when coming from a completed booking
+          venueId={venue.id}
+          venueName={venue.name}
+          onClose={() => setIsReviewModalOpen(false)}
         />
       )}
     </div>

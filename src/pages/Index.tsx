@@ -14,6 +14,8 @@ import {
   CarouselPrevious 
 } from "@/components/ui/carousel";
 import { StreakBar } from '@/components/StreakBar';
+import { LocationPermissionRequest } from '@/components/LocationPermissionRequest';
+import { NearbyVenues } from '@/components/NearbyVenues';
 
 interface Venue {
   id: string;
@@ -210,6 +212,14 @@ const Index: React.FC = () => {
           <EnterChallengeButton />
         </div>
       </section>
+
+      {/* Add Location Permission Request here */}
+      <div className="container mx-auto px-4 -mt-6 relative z-10">
+        <LocationPermissionRequest />
+      </div>
+
+      {/* Add Near You Section after the hero section */}
+      <NearbyVenues />
 
       <section 
         id="venues" 
