@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import {
   AreaChart,
@@ -19,7 +18,7 @@ import {
 } from 'recharts';
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ChartContainer, ChartTooltipContent, ChartTooltip } from "@/components/ui/chart";
+import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { Clock, MapPin, Star, Medal, Trophy, Award } from 'lucide-react';
@@ -106,7 +105,7 @@ export function UserPerformanceDashboard() {
 
   useEffect(() => {
     if (!user) return;
-    
+
     const fetchUserStats = async () => {
       try {
         setIsLoading(true);
@@ -138,23 +137,17 @@ export function UserPerformanceDashboard() {
           setIsLoading(false);
         }, 500);
         
-        // In a production app, we'd use real queries like:
-        // const { data: bookingsData, error } = await supabase
-        //  .from('bookings')
-        //  .select('booking_date, start_time, end_time, courts(name, venue_id, venues(name), sport_id, sports(name))')
-        //  .eq('user_id', user.id);
-        
       } catch (error) {
         console.error('Error fetching user stats:', error);
         setIsLoading(false);
       }
     };
-    
+
     fetchUserStats();
   }, [user]);
 
   if (!user) return null;
-  
+
   const getIconComponent = (iconName: string) => {
     switch (iconName) {
       case 'clock':
@@ -173,7 +166,7 @@ export function UserPerformanceDashboard() {
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-white">Your Sports Performance</h2>
-      
+
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-pulse">
           {[1, 2, 3].map((i) => (
@@ -198,19 +191,21 @@ export function UserPerformanceDashboard() {
                   <p className="text-gray-400 text-sm">You've spent {stats.totalHours} hours in training this year</p>
                 </div>
                 <div className="h-24">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={stats.monthlyTrend} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="colorHours" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#4CAF50" stopOpacity={0.8} />
-                          <stop offset="95%" stopColor="#4CAF50" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <XAxis dataKey="month" tick={{ fontSize: 10 }} stroke="#6E59A5" />
-                      <Tooltip content={<ChartTooltipContent />} />
-                      <Area type="monotone" dataKey="hours" stroke="#4CAF50" fillOpacity={1} fill="url(#colorHours)" />
-                    </AreaChart>
-                  </ResponsiveContainer>
+                  <ChartContainer>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={stats.monthlyTrend} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="colorHours" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#4CAF50" stopOpacity={0.8} />
+                            <stop offset="95%" stopColor="#4CAF50" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <XAxis dataKey="month" tick={{ fontSize: 10 }} stroke="#6E59A5" />
+                        <Tooltip content={<ChartTooltip />} />
+                        <Area type="monotone" dataKey="hours" stroke="#4CAF50" fillOpacity={1} fill="url(#colorHours)" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
                 </div>
               </CardContent>
             </Card>
@@ -229,17 +224,19 @@ export function UserPerformanceDashboard() {
                   <p className="text-gray-400 text-sm">You trained most at this venue</p>
                 </div>
                 <div className="h-24">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={stats.venueDistribution} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
-                      <XAxis dataKey="name" tick={false} />
-                      <Tooltip content={<ChartTooltipContent />} />
-                      <Bar dataKey="visits" name="Visits" radius={[4, 4, 0, 0]}>
-                        {stats.venueDistribution.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
+                  <ChartContainer>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={stats.venueDistribution} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                        <XAxis dataKey="name" tick={false} />
+                        <Tooltip content={<ChartTooltip />} />
+                        <Bar dataKey="visits" name="Visits" radius={[4, 4, 0, 0]}>
+                          {stats.venueDistribution.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
                 </div>
               </CardContent>
             </Card>
@@ -258,17 +255,19 @@ export function UserPerformanceDashboard() {
                   <p className="text-gray-400 text-sm">You played {stats.topSport} {stats.topSportCount} times this year</p>
                 </div>
                 <div className="h-24">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={stats.sportsDistribution} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
-                      <XAxis dataKey="name" tick={false} />
-                      <Tooltip content={<ChartTooltipContent />} />
-                      <Bar dataKey="count" name="Sessions" radius={[4, 4, 0, 0]}>
-                        {stats.sportsDistribution.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
+                  <ChartContainer>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={stats.sportsDistribution} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                        <XAxis dataKey="name" tick={false} />
+                        <Tooltip content={<ChartTooltip />} />
+                        <Bar dataKey="count" name="Sessions" radius={[4, 4, 0, 0]}>
+                          {stats.sportsDistribution.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
                 </div>
               </CardContent>
             </Card>
@@ -283,16 +282,18 @@ export function UserPerformanceDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="h-64 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RadarChart cx="50%" cy="50%" outerRadius="80%" data={stats.radarData}>
-                      <PolarGrid stroke="#6E59A5" />
-                      <PolarAngleAxis dataKey="subject" tick={{ fill: '#C8C8C9' }} />
-                      <PolarRadiusAxis angle={30} domain={[0, 150]} />
-                      <Radar name="Performance" dataKey="A" stroke="#9b87f5" fill="#9b87f5" fillOpacity={0.6} />
-                      <Legend />
-                      <Tooltip content={<ChartTooltipContent />} />
-                    </RadarChart>
-                  </ResponsiveContainer>
+                  <ChartContainer>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RadarChart cx="50%" cy="50%" outerRadius="80%" data={stats.radarData}>
+                        <PolarGrid stroke="#6E59A5" />
+                        <PolarAngleAxis dataKey="subject" tick={{ fill: '#C8C8C9' }} />
+                        <PolarRadiusAxis angle={30} domain={[0, 150]} />
+                        <Radar name="Performance" dataKey="A" stroke="#9b87f5" fill="#9b87f5" fillOpacity={0.6} />
+                        <Legend />
+                        <Tooltip content={<ChartTooltip />} />
+                      </RadarChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
                 </div>
               </CardContent>
             </Card>
