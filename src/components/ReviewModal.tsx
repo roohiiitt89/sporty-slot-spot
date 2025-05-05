@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { X, Star } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
+import { useAuth } from '@/context/AuthContext';
 
 interface ReviewModalProps {
   bookingId: string;
@@ -16,6 +17,7 @@ export function ReviewModal({ bookingId, venueId, venueName, onClose }: ReviewMo
   const [comment, setComment] = useState<string>('');
   const [hoveredStar, setHoveredStar] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user } = useAuth();
 
   const handleRatingClick = (selectedRating: number) => {
     setRating(selectedRating);
@@ -23,6 +25,15 @@ export function ReviewModal({ bookingId, venueId, venueName, onClose }: ReviewMo
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "You need to be logged in to submit a review.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     if (rating === 0) {
       toast({
@@ -37,8 +48,9 @@ export function ReviewModal({ bookingId, venueId, venueName, onClose }: ReviewMo
       setIsSubmitting(true);
       
       const { error } = await supabase.from('reviews').insert({
-        booking_id: bookingId,
+        booking_id: bookingId || null,
         venue_id: venueId,
+        user_id: user.id,
         rating,
         comment: comment.trim() || null
       });

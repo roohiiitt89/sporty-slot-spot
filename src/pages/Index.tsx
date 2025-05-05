@@ -104,7 +104,7 @@ const Index: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('venues')
-        .select('id, name, image_url, rating')
+        .select('id, name, location, image_url, rating')
         .eq('is_active', true)
         .order('rating', { ascending: false })
         .limit(4);
