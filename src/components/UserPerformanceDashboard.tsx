@@ -22,52 +22,35 @@ import { ChartContainer } from "@/components/ui/chart";
 import { useAuth } from '@/context/AuthContext';
 import { Clock, MapPin, Trophy, Award } from 'lucide-react';
 
-// Custom safe tooltip that doesn't use Object.entries
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (!active || !payload || payload.length === 0) return null;
-
-  const data = payload[0].payload || {};
-  const displayItems = [];
-
-  if (data.hours !== undefined) displayItems.push(['Hours', data.hours]);
-  if (data.visits !== undefined) displayItems.push(['Visits', data.visits]);
-  if (data.count !== undefined) displayItems.push(['Sessions', data.count]);
-  if (data.A !== undefined) displayItems.push(['Score', data.A]);
-  if (payload[0].value !== undefined) displayItems.push(['Value', payload[0].value]);
-
+// Extremely simple tooltip that never uses Object.entries
+const SimpleTooltip = ({ active, payload }: any) => {
+  if (!active || !payload || !payload[0]) return null;
+  
+  const { name, value } = payload[0];
   return (
-    <div className="bg-navy-dark border border-indigo/30 rounded-lg p-4 shadow-lg">
-      {label && <p className="font-bold text-white mb-2">{label}</p>}
-      <div className="space-y-1">
-        {displayItems.map(([key, value]) => (
-          <p key={key} className="text-sm text-gray-300">
-            <span className="capitalize">{key}: </span>
-            <span className="font-medium text-white">{value}</span>
-          </p>
-        ))}
-      </div>
+    <div className="bg-navy-dark border border-indigo/30 rounded-lg p-3 text-sm">
+      <p className="font-medium text-white">{name || 'Value'}: {value}</p>
     </div>
   );
 };
 
-// Data types
-type ChartData = { month: string; hours: number };
-type VenueData = { name: string; visits: number };
-type SportData = { name: string; count: number };
-type RadarData = { subject: string; A: number; fullMark: number };
-type Achievement = { id: number; title: string; description: string; icon: string };
-
+// Data structure
 interface DashboardData {
-  timePlayed: ChartData[];
-  venues: VenueData[];
-  sports: SportData[];
-  radar: RadarData[];
-  achievements: Achievement[];
-  summary: {
+  timeData: { month: string; hours: number }[];
+  venueData: { name: string; visits: number }[];
+  sportData: { name: string; count: number }[];
+  radarData: { subject: string; score: number; max: number }[];
+  achievements: {
+    id: number;
+    title: string;
+    description: string;
+    icon: string;
+  }[];
+  stats: {
     totalHours: number;
-    favoriteVenue: string;
+    topVenue: string;
     topSport: string;
-    topSportCount: number;
+    sportCount: number;
   };
 }
 
@@ -81,76 +64,76 @@ export default function PerformanceDashboard() {
   useEffect(() => {
     if (!user) return;
 
-    const loadData = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
         
-        // Simulate API delay
+        // Simulate API call
         await new Promise(resolve => setTimeout(resolve, 800));
         
-        // Mock data - replace with actual API call
+        // Mock data
         const mockData: DashboardData = {
-          timePlayed: [
+          timeData: [
             { month: 'Jan', hours: 5 },
             { month: 'Feb', hours: 8 },
             { month: 'Mar', hours: 12 },
             { month: 'Apr', hours: 10 },
             { month: 'May', hours: 15 },
           ],
-          venues: [
+          venueData: [
             { name: 'East Delhi Box', visits: 12 },
             { name: 'South Delhi Arena', visits: 8 },
             { name: 'North Delhi Court', visits: 5 },
             { name: 'West Delhi Stadium', visits: 3 },
           ],
-          sports: [
+          sportData: [
             { name: 'Box Football', count: 18 },
             { name: 'Box Cricket', count: 12 },
             { name: 'Badminton', count: 7 },
             { name: 'Basketball', count: 4 },
           ],
-          radar: [
-            { subject: 'Box Football', A: 120, fullMark: 150 },
-            { subject: 'Box Cricket', A: 98, fullMark: 150 },
-            { subject: 'Badminton', A: 86, fullMark: 150 },
-            { subject: 'Basketball', A: 99, fullMark: 150 },
+          radarData: [
+            { subject: 'Football', score: 120, max: 150 },
+            { subject: 'Cricket', score: 98, max: 150 },
+            { subject: 'Badminton', score: 86, max: 150 },
+            { subject: 'Basketball', score: 99, max: 150 },
           ],
           achievements: [
-            { id: 1, title: 'Early Bird', description: 'Booked 5 sessions before 8AM', icon: 'clock' },
-            { id: 2, title: 'Venue Explorer', description: 'Visited 3+ different venues', icon: 'map-pin' }
+            { id: 1, title: 'Early Bird', description: '5 morning sessions', icon: 'clock' },
+            { id: 2, title: 'Explorer', description: '3+ venues', icon: 'map-pin' }
           ],
-          summary: {
+          stats: {
             totalHours: 50,
-            favoriteVenue: 'East Delhi Box',
+            topVenue: 'East Delhi Box',
             topSport: 'Box Football',
-            topSportCount: 18
+            sportCount: 18
           }
         };
 
         setData(mockData);
       } catch (error) {
-        console.error('Failed to load data:', error);
+        console.error('Data loading failed:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    loadData();
+    fetchData();
   }, [user]);
 
-  const renderIcon = (icon: string) => {
-    const iconMap: Record<string, JSX.Element> = {
+  const getIcon = (icon: string) => {
+    const icons: Record<string, JSX.Element> = {
       clock: <Clock className="h-4 w-4" />,
       'map-pin': <MapPin className="h-4 w-4" />,
       award: <Award className="h-4 w-4" />
     };
-    return iconMap[icon] || <Trophy className="h-4 w-4" />;
+    return icons[icon] || <Trophy className="h-4 w-4" />;
   };
 
   if (!user) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-gray-400">Please sign in to view your dashboard</p>
+        <p className="text-gray-400">Sign in to view dashboard</p>
       </div>
     );
   }
@@ -158,7 +141,7 @@ export default function PerformanceDashboard() {
   if (loading || !data) {
     return (
       <div className="space-y-6">
-        <h2 className="text-2xl font-bold text-white">Your Sports Performance</h2>
+        <h2 className="text-2xl font-bold text-white">Your Performance</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-pulse">
           {[1, 2, 3].map((i) => (
             <div key={i} className="bg-navy-light rounded-lg h-52"></div>
@@ -170,40 +153,30 @@ export default function PerformanceDashboard() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-white">Your Sports Performance</h2>
+      <h2 className="text-2xl font-bold text-white">Sports Performance</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Time Played Card */}
-        <Card className="bg-navy-dark border-indigo/30 shadow-lg hover:shadow-indigo/10 transition-shadow">
+        {/* Time Card */}
+        <Card className="bg-navy-dark border-indigo/30">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-white text-lg">Total Time Played</CardTitle>
+              <CardTitle className="text-white">Time Played</CardTitle>
               <Clock className="h-5 w-5 text-indigo-light" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="mb-2">
-              <p className="text-2xl font-bold text-white">{data.summary.totalHours} hours</p>
-              <p className="text-gray-400 text-sm">Your training hours this year</p>
-            </div>
-            <div className="h-24">
+            <p className="text-2xl font-bold text-white">{data.stats.totalHours} hours</p>
+            <div className="h-24 mt-2">
               <ChartContainer>
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={data.timePlayed}>
-                    <defs>
-                      <linearGradient id="colorHours" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#4CAF50" stopOpacity={0.8} />
-                        <stop offset="95%" stopColor="#4CAF50" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <XAxis dataKey="month" tick={{ fontSize: 10 }} stroke="#6E59A5" />
-                    <Tooltip content={<CustomTooltip />} />
+                  <AreaChart data={data.timeData}>
+                    <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+                    <Tooltip content={<SimpleTooltip />} />
                     <Area 
                       type="monotone" 
                       dataKey="hours" 
                       stroke="#4CAF50" 
-                      fillOpacity={1} 
-                      fill="url(#colorHours)" 
+                      fill="url(#timeGradient)" 
                     />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -212,27 +185,24 @@ export default function PerformanceDashboard() {
           </CardContent>
         </Card>
 
-        {/* Venues Card */}
-        <Card className="bg-navy-dark border-indigo/30 shadow-lg hover:shadow-indigo/10 transition-shadow">
+        {/* Venue Card */}
+        <Card className="bg-navy-dark border-indigo/30">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-white text-lg">Favorite Venue</CardTitle>
+              <CardTitle className="text-white">Top Venue</CardTitle>
               <MapPin className="h-5 w-5 text-indigo-light" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="mb-2">
-              <p className="text-2xl font-bold text-white">{data.summary.favoriteVenue}</p>
-              <p className="text-gray-400 text-sm">Your most visited location</p>
-            </div>
-            <div className="h-24">
+            <p className="text-2xl font-bold text-white">{data.stats.topVenue}</p>
+            <div className="h-24 mt-2">
               <ChartContainer>
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={data.venues}>
+                  <BarChart data={data.venueData}>
                     <XAxis dataKey="name" tick={false} />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Bar dataKey="visits" radius={[4, 4, 0, 0]}>
-                      {data.venues.map((entry, index) => (
+                    <Tooltip content={<SimpleTooltip />} />
+                    <Bar dataKey="visits">
+                      {data.venueData.map((entry, index) => (
                         <Cell key={`venue-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Bar>
@@ -243,27 +213,24 @@ export default function PerformanceDashboard() {
           </CardContent>
         </Card>
 
-        {/* Sports Card */}
-        <Card className="bg-navy-dark border-indigo/30 shadow-lg hover:shadow-indigo/10 transition-shadow">
+        {/* Sport Card */}
+        <Card className="bg-navy-dark border-indigo/30">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-white text-lg">Top Sport</CardTitle>
+              <CardTitle className="text-white">Top Sport</CardTitle>
               <Trophy className="h-5 w-5 text-indigo-light" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="mb-2">
-              <p className="text-2xl font-bold text-white">{data.summary.topSportCount} sessions</p>
-              <p className="text-gray-400 text-sm">{data.summary.topSport} is your most played</p>
-            </div>
-            <div className="h-24">
+            <p className="text-2xl font-bold text-white">{data.stats.sportCount} sessions</p>
+            <div className="h-24 mt-2">
               <ChartContainer>
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={data.sports}>
+                  <BarChart data={data.sportData}>
                     <XAxis dataKey="name" tick={false} />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                      {data.sports.map((entry, index) => (
+                    <Tooltip content={<SimpleTooltip />} />
+                    <Bar dataKey="count">
+                      {data.sportData.map((entry, index) => (
                         <Cell key={`sport-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Bar>
@@ -276,22 +243,26 @@ export default function PerformanceDashboard() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Radar Chart */}
-        <Card className="bg-navy-dark border-indigo/30 shadow-lg hover:shadow-indigo/10 transition-shadow">
+        {/* Radar Card */}
+        <Card className="bg-navy-dark border-indigo/30">
           <CardHeader>
-            <CardTitle className="text-white">Performance Radar</CardTitle>
-            <CardDescription className="text-gray-400">Your skills across different sports</CardDescription>
+            <CardTitle className="text-white">Skills Radar</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-64 w-full">
+            <div className="h-64">
               <ChartContainer>
                 <ResponsiveContainer width="100%" height="100%">
-                  <RadarChart cx="50%" cy="50%" outerRadius="80%" data={data.radar}>
-                    <PolarGrid stroke="#6E59A5" />
-                    <PolarAngleAxis dataKey="subject" tick={{ fill: '#C8C8C9' }} />
-                    <PolarRadiusAxis angle={30} domain={[0, 150]} />
-                    <Radar name="Performance" dataKey="A" stroke="#9b87f5" fill="#9b87f5" fillOpacity={0.6} />
-                    <Tooltip content={<CustomTooltip />} />
+                  <RadarChart data={data.radarData}>
+                    <PolarGrid />
+                    <PolarAngleAxis dataKey="subject" />
+                    <Radar 
+                      name="Performance" 
+                      dataKey="score" 
+                      stroke="#9b87f5" 
+                      fill="#9b87f5" 
+                      fillOpacity={0.6} 
+                    />
+                    <Tooltip content={<SimpleTooltip />} />
                   </RadarChart>
                 </ResponsiveContainer>
               </ChartContainer>
@@ -299,37 +270,25 @@ export default function PerformanceDashboard() {
           </CardContent>
         </Card>
 
-        {/* Achievements */}
-        <Card className="bg-navy-dark border-indigo/30 shadow-lg hover:shadow-indigo/10 transition-shadow">
+        {/* Achievements Card */}
+        <Card className="bg-navy-dark border-indigo/30">
           <CardHeader>
-            <CardTitle className="text-white">🏅 Achievements</CardTitle>
-            <CardDescription className="text-gray-400">Your sports milestones</CardDescription>
+            <CardTitle className="text-white">Achievements</CardTitle>
           </CardHeader>
           <CardContent>
-            {data.achievements.length > 0 ? (
-              <div className="space-y-4">
-                {data.achievements.map((achievement) => (
-                  <div key={achievement.id} className="flex items-center p-3 rounded-lg border border-indigo/20 bg-navy hover:bg-navy-light transition-colors">
-                    <div className="flex-shrink-0 mr-3">
-                      <div className="w-10 h-10 rounded-full bg-indigo/20 flex items-center justify-center">
-                        {renderIcon(achievement.icon)}
-                      </div>
-                    </div>
-                    <div className="flex-grow">
-                      <h4 className="text-white font-medium">{achievement.title}</h4>
-                      <p className="text-gray-400 text-sm">{achievement.description}</p>
-                    </div>
-                    <Badge variant="outline" className="bg-indigo/10 text-indigo-light border-indigo/30">
-                      Earned
-                    </Badge>
+            <div className="space-y-3">
+              {data.achievements.map((item) => (
+                <div key={item.id} className="flex items-center p-3 border border-indigo/20 rounded-lg">
+                  <div className="mr-3 p-2 rounded-full bg-indigo/20">
+                    {getIcon(item.icon)}
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-gray-400">
-                No achievements yet. Keep playing!
-              </div>
-            )}
+                  <div>
+                    <p className="font-medium text-white">{item.title}</p>
+                    <p className="text-sm text-gray-400">{item.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       </div>
