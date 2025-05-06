@@ -16,7 +16,6 @@ import {
 import { StreakBar } from '@/components/StreakBar';
 import { LocationPermissionRequest } from '@/components/LocationPermissionRequest';
 import { NearbyVenues } from '@/components/NearbyVenues';
-import { UserPerformanceDashboard } from '@/components/UserPerformanceDashboard';
 
 interface Venue {
   id: string;
@@ -455,15 +454,8 @@ const Index: React.FC = () => {
                   <h3 className="text-2xl font-bold text-white">Recommended For You</h3>
                 </div>
                 
-                {/* StreakBar component */}
+                {/* Added StreakBar component here */}
                 <StreakBar />
-                
-                {/* Only show the UserPerformanceDashboard for logged in users */}
-                {user && (
-                  <div className="mt-8 mb-10">
-                    <UserPerformanceDashboard />
-                  </div>
-                )}
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="flex flex-col items-center text-center p-4 rounded-lg border border-indigo-light hover:bg-indigo hover:text-white transition-all">
