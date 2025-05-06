@@ -13,6 +13,8 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
+import { AvailabilitySlot, BookingInfo, GetAvailableSlotsResult } from '@/types/help';
+import { toast } from '@/components/ui/use-toast';
 
 interface AdminAvailabilityWidgetProps {
   courtId: string;
@@ -21,34 +23,13 @@ interface AdminAvailabilityWidgetProps {
   courtName?: string;
 }
 
-interface BookingInfo {
-  id: string;
-  user_id: string | null;
-  guest_name: string | null;
-  guest_phone: string | null;
-  start_time: string;
-  end_time: string;
-  booking_date: string;
-  status: string;
-  payment_status: string | null;
-  user_email?: string;
-  user_name?: string;
-}
-
-interface Slot {
-  start_time: string;
-  end_time: string;
-  is_available: boolean;
-  booking?: BookingInfo;
-}
-
 const AdminAvailabilityWidget: React.FC<AdminAvailabilityWidgetProps> = ({ 
   courtId, 
   date,
   venueName = 'Venue',
   courtName = 'Court' 
 }) => {
-  const [slots, setSlots] = useState<Slot[]>([]);
+  const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedBooking, setSelectedBooking] = useState<BookingInfo | null>(null);
   const [showDialog, setShowDialog] = useState(false);
@@ -63,7 +44,8 @@ const AdminAvailabilityWidget: React.FC<AdminAvailabilityWidgetProps> = ({
           .rpc('get_available_slots', {
             p_court_id: courtId,
             p_date: date,
-          });
+          })
+          .returns<GetAvailableSlotsResult>();
 
         if (availabilityError) throw availabilityError;
         
@@ -88,7 +70,7 @@ const AdminAvailabilityWidget: React.FC<AdminAvailabilityWidgetProps> = ({
         if (bookingsError) throw bookingsError;
         
         // Merge availability data with booking data
-        const enhancedSlots = availabilityData.map((slot: Slot) => {
+        const enhancedSlots = availabilityData.map((slot: AvailabilitySlot) => {
           const booking = bookingsData?.find((b: BookingInfo) => 
             b.start_time === slot.start_time && 
             b.end_time === slot.end_time
@@ -103,6 +85,11 @@ const AdminAvailabilityWidget: React.FC<AdminAvailabilityWidgetProps> = ({
         setSlots(enhancedSlots || []);
       } catch (error) {
         console.error('Error fetching availability and bookings:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load availability data',
+          variant: 'destructive'
+        });
       } finally {
         setLoading(false);
       }
@@ -161,6 +148,31 @@ const AdminAvailabilityWidget: React.FC<AdminAvailabilityWidgetProps> = ({
     
     setSelectedBooking(booking);
     setShowDialog(true);
+  };
+
+  const handleStatusChange = async (bookingId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ status: newStatus })
+        .eq('id', bookingId);
+        
+      if (error) throw error;
+      
+      setShowDialog(false);
+      toast({
+        title: 'Status Updated',
+        description: `Booking has been marked as ${newStatus}`,
+      });
+      
+    } catch (error) {
+      console.error('Error updating booking status:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update booking status',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
@@ -294,6 +306,36 @@ const AdminAvailabilityWidget: React.FC<AdminAvailabilityWidgetProps> = ({
                       : 'No Payment Info'}
                   </Badge>
                 </div>
+              </div>
+              
+              <div className="flex flex-wrap gap-2 pt-2">
+                {selectedBooking.status !== 'cancelled' && (
+                  <Button 
+                    variant="destructive" 
+                    size="sm"
+                    onClick={() => handleStatusChange(selectedBooking.id, 'cancelled')}
+                  >
+                    Cancel Booking
+                  </Button>
+                )}
+                {selectedBooking.status !== 'completed' && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => handleStatusChange(selectedBooking.id, 'completed')}
+                  >
+                    Mark as Completed
+                  </Button>
+                )}
+                {selectedBooking.status === 'cancelled' && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => handleStatusChange(selectedBooking.id, 'confirmed')}
+                  >
+                    Reactivate Booking
+                  </Button>
+                )}
               </div>
             </div>
           )}

@@ -4,20 +4,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { Loader2, Clock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { GetAvailableSlotsResult } from '@/types/help';
 
 interface AvailabilityWidgetProps {
   courtId: string;
   date: string;
 }
 
-interface Slot {
-  start_time: string;
-  end_time: string;
-  is_available: boolean;
-}
-
 const AvailabilityWidget: React.FC<AvailabilityWidgetProps> = ({ courtId, date }) => {
-  const [slots, setSlots] = useState<Slot[]>([]);
+  const [slots, setSlots] = useState<GetAvailableSlotsResult>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -30,7 +25,8 @@ const AvailabilityWidget: React.FC<AvailabilityWidgetProps> = ({ courtId, date }
           .rpc('get_available_slots', {
             p_court_id: courtId,
             p_date: date,
-          });
+          })
+          .returns<GetAvailableSlotsResult>();
 
         if (error) throw error;
         

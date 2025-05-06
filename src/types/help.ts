@@ -16,3 +16,27 @@ export type GetUserHelpRequestsResult = HelpRequest[];
 export type GetHelpRequestsResult = HelpRequest[];
 export type CreateHelpRequestResult = HelpRequest;
 export type UpdateHelpRequestStatusResult = HelpRequest;
+
+// Types for the real-time availability feature
+export interface AvailabilitySlot {
+  start_time: string;
+  end_time: string;
+  is_available: boolean;
+  booking?: BookingInfo;
+}
+
+export interface BookingInfo {
+  id: string;
+  user_id: string | null;
+  guest_name: string | null;
+  guest_phone: string | null;
+  start_time: string;
+  end_time: string;
+  booking_date: string;
+  status: string;
+  payment_status: string | null;
+  user_email?: string;
+  user_name?: string;
+}
+
+export type GetAvailableSlotsResult = AvailabilitySlot[];
