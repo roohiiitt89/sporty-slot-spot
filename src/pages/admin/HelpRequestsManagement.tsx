@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
@@ -22,7 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AdminHelpChatInterface } from '@/components/AdminHelpChatInterface';
-import { HelpRequest } from '@/types/help';
+import { HelpRequest, GetHelpRequestsResult, UpdateHelpRequestStatusResult } from '@/types/help';
 
 interface HelpRequestsManagementProps {
   userRole: string | null;
@@ -89,7 +88,9 @@ const HelpRequestsManagement: React.FC<HelpRequestsManagementProps> = ({ userRol
       
       // Fetch help requests using RPC call
       let { data, error } = await supabase
-        .rpc('get_help_requests', { p_status: statusFilter === 'all' ? null : statusFilter });
+        .rpc<GetHelpRequestsResult>('get_help_requests', { 
+          p_status: statusFilter === 'all' ? null : statusFilter 
+        });
         
       if (error) throw error;
       
@@ -129,7 +130,7 @@ const HelpRequestsManagement: React.FC<HelpRequestsManagementProps> = ({ userRol
   const markAsResolved = async (requestId: string) => {
     try {
       const { error } = await supabase
-        .rpc('update_help_request_status', {
+        .rpc<UpdateHelpRequestStatusResult>('update_help_request_status', {
           p_help_request_id: requestId,
           p_status: 'resolved'
         });

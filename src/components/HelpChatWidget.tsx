@@ -17,7 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { HelpRequest } from '@/types/help';
+import { HelpRequest, GetUserHelpRequestsResult, CreateHelpRequestResult, UpdateHelpRequestStatusResult } from '@/types/help';
 
 interface Message {
   id: string;
@@ -48,15 +48,14 @@ const HelpChatWidget: React.FC = () => {
       try {
         setLoading(true);
         
-        // Check for existing help requests - using raw SQL query instead of from()
-        const { data: requests, error: requestsError } = await supabase
-          .rpc('get_user_help_requests', { p_user_id: user.id })
-          .limit(1);
+        // Using PostgreSQL function to get user help requests
+        const { data, error } = await supabase
+          .rpc<GetUserHelpRequestsResult>('get_user_help_requests', { p_user_id: user.id });
           
-        if (requestsError) throw requestsError;
+        if (error) throw error;
         
-        if (requests && requests.length > 0) {
-          setHelpRequest(requests[0] as HelpRequest);
+        if (data && data.length > 0) {
+          setHelpRequest(data[0]);
           setStep('chat');
           
           // Fetch messages for this help request
@@ -84,7 +83,7 @@ const HelpChatWidget: React.FC = () => {
         .from('messages')
         .select('*')
         .eq('user_id', user.id)
-        .eq('venue_id', null) // Messages without venue_id are help requests
+        .is('venue_id', null) // Messages without venue_id are help requests
         .order('created_at', { ascending: true });
 
       if (error) throw error;
@@ -146,39 +145,41 @@ const HelpChatWidget: React.FC = () => {
     try {
       // Create a new help request using RPC call
       const { data: requestData, error: requestError } = await supabase
-        .rpc('create_help_request', { 
+        .rpc<CreateHelpRequestResult>('create_help_request', { 
           p_user_id: user.id, 
           p_subject: subject.trim() 
         });
         
       if (requestError) throw requestError;
       
-      setHelpRequest(requestData as HelpRequest);
+      if (requestData) {
+        setHelpRequest(requestData);
       
-      // Create initial message
-      if (newMessage.trim()) {
-        const { error: messageError } = await supabase
-          .from('messages')
-          .insert({
-            content: newMessage.trim(),
-            user_id: user.id,
-            sender_id: user.id,
-            venue_id: null, // No venue_id means this is a help request message
-          });
-          
-        if (messageError) throw messageError;
+        // Create initial message
+        if (newMessage.trim()) {
+          const { error: messageError } = await supabase
+            .from('messages')
+            .insert({
+              content: newMessage.trim(),
+              user_id: user.id,
+              sender_id: user.id,
+              venue_id: null, // No venue_id means this is a help request message
+            });
+            
+          if (messageError) throw messageError;
+        }
+        
+        setStep('chat');
+        setNewMessage('');
+        setSubject('');
+        toast({
+          title: 'Help Request Submitted',
+          description: 'We have received your request and will respond soon.',
+        });
+        
+        // Fetch messages to make sure we have the latest
+        fetchMessages();
       }
-      
-      setStep('chat');
-      setNewMessage('');
-      setSubject('');
-      toast({
-        title: 'Help Request Submitted',
-        description: 'We have received your request and will respond soon.',
-      });
-      
-      // Fetch messages to make sure we have the latest
-      fetchMessages();
     } catch (error) {
       console.error('Error submitting help request:', error);
       toast({
@@ -212,7 +213,7 @@ const HelpChatWidget: React.FC = () => {
       // Update the last_message_at field in the help_request
       if (helpRequest) {
         await supabase
-          .rpc('update_help_request_status', {
+          .rpc<UpdateHelpRequestStatusResult>('update_help_request_status', {
             p_help_request_id: helpRequest.id,
             p_status: 'pending'
           });
