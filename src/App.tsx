@@ -19,6 +19,7 @@ import AdminDashboard from "./pages/admin/Dashboard";
 import Profile from "./pages/Profile";
 import ChallengeDashboard from "./pages/challenge/ChallengeDashboard";
 import TeamDetails from "./pages/challenge/TeamDetails";
+import HelpChatWidget from "./components/HelpChatWidget";
 
 const queryClient = new QueryClient();
 
@@ -57,6 +58,9 @@ const App = () => (
             <Route path="/sports" element={<Sports />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
+          
+          {/* Global Help Chat Widget (shown on all pages for authenticated users) */}
+          <HelpChatWidget />
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
