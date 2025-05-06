@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
-import { LayoutGrid, Users, Calendar, Map, Dumbbell, ShieldCheckIcon, Info, BarChart, MessageCircle, Star } from 'lucide-react';
+import { LayoutGrid, Users, Calendar, Map, Dumbbell, ShieldCheckIcon, Info, BarChart, MessageCircle, Star, HelpCircle } from 'lucide-react';
 
 // Admin pages
 import VenueManagement from './VenueManagement';
@@ -15,6 +16,7 @@ import SportDisplayNames from './SportDisplayNames';
 import AnalyticsDashboard from './AnalyticsDashboard';
 import MessageManagement from './MessageManagement';
 import ReviewManagement from './ReviewManagement';
+import HelpRequestsManagement from './HelpRequestsManagement';
 
 const Dashboard: React.FC = () => {
   const { user, userRole } = useAuth();
@@ -70,6 +72,10 @@ const Dashboard: React.FC = () => {
     { path: '/admin/sport-display-names', icon: <Dumbbell className="mr-2" />, title: 'Sport Display Names' },
     { path: '/admin/messages', icon: <MessageCircle className="mr-2" />, title: 'Messages' },
     { path: '/admin/reviews', icon: <Star className="mr-2" />, title: 'Reviews' },
+    // Only show help requests for super_admin
+    ...(userRole === 'super_admin' ? [
+      { path: '/admin/help-requests', icon: <HelpCircle className="mr-2" />, title: 'Help Requests' }
+    ] : [])
   ];
 
   return (
@@ -154,7 +160,7 @@ const Dashboard: React.FC = () => {
                         ) : (
                           // Only show relevant options for venue admin
                           navItems.slice(1)
-                            .filter(item => item.path !== '/admin/sports')
+                            .filter(item => item.path !== '/admin/sports' && item.path !== '/admin/help-requests')
                             .map((item) => (
                               <Link
                                 key={item.path}
@@ -205,6 +211,7 @@ const Dashboard: React.FC = () => {
                 <Route path="/analytics" element={<AnalyticsDashboard />} />
                 <Route path="/messages" element={<MessageManagement userRole={userRole} adminVenues={adminVenues} />} />
                 <Route path="/reviews" element={<ReviewManagement userRole={userRole} adminVenues={adminVenues} />} />
+                <Route path="/help-requests" element={<HelpRequestsManagement userRole={userRole} />} />
               </Routes>
             </div>
           </div>

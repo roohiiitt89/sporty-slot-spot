@@ -4,15 +4,17 @@ import { MapPin, Star, ArrowLeft, MessageCircle, Navigation, Clock } from 'lucid
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useGeolocation, calculateDistance } from '@/hooks/use-geolocation';
+import { format } from 'date-fns';
 import Header from '../components/Header';
 import BookSlotModal from '../components/BookSlotModal';
 import ChatModal from '../components/ChatModal';
 import { ReviewModal } from '@/components/ReviewModal';
 import { VenueReviews } from '@/components/VenueReviews';
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import SportDisplayName from '@/components/SportDisplayName';
 import { getVenueSportDisplayNames } from '@/utils/sportDisplayNames';
+import AvailabilityWidget from '@/components/AvailabilityWidget';
 
 interface Venue {
   id: string;
