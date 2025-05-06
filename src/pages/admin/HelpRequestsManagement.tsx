@@ -22,21 +22,10 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AdminHelpChatInterface } from '@/components/AdminHelpChatInterface';
+import { HelpRequest } from '@/types/help';
 
 interface HelpRequestsManagementProps {
   userRole: string | null;
-}
-
-interface HelpRequest {
-  id: string;
-  user_id: string;
-  subject: string;
-  status: string;
-  created_at: string;
-  updated_at: string;
-  last_message_at: string;
-  user_name?: string;
-  user_email?: string;
 }
 
 const HelpRequestsManagement: React.FC<HelpRequestsManagementProps> = ({ userRole }) => {
@@ -98,58 +87,21 @@ const HelpRequestsManagement: React.FC<HelpRequestsManagementProps> = ({ userRol
         return;
       }
       
-      // Fetch help requests
-      let query = supabase
-        .from('help_requests')
-        .select('*')
-        .order('last_message_at', { ascending: false });
+      // Fetch help requests using RPC call
+      let { data, error } = await supabase
+        .rpc('get_help_requests', { p_status: statusFilter === 'all' ? null : statusFilter });
         
-      // Apply status filter if not 'all'
-      if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter);
-      }
-      
-      const { data, error } = await query;
-      
       if (error) throw error;
       
-      // Fetch user details for each help request
-      const enhancedRequests = await Promise.all(
-        data.map(async (request) => {
-          try {
-            const { data: userData, error: userError } = await supabase
-              .from('profiles')
-              .select('full_name, email')
-              .eq('id', request.user_id)
-              .single();
-              
-            if (userError) throw userError;
-            
-            return {
-              ...request,
-              user_name: userData?.full_name || 'Unknown User',
-              user_email: userData?.email || 'No email'
-            };
-          } catch (error) {
-            console.error('Error fetching user details:', error);
-            return {
-              ...request,
-              user_name: 'Unknown User',
-              user_email: 'No email'
-            };
-          }
-        })
-      );
-      
       // Apply search filter if provided
-      const filteredRequests = searchQuery
-        ? enhancedRequests.filter(req => 
+      const filteredRequests = searchQuery && data
+        ? data.filter((req: HelpRequest) => 
             req.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            req.user_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            req.user_email.toLowerCase().includes(searchQuery.toLowerCase()))
-        : enhancedRequests;
+            (req.user_name && req.user_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+            (req.user_email && req.user_email.toLowerCase().includes(searchQuery.toLowerCase())))
+        : data;
       
-      setHelpRequests(filteredRequests);
+      setHelpRequests(filteredRequests || []);
     } catch (error) {
       console.error('Error fetching help requests:', error);
       toast({
@@ -177,9 +129,10 @@ const HelpRequestsManagement: React.FC<HelpRequestsManagementProps> = ({ userRol
   const markAsResolved = async (requestId: string) => {
     try {
       const { error } = await supabase
-        .from('help_requests')
-        .update({ status: 'resolved' })
-        .eq('id', requestId);
+        .rpc('update_help_request_status', {
+          p_help_request_id: requestId,
+          p_status: 'resolved'
+        });
         
       if (error) throw error;
       

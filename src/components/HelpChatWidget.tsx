@@ -17,6 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { HelpRequest } from '@/types/help';
 
 interface Message {
   id: string;
@@ -25,13 +26,6 @@ interface Message {
   user_id: string;
   sender_id: string;
   is_read: boolean;
-}
-
-interface HelpRequest {
-  id: string;
-  subject: string;
-  status: string;
-  created_at: string;
 }
 
 const HelpChatWidget: React.FC = () => {
@@ -54,18 +48,15 @@ const HelpChatWidget: React.FC = () => {
       try {
         setLoading(true);
         
-        // Check for existing help requests
+        // Check for existing help requests - using raw SQL query instead of from()
         const { data: requests, error: requestsError } = await supabase
-          .from('help_requests')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
+          .rpc('get_user_help_requests', { p_user_id: user.id })
           .limit(1);
           
         if (requestsError) throw requestsError;
         
         if (requests && requests.length > 0) {
-          setHelpRequest(requests[0]);
+          setHelpRequest(requests[0] as HelpRequest);
           setStep('chat');
           
           // Fetch messages for this help request
@@ -153,20 +144,16 @@ const HelpChatWidget: React.FC = () => {
     
     setSending(true);
     try {
-      // Create a new help request
+      // Create a new help request using RPC call
       const { data: requestData, error: requestError } = await supabase
-        .from('help_requests')
-        .insert({
-          user_id: user.id,
-          subject: subject.trim(),
-          status: 'pending'
-        })
-        .select()
-        .single();
+        .rpc('create_help_request', { 
+          p_user_id: user.id, 
+          p_subject: subject.trim() 
+        });
         
       if (requestError) throw requestError;
       
-      setHelpRequest(requestData);
+      setHelpRequest(requestData as HelpRequest);
       
       // Create initial message
       if (newMessage.trim()) {
@@ -225,12 +212,10 @@ const HelpChatWidget: React.FC = () => {
       // Update the last_message_at field in the help_request
       if (helpRequest) {
         await supabase
-          .from('help_requests')
-          .update({ 
-            last_message_at: new Date().toISOString(),
-            status: 'pending' // Reset to pending when user sends new message
-          })
-          .eq('id', helpRequest.id);
+          .rpc('update_help_request_status', {
+            p_help_request_id: helpRequest.id,
+            p_status: 'pending'
+          });
       }
       
       setNewMessage('');

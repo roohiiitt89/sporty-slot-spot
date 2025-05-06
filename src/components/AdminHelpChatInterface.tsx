@@ -5,11 +5,12 @@ import { useAuth } from '@/context/AuthContext';
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 import { Send, Loader2, CheckCircle, User, Mail } from 'lucide-react';
+import { HelpRequest } from '@/types/help';
 
 interface AdminHelpChatInterfaceProps {
   selectedRequestId: string;
   onMarkResolved: () => void;
-  helpRequests: any[];
+  helpRequests: HelpRequest[];
 }
 
 interface Message {
