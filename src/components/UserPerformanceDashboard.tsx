@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import {
   AreaChart,
@@ -86,6 +87,7 @@ export function UserPerformanceDashboard() {
     achievements: mockData.achievements
   });
 
+  // Define chart configuration for different data series
   const chartConfig = {
     hours: {
       label: "Hours",
@@ -101,6 +103,20 @@ export function UserPerformanceDashboard() {
         dark: "#9b87f5",
       },
     },
+    count: {
+      label: "Sessions",
+      theme: {
+        light: "#F97316",
+        dark: "#F97316",
+      },
+    },
+    performance: {
+      label: "Performance",
+      theme: {
+        light: "#9b87f5",
+        dark: "#9b87f5",
+      },
+    }
   };
 
   useEffect(() => {
@@ -191,7 +207,7 @@ export function UserPerformanceDashboard() {
                   <p className="text-gray-400 text-sm">You've spent {stats.totalHours} hours in training this year</p>
                 </div>
                 <div className="h-24">
-                  <ChartContainer>
+                  <ChartContainer config={chartConfig}>
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={stats.monthlyTrend} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
                         <defs>
@@ -224,7 +240,7 @@ export function UserPerformanceDashboard() {
                   <p className="text-gray-400 text-sm">You trained most at this venue</p>
                 </div>
                 <div className="h-24">
-                  <ChartContainer>
+                  <ChartContainer config={chartConfig}>
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={stats.venueDistribution} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
                         <XAxis dataKey="name" tick={false} />
@@ -255,7 +271,7 @@ export function UserPerformanceDashboard() {
                   <p className="text-gray-400 text-sm">You played {stats.topSport} {stats.topSportCount} times this year</p>
                 </div>
                 <div className="h-24">
-                  <ChartContainer>
+                  <ChartContainer config={chartConfig}>
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={stats.sportsDistribution} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
                         <XAxis dataKey="name" tick={false} />
@@ -282,7 +298,7 @@ export function UserPerformanceDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="h-64 w-full">
-                  <ChartContainer>
+                  <ChartContainer config={chartConfig}>
                     <ResponsiveContainer width="100%" height="100%">
                       <RadarChart cx="50%" cy="50%" outerRadius="80%" data={stats.radarData}>
                         <PolarGrid stroke="#6E59A5" />
