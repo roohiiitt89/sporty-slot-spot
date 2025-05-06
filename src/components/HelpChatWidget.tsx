@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -49,7 +50,8 @@ const HelpChatWidget: React.FC = () => {
         
         // Using PostgreSQL function to get user help requests
         const { data, error } = await supabase
-          .rpc<GetUserHelpRequestsResult, { p_user_id: string }>('get_user_help_requests', { p_user_id: user.id });
+          .rpc('get_user_help_requests', { p_user_id: user.id })
+          .returns<GetUserHelpRequestsResult>();
           
         if (error) throw error;
         
@@ -144,10 +146,11 @@ const HelpChatWidget: React.FC = () => {
     try {
       // Create a new help request using RPC call
       const { data: requestData, error: requestError } = await supabase
-        .rpc<CreateHelpRequestResult, { p_user_id: string, p_subject: string }>('create_help_request', { 
+        .rpc('create_help_request', { 
           p_user_id: user.id, 
           p_subject: subject.trim() 
-        });
+        })
+        .returns<CreateHelpRequestResult>();
         
       if (requestError) throw requestError;
       
@@ -212,10 +215,11 @@ const HelpChatWidget: React.FC = () => {
       // Update the last_message_at field in the help_request
       if (helpRequest) {
         await supabase
-          .rpc<UpdateHelpRequestStatusResult, { p_help_request_id: string, p_status: string }>('update_help_request_status', {
+          .rpc('update_help_request_status', {
             p_help_request_id: helpRequest.id,
             p_status: 'pending'
-          });
+          })
+          .returns<UpdateHelpRequestStatusResult>();
       }
       
       setNewMessage('');

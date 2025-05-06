@@ -89,9 +89,10 @@ const HelpRequestsManagement: React.FC<HelpRequestsManagementProps> = ({ userRol
       
       // Fetch help requests using RPC call
       let { data, error } = await supabase
-        .rpc<GetHelpRequestsResult, { p_status: string | null }>('get_help_requests', { 
+        .rpc('get_help_requests', { 
           p_status: statusFilter === 'all' ? null : statusFilter 
-        });
+        })
+        .returns<GetHelpRequestsResult>();
         
       if (error) throw error;
       
@@ -131,10 +132,11 @@ const HelpRequestsManagement: React.FC<HelpRequestsManagementProps> = ({ userRol
   const markAsResolved = async (requestId: string) => {
     try {
       const { error } = await supabase
-        .rpc<UpdateHelpRequestStatusResult, { p_help_request_id: string, p_status: string }>('update_help_request_status', {
+        .rpc('update_help_request_status', {
           p_help_request_id: requestId,
           p_status: 'resolved'
-        });
+        })
+        .returns<UpdateHelpRequestStatusResult>();
         
       if (error) throw error;
       

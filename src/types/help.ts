@@ -11,14 +11,8 @@ export interface HelpRequest {
   user_email?: string;
 }
 
-// Type for the result of get_user_help_requests
+// Type for RPC function return types
 export type GetUserHelpRequestsResult = HelpRequest[];
-
-// Type for the result of get_help_requests
 export type GetHelpRequestsResult = HelpRequest[];
-
-// Type for the result of create_help_request
 export type CreateHelpRequestResult = HelpRequest;
-
-// Type for the result of update_help_request_status
 export type UpdateHelpRequestStatusResult = HelpRequest;
