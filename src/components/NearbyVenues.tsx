@@ -100,7 +100,7 @@ export function NearbyVenues() {
                     </div>
                   </div>
                   
-                  <CardContent className="p-5 text-white px-[20px] mx-0 my-0 py-[20px] rounded-sm">
+                  <CardContent className="p-5 text-white px-[20px] mx-0 my-0 py-[20px] rounded-none">
                     <h3 className="text-xl font-bold mb-2 text-gradient group-hover:text-indigo-light transition-colors">
                       {venue.name}
                     </h3>
