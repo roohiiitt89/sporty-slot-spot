@@ -413,7 +413,7 @@ const Index: React.FC = () => {
       </section>
 
       <section id="quotes" ref={quotesRef} className="py-16 bg-indigo relative overflow-hidden">
-        <div className="absolute inset-0 pattern-dots pattern-opacity-10"></div>
+        <div className="absolute inset-0 pattern-dots pattern-opacity-10 bg-navy-dark"></div>
         <div className="container mx-auto px-4 relative z-10">
           <h2 className={`section-title text-center text-white ${visibleSections.quotes ? 'animate-reveal' : 'opacity-0'}`}>
             Want To Register For A Tournament?
