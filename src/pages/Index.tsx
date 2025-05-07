@@ -415,9 +415,7 @@ const Index: React.FC = () => {
       <section id="quotes" ref={quotesRef} className="py-16 bg-indigo relative overflow-hidden">
         <div className="absolute inset-0 pattern-dots pattern-opacity-10 bg-navy-dark"></div>
         <div className="container mx-auto px-4 relative z-10">
-          <h2 className={`section-title text-center text-white ${visibleSections.quotes ? 'animate-reveal' : 'opacity-0'}`}>
-            Want To Register For A Tournament?
-          </h2>
+          <h2 className={`section-title text-center text-white ${visibleSections.quotes ? 'animate-reveal' : 'opacity-0'}`}>Become A Partner</h2>
           
           <div className="max-w-4xl mx-auto mt-10">
             <div className={`glass-card p-8 ${visibleSections.quotes ? 'animate-reveal animate-float' : 'opacity-0'}`} style={{
