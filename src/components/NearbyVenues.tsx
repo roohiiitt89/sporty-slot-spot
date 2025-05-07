@@ -1,11 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, Star, ArrowRight, Navigation, Loader2 } from 'lucide-react';
 import { useGeolocation, calculateDistance } from '@/hooks/use-geolocation';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
-
 interface Venue {
   id: string;
   name: string;
@@ -16,13 +14,16 @@ interface Venue {
   longitude: number | null;
   distance?: number | null;
 }
-
 export function NearbyVenues() {
   const navigate = useNavigate();
-  const { latitude, longitude, hasPermission, isLoading: locationLoading } = useGeolocation();
+  const {
+    latitude,
+    longitude,
+    hasPermission,
+    isLoading: locationLoading
+  } = useGeolocation();
   const [venues, setVenues] = useState<Venue[]>([]);
   const [loading, setLoading] = useState(true);
-
   useEffect(() => {
     // Only fetch venues if we have the user's location
     if (latitude && longitude) {
@@ -32,29 +33,20 @@ export function NearbyVenues() {
       fetchNearbyVenues();
     }
   }, [latitude, longitude, hasPermission]);
-
   const fetchNearbyVenues = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('venues')
-        .select('id, name, location, image_url, rating, latitude, longitude')
-        .eq('is_active', true)
-        .order('created_at', { ascending: false })
-        .limit(5);
-
+      const {
+        data,
+        error
+      } = await supabase.from('venues').select('id, name, location, image_url, rating, latitude, longitude').eq('is_active', true).order('created_at', {
+        ascending: false
+      }).limit(5);
       if (error) throw error;
-
       if (data) {
         let venuesWithDistance = data.map(venue => {
           // Calculate real distance if we have coordinates
-          const distance = calculateDistance(
-            latitude,
-            longitude,
-            venue.latitude,
-            venue.longitude
-          );
-          
+          const distance = calculateDistance(latitude, longitude, venue.latitude, venue.longitude);
           return {
             ...venue,
             distance: distance
@@ -69,7 +61,6 @@ export function NearbyVenues() {
             return a.distance - b.distance;
           });
         }
-
         setVenues(venuesWithDistance.slice(0, 3));
       }
     } catch (error) {
@@ -78,11 +69,8 @@ export function NearbyVenues() {
       setLoading(false);
     }
   };
-
   if (!hasPermission && !venues.length) return null;
-
-  return (
-    <div className="py-12">
+  return <div className="py-12">
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center mb-8">
           <div>
@@ -92,33 +80,18 @@ export function NearbyVenues() {
             </h2>
             <p className="text-gray-300">Discover sports venues close to your location</p>
           </div>
-          <button 
-            onClick={() => navigate('/venues')}
-            className="text-indigo-light flex items-center hover:text-white transition-colors"
-          >
+          <button onClick={() => navigate('/venues')} className="text-indigo-light flex items-center hover:text-white transition-colors">
             View all venues <ArrowRight className="ml-1 h-4 w-4" />
           </button>
         </div>
 
-        {locationLoading || loading ? (
-          <div className="flex justify-center items-center py-12">
+        {locationLoading || loading ? <div className="flex justify-center items-center py-12">
             <Loader2 className="h-8 w-8 text-indigo animate-spin" />
-          </div>
-        ) : venues.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {venues.map((venue) => (
-              <div 
-                key={venue.id}
-                onClick={() => navigate(`/venues/${venue.id}`)}
-                className="cursor-pointer group"
-              >
+          </div> : venues.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {venues.map(venue => <div key={venue.id} onClick={() => navigate(`/venues/${venue.id}`)} className="cursor-pointer group">
                 <Card className="bg-navy-light border-navy hover:border-indigo transition-all duration-300 overflow-hidden h-full shadow-lg">
                   <div className="h-48 overflow-hidden relative">
-                    <img 
-                      src={venue.image_url || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000'} 
-                      alt={venue.name} 
-                      className="w-full h-full object-cover transform transition-transform duration-700 group-hover:scale-110"
-                    />
+                    <img src={venue.image_url || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000'} alt={venue.name} className="w-full h-full object-cover transform transition-transform duration-700 group-hover:scale-110" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent opacity-60"></div>
                     
                     <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-md px-2 py-1 rounded-md flex items-center">
@@ -127,7 +100,7 @@ export function NearbyVenues() {
                     </div>
                   </div>
                   
-                  <CardContent className="p-5 text-white">
+                  <CardContent className="p-5 text-white px-[20px] mx-0 my-0 py-[20px] rounded-sm">
                     <h3 className="text-xl font-bold mb-2 text-gradient group-hover:text-indigo-light transition-colors">
                       {venue.name}
                     </h3>
@@ -139,38 +112,26 @@ export function NearbyVenues() {
                       </span>
                     </div>
                     
-                    {venue.distance !== null && (
-                      <div className="mt-4 flex items-center justify-between">
+                    {venue.distance !== null && <div className="mt-4 flex items-center justify-between">
                         <div className="flex items-center bg-indigo/20 px-3 py-1.5 rounded-full">
                           <Navigation className="h-4 w-4 text-indigo-light mr-1.5" />
                           <span className="text-sm font-medium text-white">
-                            {venue.distance < 1 
-                              ? `${(venue.distance * 1000).toFixed(0)} m` 
-                              : `${venue.distance.toFixed(1)} km`} away
+                            {venue.distance < 1 ? `${(venue.distance * 1000).toFixed(0)} m` : `${venue.distance.toFixed(1)} km`} away
                           </span>
                         </div>
                         <span className="text-indigo-light text-sm group-hover:translate-x-1 transition-transform duration-300">
                           View details →
                         </span>
-                      </div>
-                    )}
+                      </div>}
                   </CardContent>
                 </Card>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12 bg-navy-light rounded-lg">
+              </div>)}
+          </div> : <div className="text-center py-12 bg-navy-light rounded-lg">
             <p className="text-white text-lg mb-4">No nearby venues found</p>
-            <button
-              onClick={() => navigate('/venues')}
-              className="px-4 py-2 bg-indigo text-white rounded-md hover:bg-indigo-dark transition-colors"
-            >
+            <button onClick={() => navigate('/venues')} className="px-4 py-2 bg-indigo text-white rounded-md hover:bg-indigo-dark transition-colors">
               Browse All Venues
             </button>
-          </div>
-        )}
+          </div>}
       </div>
-    </div>
-  );
+    </div>;
 }
