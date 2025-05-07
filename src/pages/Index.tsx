@@ -16,6 +16,7 @@ import {
 import { StreakBar } from '@/components/StreakBar';
 import { LocationPermissionRequest } from '@/components/LocationPermissionRequest';
 import { NearbyVenues } from '@/components/NearbyVenues';
+import HomepageAvailabilityWidget from '@/components/HomepageAvailabilityWidget';
 
 interface Venue {
   id: string;
@@ -456,6 +457,11 @@ const Index: React.FC = () => {
                 
                 {/* Added StreakBar component here */}
                 <StreakBar />
+                
+                {/* Add Real-Time Availability Widget Here */}
+                <div className="my-8">
+                  <HomepageAvailabilityWidget />
+                </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="flex flex-col items-center text-center p-4 rounded-lg border border-indigo-light hover:bg-indigo hover:text-white transition-all">

@@ -79,7 +79,7 @@ const HelpChatWidget: React.FC = () => {
     if (!user) return;
     
     try {
-      // We're using the central messages table with super_admin as destination
+      // We're using the central messages table with venue_id as null for help requests
       const { data, error } = await supabase
         .from('messages')
         .select('*')
@@ -88,6 +88,7 @@ const HelpChatWidget: React.FC = () => {
         .order('created_at', { ascending: true });
 
       if (error) throw error;
+      console.log("Help messages fetched:", data);
       setMessages(data || []);
       
       // Scroll to bottom after messages load
@@ -114,8 +115,9 @@ const HelpChatWidget: React.FC = () => {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
+          console.log("Message received:", payload);
           // Check if this is a message without venue_id (help message)
-          if (payload.new && !payload.new.venue_id) {
+          if (payload.new && payload.new.venue_id === null) {
             setMessages(prev => [...prev, payload.new as Message]);
             
             // Scroll to bottom after new message
@@ -222,6 +224,7 @@ const HelpChatWidget: React.FC = () => {
           .returns<UpdateHelpRequestStatusResult>();
       }
       
+      console.log('Message sent successfully');
       setNewMessage('');
     } catch (error) {
       console.error('Error sending message:', error);

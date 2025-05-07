@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
@@ -53,6 +54,7 @@ export const AdminHelpChatInterface: React.FC<AdminHelpChatInterfaceProps> = ({
           
         if (error) throw error;
         
+        console.log("Admin fetched help messages:", data);
         setMessages(data || []);
         
         // Mark messages as read if they're not from the admin
@@ -92,8 +94,9 @@ export const AdminHelpChatInterface: React.FC<AdminHelpChatInterfaceProps> = ({
           filter: `user_id=eq.${selectedRequest?.user_id}`,
         },
         (payload) => {
+          console.log("Admin received message:", payload);
           // Only add messages with null venue_id (help messages)
-          if (payload.new && !payload.new.venue_id) {
+          if (payload.new && payload.new.venue_id === null) {
             setMessages(prev => [...prev, payload.new as Message]);
             
             // Mark message as read if it's from the user
@@ -143,6 +146,7 @@ export const AdminHelpChatInterface: React.FC<AdminHelpChatInterfaceProps> = ({
 
       if (error) throw error;
       
+      console.log("Admin sent message successfully");
       setNewMessage('');
     } catch (error) {
       console.error('Error sending message:', error);
