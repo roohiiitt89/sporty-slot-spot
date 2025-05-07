@@ -153,7 +153,7 @@ const Index: React.FC = () => {
         <div className="hero-overlay dark-gradient-overlay"></div>
         <div className="hero-content container mx-auto text-center">
           <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold text-white mb-6 animate-fade-in">
-            Book Now for Your <span className="text-navy-light">Game On!</span>
+            Book Now for Your <span className="text-navy-light text-[sport-green-dark]">Game On!</span>
           </h1>
           <p className="text-xl md:text-2xl text-white mb-10 max-w-3xl mx-auto animate-fade-in" style={{
           animationDelay: '0.2s'
