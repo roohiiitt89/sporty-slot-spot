@@ -99,7 +99,7 @@ const Header: React.FC = () => {
       </div>
 
       {/* Mobile Menu */}
-      {isMobileMenuOpen && <div className="md:hidden bg-white shadow-lg">
+      {isMobileMenuOpen && <div className="md:hidden shadow-lg bg-stone-950">
           <div className="container mx-auto px-4 py-4 flex flex-col space-y-4 bg-[sport-green-dark] bg-green-800 rounded-2xl">
             <Link to="/" className="font-medium text-navy-dark hover:text-indigo py-2" onClick={toggleMobileMenu}>Home</Link>
             <Link to="/venues" className="font-medium text-navy-dark hover:text-indigo py-2" onClick={toggleMobileMenu}>Venues</Link>
