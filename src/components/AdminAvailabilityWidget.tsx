@@ -150,7 +150,7 @@ const AdminAvailabilityWidget: React.FC<AdminAvailabilityWidgetProps> = ({
     setShowDialog(true);
   };
 
-  const handleStatusChange = async (bookingId: string, newStatus: string) => {
+  const handleStatusChange = async (bookingId: string, newStatus: "confirmed" | "cancelled" | "completed" | "pending") => {
     try {
       const { error } = await supabase
         .from('bookings')
@@ -313,7 +313,7 @@ const AdminAvailabilityWidget: React.FC<AdminAvailabilityWidgetProps> = ({
                   <Button 
                     variant="destructive" 
                     size="sm"
-                    onClick={() => handleStatusChange(selectedBooking.id, 'cancelled')}
+                    onClick={() => handleStatusChange(selectedBooking.id, "cancelled")}
                   >
                     Cancel Booking
                   </Button>
@@ -322,7 +322,7 @@ const AdminAvailabilityWidget: React.FC<AdminAvailabilityWidgetProps> = ({
                   <Button 
                     variant="outline" 
                     size="sm"
-                    onClick={() => handleStatusChange(selectedBooking.id, 'completed')}
+                    onClick={() => handleStatusChange(selectedBooking.id, "completed")}
                   >
                     Mark as Completed
                   </Button>
@@ -331,7 +331,7 @@ const AdminAvailabilityWidget: React.FC<AdminAvailabilityWidgetProps> = ({
                   <Button 
                     variant="outline" 
                     size="sm"
-                    onClick={() => handleStatusChange(selectedBooking.id, 'confirmed')}
+                    onClick={() => handleStatusChange(selectedBooking.id, "confirmed")}
                   >
                     Reactivate Booking
                   </Button>

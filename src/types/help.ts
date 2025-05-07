@@ -25,6 +25,9 @@ export interface AvailabilitySlot {
   booking?: BookingInfo;
 }
 
+// Using the specific enum values to match Database["public"]["Enums"]["booking_status"]
+export type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed';
+
 export interface BookingInfo {
   id: string;
   user_id: string | null;
@@ -33,7 +36,7 @@ export interface BookingInfo {
   start_time: string;
   end_time: string;
   booking_date: string;
-  status: string;
+  status: BookingStatus;
   payment_status: string | null;
   user_email?: string;
   user_name?: string;
