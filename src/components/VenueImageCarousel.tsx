@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/carousel";
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import useEmblaCarousel from 'embla-carousel-react';
 
 interface VenueImageCarouselProps {
   images: string[];
@@ -51,10 +52,12 @@ const VenueImageCarousel: React.FC<VenueImageCarouselProps> = ({
 
   return (
     <div className={`relative ${className}`}>
-      <Carousel className="w-full h-full" onSelect={(api) => {
-        const selectedIndex = api?.selectedScrollSnap();
-        if (selectedIndex !== undefined) {
-          setCurrentIndex(selectedIndex);
+      <Carousel className="w-full h-full" setApi={(api) => {
+        if (api) {
+          // Set up event listener for slide changes
+          api.on('select', () => {
+            setCurrentIndex(api.selectedScrollSnap());
+          });
         }
       }}>
         <CarouselContent className="h-full">
