@@ -1,13 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Calendar, Clock } from 'lucide-react';
+import { Loader2, Calendar, Clock, ChevronDown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import AvailabilityWidget from './AvailabilityWidget';
 import { toast } from '@/components/ui/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface Venue {
   id: string;
@@ -27,6 +28,8 @@ const HomepageAvailabilityWidget: React.FC = () => {
   const [selectedCourtId, setSelectedCourtId] = useState<string>('');
   const [today] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [loading, setLoading] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const fetchVenues = async () => {
@@ -69,13 +72,14 @@ const HomepageAvailabilityWidget: React.FC = () => {
       try {
         const { data, error } = await supabase
           .from('courts')
-          .select('id, name')
+          .select('id, name, venue_id')
           .eq('venue_id', selectedVenueId)
           .eq('is_active', true)
           .order('name');
           
         if (error) throw error;
         
+        // Now the data properly includes venue_id to match the Court interface
         setCourts(data || []);
         // Auto-select first court if available
         if (data && data.length > 0) {
@@ -99,14 +103,20 @@ const HomepageAvailabilityWidget: React.FC = () => {
   const handleVenueChange = (venueId: string) => {
     setSelectedVenueId(venueId);
     setSelectedCourtId(''); // Reset court selection
+    setIsExpanded(false); // Collapse availability view when changing venue
   };
 
   const handleCourtChange = (courtId: string) => {
     setSelectedCourtId(courtId);
+    setIsExpanded(false); // Collapse availability view when changing court
+  };
+
+  const toggleExpanded = () => {
+    setIsExpanded(!isExpanded);
   };
 
   return (
-    <Card className="w-full bg-navy/50 border-indigo/20 backdrop-blur-sm text-white">
+    <Card className="w-full bg-navy/50 border-indigo/20 backdrop-blur-sm text-white overflow-hidden">
       <CardHeader className="pb-2">
         <CardTitle className="text-lg font-medium flex items-center text-white">
           <Calendar className="mr-2 h-5 w-5 text-indigo-light" />
@@ -120,7 +130,7 @@ const HomepageAvailabilityWidget: React.FC = () => {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div className={`grid grid-cols-1 ${!isMobile ? 'md:grid-cols-2' : ''} gap-4 mb-4`}>
               <div>
                 <label className="text-sm text-gray-300 mb-1 block">Select Venue</label>
                 <Select value={selectedVenueId} onValueChange={handleVenueChange}>
@@ -155,16 +165,23 @@ const HomepageAvailabilityWidget: React.FC = () => {
             </div>
             
             {selectedCourtId && (
-              <div className="mt-4 animate-fade-in">
-                <AvailabilityWidget courtId={selectedCourtId} date={today} />
+              <div className="mt-4">
+                <Button 
+                  onClick={toggleExpanded} 
+                  variant="outline" 
+                  className="w-full border-indigo-light text-indigo-light hover:bg-indigo/20 mb-4 flex justify-between items-center"
+                >
+                  <span>{isExpanded ? 'Hide Availability' : 'View Availability'}</span>
+                  <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                </Button>
+                
+                {isExpanded && (
+                  <div className="animate-fade-in">
+                    <AvailabilityWidget courtId={selectedCourtId} date={today} />
+                  </div>
+                )}
               </div>
             )}
-
-            <div className="mt-4 text-center">
-              <Button variant="outline" className="border-indigo-light text-indigo-light hover:bg-indigo/20">
-                View More Times
-              </Button>
-            </div>
           </>
         )}
       </CardContent>
