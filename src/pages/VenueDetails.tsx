@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MapPin, Star, ArrowLeft, MessageCircle, Navigation, Clock } from 'lucide-react';
@@ -210,7 +209,7 @@ const VenueDetails: React.FC = () => {
           )}
           
           {/* Info Card */}
-          <div className="mt-4 bg-navy/50 rounded-lg p-3 border border-navy">
+          <div className="mt-4 bg-navy/50 rounded-lg p-3 border border-indigo/20">
             <h3 className="font-medium text-white mb-2 text-sm">Venue Highlights</h3>
             <ul className="space-y-2 text-xs text-gray-300">
               <li className="flex items-start gap-2">
@@ -512,7 +511,7 @@ const VenueDetails: React.FC = () => {
       <div className="relative">
         <VenueImageCarousel 
           images={venueImages}
-          venueName={venue.name}
+          venueName={venue?.name || ''}
           className={isMobile ? "h-60" : "h-96"}
         />
         

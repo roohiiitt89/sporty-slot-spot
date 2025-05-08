@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Carousel, 
   CarouselContent, 
@@ -22,6 +22,18 @@ const VenueImageCarousel: React.FC<VenueImageCarouselProps> = ({
   className = "h-80 md:h-96"
 }) => {
   const isMobile = useIsMobile();
+  const [currentIndex, setCurrentIndex] = useState(0);
+  
+  // If there are no images, show a placeholder
+  if (!images || images.length === 0) {
+    return (
+      <div className={`relative ${className}`}>
+        <div className="w-full h-full bg-navy-dark/70 flex items-center justify-center">
+          <p className="text-gray-400">No images available</p>
+        </div>
+      </div>
+    );
+  }
   
   // If there's only one image, return a simple image container
   if (images.length === 1) {
@@ -39,7 +51,12 @@ const VenueImageCarousel: React.FC<VenueImageCarouselProps> = ({
 
   return (
     <div className={`relative ${className}`}>
-      <Carousel className="w-full h-full">
+      <Carousel className="w-full h-full" onSelect={(api) => {
+        const selectedIndex = api?.selectedScrollSnap();
+        if (selectedIndex !== undefined) {
+          setCurrentIndex(selectedIndex);
+        }
+      }}>
         <CarouselContent className="h-full">
           {images.map((image, index) => (
             <CarouselItem key={index} className="h-full">
@@ -65,6 +82,21 @@ const VenueImageCarousel: React.FC<VenueImageCarouselProps> = ({
           <ChevronRight className="h-4 w-4" />
         </CarouselNext>
       </Carousel>
+      
+      {/* Image indicators for quick navigation */}
+      {images.length > 1 && (
+        <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5">
+          {images.map((_, index) => (
+            <button
+              key={index}
+              className={`w-2 h-2 rounded-full transition-all ${
+                index === currentIndex ? 'bg-white scale-110' : 'bg-white/40'
+              }`}
+              aria-label={`Go to image ${index + 1}`}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 };

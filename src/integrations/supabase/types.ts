@@ -873,6 +873,7 @@ export type Database = {
           description: string | null
           id: string
           image_url: string | null
+          images: string[] | null
           is_active: boolean
           latitude: number | null
           location: string
@@ -889,6 +890,7 @@ export type Database = {
           description?: string | null
           id?: string
           image_url?: string | null
+          images?: string[] | null
           is_active?: boolean
           latitude?: number | null
           location: string
@@ -905,6 +907,7 @@ export type Database = {
           description?: string | null
           id?: string
           image_url?: string | null
+          images?: string[] | null
           is_active?: boolean
           latitude?: number | null
           location?: string
