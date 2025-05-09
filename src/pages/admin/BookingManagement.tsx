@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
@@ -17,6 +18,12 @@ import RealTimeAvailabilityTab from '@/components/RealTimeAvailabilityTab';
 interface BookingManagementProps {
   userRole: string | null;
   adminVenues: { venue_id: string }[];
+}
+
+interface UserInfo {
+  full_name: string | null;
+  email: string | null;
+  phone: string | null;
 }
 
 interface Booking {
@@ -44,6 +51,7 @@ interface Booking {
       name: string;
     };
   };
+  user_info?: UserInfo;
 }
 
 interface Venue {
@@ -200,7 +208,36 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
         booking.status === 'completed'
       ) as unknown as Booking[];
       
-      setBookings(validBookings || []);
+      // Fetch user information for each booking with a user_id
+      const bookingsWithUserInfo = await Promise.all(
+        validBookings.map(async booking => {
+          if (booking.user_id) {
+            try {
+              const { data: userData, error: userError } = await supabase
+                .from('profiles')
+                .select('full_name, email, phone')
+                .eq('id', booking.user_id)
+                .single();
+                
+              if (!userError && userData) {
+                return {
+                  ...booking,
+                  user_info: {
+                    full_name: userData.full_name,
+                    email: userData.email,
+                    phone: userData.phone
+                  }
+                };
+              }
+            } catch (err) {
+              console.error('Error fetching user info:', err);
+            }
+          }
+          return booking;
+        })
+      );
+      
+      setBookings(bookingsWithUserInfo || []);
     } catch (error) {
       console.error('Error fetching bookings:', error);
       toast({
@@ -424,6 +461,12 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
                           <div>
                             <p className="font-medium">{booking.guest_name} (Guest)</p>
                             <p className="text-xs text-gray-500">{booking.guest_phone || 'No phone'}</p>
+                          </div>
+                        ) : booking.user_info ? (
+                          <div>
+                            <p className="font-medium">{booking.user_info.full_name || 'User'}</p>
+                            <p className="text-xs text-gray-500">{booking.user_info.email || 'No email'}</p>
+                            <p className="text-xs text-gray-500">{booking.user_info.phone || 'No phone'}</p>
                           </div>
                         ) : (
                           <p className="text-gray-500">User ID: {booking.user_id || 'No user information'}</p>

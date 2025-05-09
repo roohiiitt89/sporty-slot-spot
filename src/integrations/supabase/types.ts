@@ -9,6 +9,47 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      blocked_slots: {
+        Row: {
+          court_id: string
+          created_at: string
+          created_by: string
+          date: string
+          end_time: string
+          id: string
+          reason: string | null
+          start_time: string
+        }
+        Insert: {
+          court_id: string
+          created_at?: string
+          created_by: string
+          date: string
+          end_time: string
+          id?: string
+          reason?: string | null
+          start_time: string
+        }
+        Update: {
+          court_id?: string
+          created_at?: string
+          created_by?: string
+          date?: string
+          end_time?: string
+          id?: string
+          reason?: string | null
+          start_time?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blocked_slots_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bookings: {
         Row: {
           booking_date: string

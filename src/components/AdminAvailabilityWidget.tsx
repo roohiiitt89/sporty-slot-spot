@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Clock, Info, User, Mail, Phone } from 'lucide-react';
+import { Loader2, Clock, Info, User, Mail, Phone, Calendar, Ban, CheckCircle2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -9,12 +9,15 @@ import {
   DialogContent, 
   DialogHeader, 
   DialogTitle,
-  DialogDescription 
+  DialogDescription,
+  DialogFooter 
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import { AvailabilitySlot, BookingInfo, GetAvailableSlotsResult } from '@/types/help';
 import { toast } from '@/components/ui/use-toast';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 
 interface AdminAvailabilityWidgetProps {
   courtId: string;
@@ -23,16 +26,30 @@ interface AdminAvailabilityWidgetProps {
   courtName?: string;
 }
 
+interface BlockedSlot {
+  id: string;
+  court_id: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  reason: string | null;
+}
+
 const AdminAvailabilityWidget: React.FC<AdminAvailabilityWidgetProps> = ({ 
   courtId, 
   date,
   venueName = 'Venue',
   courtName = 'Court' 
 }) => {
-  const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
+  const [slots, setSlots] = useState<(AvailabilitySlot & { blocked?: BlockedSlot })[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedBooking, setSelectedBooking] = useState<BookingInfo | null>(null);
   const [showDialog, setShowDialog] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState<AvailabilitySlot | null>(null);
+  const [showBlockDialog, setShowBlockDialog] = useState(false);
+  const [blockReason, setBlockReason] = useState('');
+  const [blockingSlot, setBlockingSlot] = useState(false);
+  const [unblockingSlot, setUnblockingSlot] = useState(false);
 
   useEffect(() => {
     const fetchAvailabilityAndBookings = async () => {
@@ -69,16 +86,31 @@ const AdminAvailabilityWidget: React.FC<AdminAvailabilityWidgetProps> = ({
           
         if (bookingsError) throw bookingsError;
         
-        // Merge availability data with booking data
+        // Fetch blocked slots
+        const { data: blockedSlotsData, error: blockedSlotsError } = await supabase
+          .from('blocked_slots')
+          .select('*')
+          .eq('court_id', courtId)
+          .eq('date', date);
+          
+        if (blockedSlotsError) throw blockedSlotsError;
+        
+        // Merge availability data with booking and blocked slots data
         const enhancedSlots = availabilityData.map((slot: AvailabilitySlot) => {
           const booking = bookingsData?.find((b: BookingInfo) => 
             b.start_time === slot.start_time && 
             b.end_time === slot.end_time
           );
           
+          const blockedSlot = blockedSlotsData?.find((bs: BlockedSlot) => 
+            bs.start_time === slot.start_time && 
+            bs.end_time === slot.end_time
+          );
+          
           return {
             ...slot,
-            booking: booking || undefined
+            booking: booking || undefined,
+            blocked: blockedSlot || undefined
           };
         });
         
@@ -98,7 +130,7 @@ const AdminAvailabilityWidget: React.FC<AdminAvailabilityWidgetProps> = ({
     fetchAvailabilityAndBookings();
 
     // Set up real-time subscription for bookings changes
-    const channel = supabase
+    const bookingsChannel = supabase
       .channel('admin_bookings_changes')
       .on('postgres_changes', 
         {
@@ -107,15 +139,33 @@ const AdminAvailabilityWidget: React.FC<AdminAvailabilityWidgetProps> = ({
           table: 'bookings',
           filter: `court_id=eq.${courtId}`,
         },
-        (payload) => {
+        () => {
           // When booking changes, refetch data
+          fetchAvailabilityAndBookings();
+        }
+      )
+      .subscribe();
+      
+    // Set up real-time subscription for blocked slots changes
+    const blockedSlotsChannel = supabase
+      .channel('admin_blocked_slots_changes')
+      .on('postgres_changes', 
+        {
+          event: '*', // Listen for all events (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'blocked_slots',
+          filter: `court_id=eq.${courtId}`,
+        },
+        () => {
+          // When blocked slots change, refetch data
           fetchAvailabilityAndBookings();
         }
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(bookingsChannel);
+      supabase.removeChannel(blockedSlotsChannel);
     };
   }, [courtId, date]);
 
@@ -133,13 +183,14 @@ const AdminAvailabilityWidget: React.FC<AdminAvailabilityWidgetProps> = ({
       try {
         const { data: userData, error: userError } = await supabase
           .from('profiles')
-          .select('full_name, email')
+          .select('full_name, email, phone')
           .eq('id', booking.user_id)
           .single();
           
         if (!userError && userData) {
           booking.user_name = userData.full_name;
           booking.user_email = userData.email;
+          booking.user_phone = userData.phone;
         }
       } catch (error) {
         console.error('Error fetching user details:', error);
@@ -174,6 +225,86 @@ const AdminAvailabilityWidget: React.FC<AdminAvailabilityWidgetProps> = ({
       });
     }
   };
+  
+  const handleBlockSlot = (slot: AvailabilitySlot) => {
+    setSelectedSlot(slot);
+    setBlockReason('');
+    setShowBlockDialog(true);
+  };
+  
+  const handleUnblockSlot = async (slot: AvailabilitySlot & { blocked?: BlockedSlot }) => {
+    if (!slot.blocked?.id) return;
+    
+    try {
+      setUnblockingSlot(true);
+      
+      const { error } = await supabase
+        .from('blocked_slots')
+        .delete()
+        .eq('id', slot.blocked.id);
+        
+      if (error) throw error;
+      
+      toast({
+        title: 'Slot Unblocked',
+        description: `The time slot has been successfully unblocked.`,
+      });
+      
+    } catch (error) {
+      console.error('Error unblocking slot:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to unblock time slot',
+        variant: 'destructive',
+      });
+    } finally {
+      setUnblockingSlot(false);
+    }
+  };
+  
+  const confirmBlockSlot = async () => {
+    if (!selectedSlot) return;
+    
+    try {
+      setBlockingSlot(true);
+      
+      // Get the current user's ID
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('No authenticated user found');
+      }
+      
+      const { error } = await supabase
+        .from('blocked_slots')
+        .insert({
+          court_id: courtId,
+          date: date,
+          start_time: selectedSlot.start_time,
+          end_time: selectedSlot.end_time,
+          reason: blockReason || null,
+          created_by: user.id
+        });
+        
+      if (error) throw error;
+      
+      setShowBlockDialog(false);
+      toast({
+        title: 'Slot Blocked',
+        description: `The time slot has been successfully blocked.`,
+      });
+      
+    } catch (error) {
+      console.error('Error blocking slot:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to block time slot',
+        variant: 'destructive',
+      });
+    } finally {
+      setBlockingSlot(false);
+    }
+  };
 
   return (
     <>
@@ -193,31 +324,78 @@ const AdminAvailabilityWidget: React.FC<AdminAvailabilityWidgetProps> = ({
             <p className="text-center text-gray-500 py-4">No time slots available for this date</p>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
-              {slots.map((slot, index) => (
-                <div 
-                  key={index} 
-                  className={`border rounded-md p-2 text-center ${
-                    slot.is_available 
-                      ? 'border-green-300 bg-green-50 hover:bg-green-100' 
-                      : 'border-red-300 bg-red-50 hover:bg-red-100 cursor-pointer'
-                  }`}
-                  onClick={() => slot.booking ? handleSlotClick(slot.booking) : null}
-                >
-                  <p className="text-sm font-medium">{formatTime(slot.start_time)} - {formatTime(slot.end_time)}</p>
-                  <Badge className={`mt-1 ${
-                    slot.is_available 
-                      ? 'bg-green-100 text-green-800 hover:bg-green-100' 
-                      : 'bg-red-100 text-red-800 hover:bg-red-100'
-                  }`}>
-                    {slot.is_available ? 'Available' : 'Booked'}
-                  </Badge>
-                  {!slot.is_available && slot.booking && (
-                    <div className="mt-1 text-xs text-gray-500">
-                      {slot.booking.guest_name || 'Registered User'}
+              {slots.map((slot, index) => {
+                const isBlocked = !!slot.blocked;
+                const isBooked = !slot.is_available && !isBlocked;
+                
+                return (
+                  <div 
+                    key={index} 
+                    className={`border rounded-md p-2 text-center ${
+                      isBlocked 
+                        ? 'border-orange-300 bg-orange-50' 
+                        : isBooked
+                          ? 'border-red-300 bg-red-50 hover:bg-red-100 cursor-pointer'
+                          : 'border-green-300 bg-green-50 hover:bg-green-100'
+                    }`}
+                    onClick={() => isBooked && slot.booking ? handleSlotClick(slot.booking) : null}
+                  >
+                    <p className="text-sm font-medium">{formatTime(slot.start_time)} - {formatTime(slot.end_time)}</p>
+                    <Badge className={`mt-1 ${
+                      isBlocked 
+                        ? 'bg-orange-100 text-orange-800 hover:bg-orange-100' 
+                        : isBooked
+                          ? 'bg-red-100 text-red-800 hover:bg-red-100'
+                          : 'bg-green-100 text-green-800 hover:bg-green-100'
+                    }`}>
+                      {isBlocked ? 'Blocked' : isBooked ? 'Booked' : 'Available'}
+                    </Badge>
+                    
+                    {isBooked && slot.booking && (
+                      <div className="mt-1 text-xs text-gray-500">
+                        {slot.booking.guest_name || 'Registered User'}
+                      </div>
+                    )}
+                    
+                    {isBlocked && slot.blocked?.reason && (
+                      <div className="mt-1 text-xs text-orange-600 truncate" title={slot.blocked.reason}>
+                        {slot.blocked.reason}
+                      </div>
+                    )}
+                    
+                    <div className="mt-2 flex justify-center">
+                      {isBlocked ? (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="text-xs h-7 px-2 py-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleUnblockSlot(slot);
+                          }}
+                          disabled={unblockingSlot}
+                        >
+                          <CheckCircle2 className="h-3 w-3 mr-1" />
+                          Unblock
+                        </Button>
+                      ) : !isBooked && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="text-xs h-7 px-2 py-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleBlockSlot(slot);
+                          }}
+                        >
+                          <Ban className="h-3 w-3 mr-1" />
+                          Block
+                        </Button>
+                      )}
                     </div>
-                  )}
-                </div>
-              ))}
+                  </div>
+                );
+              })}
             </div>
           )}
         </CardContent>
@@ -262,6 +440,12 @@ const AdminAvailabilityWidget: React.FC<AdminAvailabilityWidgetProps> = ({
                         <div className="flex items-center">
                           <Mail className="h-4 w-4 text-gray-500 mr-2" />
                           <p>{selectedBooking.user_email}</p>
+                        </div>
+                      )}
+                      {selectedBooking.user_phone && (
+                        <div className="flex items-center">
+                          <Phone className="h-4 w-4 text-gray-500 mr-2" />
+                          <p>{selectedBooking.user_phone}</p>
                         </div>
                       )}
                     </div>
@@ -343,6 +527,61 @@ const AdminAvailabilityWidget: React.FC<AdminAvailabilityWidgetProps> = ({
           <div className="flex justify-end mt-4">
             <Button variant="outline" onClick={() => setShowDialog(false)}>Close</Button>
           </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Block Slot Dialog */}
+      <Dialog open={showBlockDialog} onOpenChange={setShowBlockDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Block Time Slot</DialogTitle>
+            <DialogDescription>
+              Block this time slot to prevent bookings
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedSlot && (
+            <div className="space-y-4">
+              <div className="p-3 bg-orange-50 rounded border border-orange-200">
+                <p className="font-medium text-orange-800">
+                  <Calendar className="h-4 w-4 inline-block mr-1" />
+                  {format(new Date(date), 'MMM dd, yyyy')}
+                </p>
+                <p className="text-orange-700 mt-1">
+                  <Clock className="h-4 w-4 inline-block mr-1" />
+                  {formatTime(selectedSlot.start_time)} - {formatTime(selectedSlot.end_time)}
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="block-reason">Reason for blocking (optional)</Label>
+                <Textarea 
+                  id="block-reason" 
+                  placeholder="e.g., Court maintenance, Staff unavailability, etc."
+                  value={blockReason}
+                  onChange={(e) => setBlockReason(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-0">
+            <Button 
+              variant="ghost" 
+              onClick={() => setShowBlockDialog(false)}
+              className="sm:ml-auto"
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={confirmBlockSlot}
+              disabled={blockingSlot}
+            >
+              {blockingSlot ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Ban className="mr-2 h-4 w-4" />}
+              Block Slot
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

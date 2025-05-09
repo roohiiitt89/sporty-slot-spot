@@ -1,4 +1,3 @@
-
 export interface HelpRequest {
   id: string;
   user_id: string;
@@ -28,6 +27,7 @@ export interface AvailabilitySlot {
 // Using the specific enum values to match Database["public"]["Enums"]["booking_status"]
 export type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed';
 
+// Extend BookingInfo to include user information
 export interface BookingInfo {
   id: string;
   user_id: string | null;
@@ -36,10 +36,11 @@ export interface BookingInfo {
   start_time: string;
   end_time: string;
   booking_date: string;
-  status: BookingStatus;
+  status: string;
   payment_status: string | null;
-  user_email?: string;
   user_name?: string;
+  user_email?: string;
+  user_phone?: string;
 }
 
 export type GetAvailableSlotsResult = AvailabilitySlot[];

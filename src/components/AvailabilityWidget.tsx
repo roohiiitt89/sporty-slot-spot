@@ -51,13 +51,25 @@ const AvailabilityWidget: React.FC<AvailabilityWidgetProps> = ({
       schema: 'public',
       table: 'bookings',
       filter: `court_id=eq.${courtId}`
-    }, payload => {
+    }, () => {
       // When booking changes, refetch availability
+      fetchAvailability();
+    }).subscribe();
+    
+    // Set up real-time subscription for blocked slots changes
+    const blockedSlotsChannel = supabase.channel('blocked_slots_changes').on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'blocked_slots',
+      filter: `court_id=eq.${courtId}`
+    }, () => {
+      // When blocked slots change, refetch availability
       fetchAvailability();
     }).subscribe();
     
     return () => {
       supabase.removeChannel(channel);
+      supabase.removeChannel(blockedSlotsChannel);
     };
   }, [courtId, date]);
 
