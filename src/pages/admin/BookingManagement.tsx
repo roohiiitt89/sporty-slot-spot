@@ -233,7 +233,7 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
         booking.status === 'confirmed' || 
         booking.status === 'cancelled' || 
         booking.status === 'completed'
-      ) as unknown as Booking[];
+      ) as Booking[];
       
       // Fetch user information for each booking with a user_id
       const bookingsWithUserInfo = await Promise.all(

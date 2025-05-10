@@ -9,6 +9,53 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      admin_bookings: {
+        Row: {
+          admin_id: string
+          amount_collected: number | null
+          booking_id: string
+          created_at: string
+          customer_name: string
+          customer_phone: string | null
+          id: string
+          notes: string | null
+          payment_method: string
+          payment_status: string | null
+        }
+        Insert: {
+          admin_id: string
+          amount_collected?: number | null
+          booking_id: string
+          created_at?: string
+          customer_name: string
+          customer_phone?: string | null
+          id?: string
+          notes?: string | null
+          payment_method: string
+          payment_status?: string | null
+        }
+        Update: {
+          admin_id?: string
+          amount_collected?: number | null
+          booking_id?: string
+          created_at?: string
+          customer_name?: string
+          customer_phone?: string | null
+          id?: string
+          notes?: string | null
+          payment_method?: string
+          payment_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_bookings_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       blocked_slots: {
         Row: {
           court_id: string
@@ -52,6 +99,7 @@ export type Database = {
       }
       bookings: {
         Row: {
+          booked_by_admin_id: string | null
           booking_date: string
           court_id: string
           created_at: string
@@ -59,6 +107,7 @@ export type Database = {
           guest_name: string | null
           guest_phone: string | null
           id: string
+          payment_method: string | null
           payment_reference: string | null
           payment_status: string | null
           start_time: string
@@ -68,6 +117,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          booked_by_admin_id?: string | null
           booking_date: string
           court_id: string
           created_at?: string
@@ -75,6 +125,7 @@ export type Database = {
           guest_name?: string | null
           guest_phone?: string | null
           id?: string
+          payment_method?: string | null
           payment_reference?: string | null
           payment_status?: string | null
           start_time: string
@@ -84,6 +135,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          booked_by_admin_id?: string | null
           booking_date?: string
           court_id?: string
           created_at?: string
@@ -91,6 +143,7 @@ export type Database = {
           guest_name?: string | null
           guest_phone?: string | null
           id?: string
+          payment_method?: string | null
           payment_reference?: string | null
           payment_status?: string | null
           start_time?: string
