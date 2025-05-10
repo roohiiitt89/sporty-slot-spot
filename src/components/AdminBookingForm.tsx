@@ -100,7 +100,7 @@ const AdminBookingForm: React.FC<AdminBookingFormProps> = ({
         status: 'confirmed',
         payment_method: paymentMethod,
         booked_by_admin_id: user.id,
-        payment_status: paymentMethod === 'cash' ? 'completed' : 'pending'
+        payment_status: paymentMethod === 'cash' || paymentMethod === 'free' ? 'completed' : 'pending'
       }).select('id').single();
       
       if (bookingError) throw bookingError;
@@ -112,7 +112,7 @@ const AdminBookingForm: React.FC<AdminBookingFormProps> = ({
         customer_name: customerName,
         customer_phone: customerPhone || null,
         payment_method: paymentMethod,
-        payment_status: paymentMethod === 'cash' ? 'completed' : 'pending',
+        payment_status: paymentMethod === 'cash' || paymentMethod === 'free' ? 'completed' : 'pending',
         amount_collected: paymentMethod === 'cash' && amountCollected !== '' ? Number(amountCollected) : null,
         notes: notes || null
       });
@@ -244,6 +244,10 @@ const AdminBookingForm: React.FC<AdminBookingFormProps> = ({
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="card" id="card" />
                 <Label htmlFor="card" className="cursor-pointer">Card</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="online" id="online" />
+                <Label htmlFor="online" className="cursor-pointer">Online</Label>
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="free" id="free" />
