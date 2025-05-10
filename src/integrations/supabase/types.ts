@@ -908,6 +908,7 @@ export type Database = {
       }
       venues: {
         Row: {
+          allow_cash_payments: boolean | null
           capacity: number | null
           contact_number: string | null
           created_at: string
@@ -925,6 +926,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          allow_cash_payments?: boolean | null
           capacity?: number | null
           contact_number?: string | null
           created_at?: string
@@ -942,6 +944,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          allow_cash_payments?: boolean | null
           capacity?: number | null
           contact_number?: string | null
           created_at?: string
@@ -1235,6 +1238,8 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: {
           venue_id: string
+          venue_name: string
+          allow_cash_payments: boolean
         }[]
       }
       get_available_slots: {

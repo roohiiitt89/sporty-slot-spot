@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
-import { Check, Calendar, BookCheck, BookX, Ban, CreditCard } from 'lucide-react';
+import { Check, Calendar, BookCheck, BookX, Ban, CreditCard, DollarSign, CreditCard as CardIcon } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -14,6 +14,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import SportDisplayName from '@/components/SportDisplayName';
 import RealTimeAvailabilityTab from '@/components/RealTimeAvailabilityTab';
+import { PaymentMethod } from '@/types/help';
 
 interface BookingManagementProps {
   userRole: string | null;
@@ -35,10 +36,12 @@ interface Booking {
   status: 'confirmed' | 'cancelled' | 'completed';
   payment_reference: string | null;
   payment_status: string | null;
+  payment_method: PaymentMethod | null;
   user_id: string | null;
   guest_name: string | null;
   guest_phone: string | null;
   created_at: string;
+  booked_by_admin_id: string | null;
   court: {
     id: string;
     name: string;
@@ -52,6 +55,14 @@ interface Booking {
     };
   };
   user_info?: UserInfo;
+  admin_booking?: {
+    id: string;
+    customer_name: string;
+    customer_phone: string | null;
+    payment_method: string;
+    amount_collected: number | null;
+    notes: string | null;
+  };
 }
 
 interface Venue {
@@ -68,13 +79,14 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'confirmed' | 'cancelled' | 'completed'>('all');
   const [paymentFilter, setPaymentFilter] = useState<'all' | 'completed' | 'pending' | 'failed'>('all');
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState<'all' | 'cash' | 'online' | 'card' | 'free'>('all');
   const [venues, setVenues] = useState<Venue[]>([]);
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
 
   useEffect(() => {
     fetchBookings();
     fetchVenues();
-  }, [filter, paymentFilter, userRole, adminVenues]);
+  }, [filter, paymentFilter, paymentMethodFilter, userRole, adminVenues]);
 
   const fetchVenues = async () => {
     try {
@@ -134,10 +146,12 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
           status,
           payment_reference,
           payment_status,
+          payment_method,
           user_id,
           guest_name,
           guest_phone,
           created_at,
+          booked_by_admin_id,
           court:courts (
             id,
             name,
@@ -149,6 +163,14 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
               id,
               name
             )
+          ),
+          admin_booking:admin_bookings(
+            id,
+            customer_name,
+            customer_phone,
+            payment_method,
+            amount_collected,
+            notes
           )
         `)
         .order('booking_date', { ascending: false }) // Changed to show latest first
@@ -162,6 +184,11 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
       // Apply payment status filter if not "all"
       if (paymentFilter !== 'all') {
         query = query.eq('payment_status', paymentFilter);
+      }
+
+      // Apply payment method filter if not "all"
+      if (paymentMethodFilter !== 'all') {
+        query = query.eq('payment_method', paymentMethodFilter);
       }
 
       // If admin (not super admin), filter to only show their venue bookings
@@ -233,6 +260,15 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
               console.error('Error fetching user info:', err);
             }
           }
+          
+          // If it has admin_booking as array with one element, flatten it
+          if (booking.admin_booking && Array.isArray(booking.admin_booking) && booking.admin_booking.length > 0) {
+            return {
+              ...booking,
+              admin_booking: booking.admin_booking[0]
+            };
+          }
+          
           return booking;
         })
       );
@@ -308,6 +344,22 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
     }
   };
 
+  // Function to get payment method icon
+  const getPaymentMethodIcon = (method: string | null) => {
+    if (!method) return null;
+    
+    switch (method.toLowerCase()) {
+      case 'cash':
+        return <DollarSign className="w-4 h-4 mr-1" />;
+      case 'card':
+        return <CardIcon className="w-4 h-4 mr-1" />;
+      case 'online':
+        return <CreditCard className="w-4 h-4 mr-1" />;
+      default:
+        return null;
+    }
+  };
+
   return (
     <div>
       <Tabs defaultValue="bookings">
@@ -368,7 +420,7 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
           </div>
           
           {/* Payment filter controls */}
-          <div className="mb-6">
+          <div className="mb-3">
             <h3 className="text-sm font-medium text-gray-700 mb-2">Filter by Payment Status:</h3>
             <div className="flex space-x-2">
               <button
@@ -411,6 +463,66 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
                 }`}
               >
                 Failed
+              </button>
+            </div>
+          </div>
+
+          {/* Payment method filter controls */}
+          <div className="mb-6">
+            <h3 className="text-sm font-medium text-gray-700 mb-2">Filter by Payment Method:</h3>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => setPaymentMethodFilter('all')}
+                className={`px-3 py-1 text-xs rounded-md ${
+                  paymentMethodFilter === 'all' 
+                    ? 'bg-sport-green text-white' 
+                    : 'bg-gray-100 text-gray-800'
+                }`}
+              >
+                All Methods
+              </button>
+              <button
+                onClick={() => setPaymentMethodFilter('cash')}
+                className={`px-3 py-1 text-xs rounded-md ${
+                  paymentMethodFilter === 'cash' 
+                    ? 'bg-green-600 text-white' 
+                    : 'bg-gray-100 text-gray-800'
+                }`}
+              >
+                <DollarSign className="inline-block w-3 h-3 mr-1" />
+                Cash
+              </button>
+              <button
+                onClick={() => setPaymentMethodFilter('online')}
+                className={`px-3 py-1 text-xs rounded-md ${
+                  paymentMethodFilter === 'online' 
+                    ? 'bg-blue-600 text-white' 
+                    : 'bg-gray-100 text-gray-800'
+                }`}
+              >
+                <CreditCard className="inline-block w-3 h-3 mr-1" />
+                Online
+              </button>
+              <button
+                onClick={() => setPaymentMethodFilter('card')}
+                className={`px-3 py-1 text-xs rounded-md ${
+                  paymentMethodFilter === 'card' 
+                    ? 'bg-purple-600 text-white' 
+                    : 'bg-gray-100 text-gray-800'
+                }`}
+              >
+                <CardIcon className="inline-block w-3 h-3 mr-1" />
+                Card
+              </button>
+              <button
+                onClick={() => setPaymentMethodFilter('free')}
+                className={`px-3 py-1 text-xs rounded-md ${
+                  paymentMethodFilter === 'free' 
+                    ? 'bg-gray-600 text-white' 
+                    : 'bg-gray-100 text-gray-800'
+                }`}
+              >
+                Free
               </button>
             </div>
           </div>
@@ -457,7 +569,15 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
                         </div>
                       </TableCell>
                       <TableCell>
-                        {booking.guest_name ? (
+                        {booking.admin_booking ? (
+                          <div>
+                            <p className="font-medium">{booking.admin_booking.customer_name} <span className="text-xs text-purple-600">(Admin Booking)</span></p>
+                            <p className="text-xs text-gray-500">{booking.admin_booking.customer_phone || 'No phone'}</p>
+                            {booking.admin_booking.notes && (
+                              <p className="text-xs text-gray-500 italic mt-1">Note: {booking.admin_booking.notes}</p>
+                            )}
+                          </div>
+                        ) : booking.guest_name ? (
                           <div>
                             <p className="font-medium">{booking.guest_name} (Guest)</p>
                             <p className="text-xs text-gray-500">{booking.guest_phone || 'No phone'}</p>
@@ -474,18 +594,27 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
                       </TableCell>
                       <TableCell>₹{booking.total_price.toFixed(2)}</TableCell>
                       <TableCell>
-                        {booking.payment_reference ? (
-                          <div>
-                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPaymentStatusColor(booking.payment_status)}`}>
-                              {booking.payment_status}
+                        <div>
+                          <span className={`inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${getPaymentStatusColor(booking.payment_status)}`}>
+                            {getPaymentMethodIcon(booking.payment_method)}
+                            {booking.payment_method ? booking.payment_method.charAt(0).toUpperCase() + booking.payment_method.slice(1) : 'Unknown'}
+                          </span>
+                          <p className="text-xs mt-1">
+                            <span className={`inline-block px-2 py-0.5 rounded ${getPaymentStatusColor(booking.payment_status)}`}>
+                              {booking.payment_status || 'Unknown'}
                             </span>
+                          </p>
+                          {booking.payment_reference && (
                             <p className="text-xs text-gray-500 mt-1 truncate max-w-[100px]" title={booking.payment_reference}>
                               Ref: {booking.payment_reference}
                             </p>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-gray-500">No payment info</span>
-                        )}
+                          )}
+                          {booking.admin_booking?.amount_collected && (
+                            <p className="text-xs text-green-600 mt-1">
+                              Collected: ₹{booking.admin_booking.amount_collected.toFixed(2)}
+                            </p>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${

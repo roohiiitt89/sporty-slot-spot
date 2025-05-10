@@ -10,11 +10,15 @@ import { useIsMobile } from '@/hooks/use-mobile';
 interface AvailabilityWidgetProps {
   courtId: string;
   date: string;
+  onSelectSlot?: (slot: { start_time: string; end_time: string; is_available: boolean }) => void;
+  isAdmin?: boolean;
 }
 
 const AvailabilityWidget: React.FC<AvailabilityWidgetProps> = ({
   courtId,
-  date
+  date,
+  onSelectSlot,
+  isAdmin = false
 }) => {
   const [slots, setSlots] = useState<GetAvailableSlotsResult>([]);
   const [loading, setLoading] = useState(true);
@@ -81,6 +85,12 @@ const AvailabilityWidget: React.FC<AvailabilityWidgetProps> = ({
     return `${hour12}:${minutes} ${ampm}`;
   };
 
+  const handleSlotClick = (slot: { start_time: string; end_time: string; is_available: boolean }) => {
+    if (onSelectSlot && (slot.is_available || isAdmin)) {
+      onSelectSlot(slot);
+    }
+  };
+
   return (
     <Card className="w-full border border-indigo/20 bg-navy-light/50 backdrop-blur-sm">
       <CardHeader className="pb-2">
@@ -102,11 +112,14 @@ const AvailabilityWidget: React.FC<AvailabilityWidgetProps> = ({
               <div 
                 key={index} 
                 className={`
-                  border rounded-md p-2 text-center transition-all hover:transform hover:scale-105
-                  ${slot.is_available 
-                    ? 'border-green-500/30 bg-green-500/10' 
+                  border rounded-md p-2 text-center transition-all cursor-pointer
+                  hover:transform hover:scale-105
+                  ${(slot.is_available || isAdmin) 
+                    ? 'border-green-500/30 bg-green-500/10 hover:bg-green-500/20' 
                     : 'border-red-500/30 bg-red-500/10'}
+                  ${(!slot.is_available && isAdmin) ? 'cursor-pointer opacity-70 hover:opacity-100' : ''}
                 `}
+                onClick={() => handleSlotClick(slot)}
               >
                 <p className="text-sm font-medium text-white">
                   {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
