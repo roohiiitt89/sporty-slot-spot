@@ -45,6 +45,7 @@ export interface BookingInfo {
   user_name?: string;
   user_email?: string;
   user_phone?: string;
+  admin_booking?: AdminBookingInfo | null;
 }
 
 export interface AdminBookingInfo {
@@ -52,7 +53,7 @@ export interface AdminBookingInfo {
   booking_id: string;
   admin_id: string;
   customer_name: string;
-  customer_phone?: string | null;
+  customer_phone: string | null;
   payment_method: PaymentMethod;
   payment_status?: string | null;
   amount_collected?: number | null;

@@ -113,7 +113,7 @@ const AdminBookingForm: React.FC<AdminBookingFormProps> = ({
         customer_phone: customerPhone || null,
         payment_method: paymentMethod,
         payment_status: paymentMethod === 'cash' ? 'completed' : 'pending',
-        amount_collected: paymentMethod === 'cash' ? amountCollected : null,
+        amount_collected: paymentMethod === 'cash' && amountCollected !== '' ? Number(amountCollected) : null,
         notes: notes || null
       });
       

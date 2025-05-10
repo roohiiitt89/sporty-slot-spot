@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
@@ -14,7 +13,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import SportDisplayName from '@/components/SportDisplayName';
 import RealTimeAvailabilityTab from '@/components/RealTimeAvailabilityTab';
-import { PaymentMethod } from '@/types/help';
+import { PaymentMethod, AdminBookingInfo } from '@/types/help';
 
 interface BookingManagementProps {
   userRole: string | null;
@@ -55,14 +54,7 @@ interface Booking {
     };
   };
   user_info?: UserInfo;
-  admin_booking?: {
-    id: string;
-    customer_name: string;
-    customer_phone: string | null;
-    payment_method: string;
-    amount_collected: number | null;
-    notes: string | null;
-  };
+  admin_booking?: AdminBookingInfo | null;
 }
 
 interface Venue {
@@ -233,7 +225,7 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
         booking.status === 'confirmed' || 
         booking.status === 'cancelled' || 
         booking.status === 'completed'
-      ) as Booking[];
+      );
       
       // Fetch user information for each booking with a user_id
       const bookingsWithUserInfo = await Promise.all(
@@ -271,7 +263,7 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
           
           return booking;
         })
-      );
+      ) as Booking[];
       
       setBookings(bookingsWithUserInfo || []);
     } catch (error) {
