@@ -7,7 +7,7 @@ import {
   TabsList, 
   TabsTrigger
 } from "@/components/ui/tabs";
-import { AdminBookingInfo, Booking } from '@/types/help';
+import { AdminBookingInfo, Booking, BookingStatus } from '@/types/help';
 import BookingsList from '@/components/admin/BookingsList';
 import AdminBookingTab from '@/components/admin/AdminBookingTab';
 import SlotBlockingTab from '@/components/admin/SlotBlockingTab';
@@ -20,7 +20,7 @@ interface BookingManagementProps {
 const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVenues }) => {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'confirmed' | 'cancelled' | 'completed'>('all');
+  const [filter, setFilter] = useState<'all' | BookingStatus>('all');
   const [paymentFilter, setPaymentFilter] = useState<'all' | 'completed' | 'pending' | 'failed'>('all');
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<'all' | 'cash' | 'online' | 'card' | 'free'>('all');
 
@@ -130,7 +130,7 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
             ...booking,
             admin_booking: null, // Initialize with null, we'll set the proper value below
             court: booking.court,
-            status: booking.status as Booking['status'],
+            status: booking.status as BookingStatus,
           };
           
           // Handle admin_booking - if it's an array with elements, take the first one
@@ -196,7 +196,7 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
     }
   };
 
-  const updateBookingStatus = async (bookingId: string, status: 'confirmed' | 'cancelled' | 'completed') => {
+  const updateBookingStatus = async (bookingId: string, status: BookingStatus) => {
     try {
       const { error } = await supabase
         .from('bookings')
@@ -274,6 +274,16 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
                 }`}
               >
                 Completed
+              </button>
+              <button
+                onClick={() => setFilter('pending')}
+                className={`px-3 py-1 text-sm rounded-md ${
+                  filter === 'pending' 
+                    ? 'bg-yellow-600 text-white' 
+                    : 'bg-gray-100 text-gray-800'
+                }`}
+              >
+                Pending
               </button>
             </div>
           </div>

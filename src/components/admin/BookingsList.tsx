@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import { BookCheck, BookX, Ban, Calendar, CreditCard, DollarSign, User } from 'lucide-react';
-import { BookingInfo, AdminBookingInfo } from '@/types/help';
+import { BookingInfo, AdminBookingInfo, Booking, BookingStatus } from '@/types/help';
 import {
   Table,
   TableBody,
@@ -25,42 +24,10 @@ interface AdminInfo {
   email: string | null;
 }
 
-interface Booking {
-  id: string;
-  booking_date: string;
-  start_time: string;
-  end_time: string;
-  total_price: number;
-  status: 'confirmed' | 'cancelled' | 'completed';
-  payment_reference: string | null;
-  payment_status: string | null;
-  payment_method: string | null;
-  user_id: string | null;
-  guest_name: string | null;
-  guest_phone: string | null;
-  created_at: string;
-  booked_by_admin_id: string | null;
-  court: {
-    id: string;
-    name: string;
-    venue: {
-      id: string;
-      name: string;
-    };
-    sport: {
-      id: string;
-      name: string;
-    };
-  };
-  user_info?: UserInfo;
-  admin_info?: AdminInfo;
-  admin_booking?: AdminBookingInfo | null;
-}
-
 interface BookingsListProps {
   bookings: Booking[];
   isLoading: boolean;
-  onStatusUpdate: (bookingId: string, status: 'confirmed' | 'cancelled' | 'completed') => void;
+  onStatusUpdate: (bookingId: string, status: BookingStatus) => void;
 }
 
 const BookingsList: React.FC<BookingsListProps> = ({ 
@@ -234,7 +201,8 @@ const BookingsList: React.FC<BookingsListProps> = ({
               <TableCell>
                 <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                   booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                  booking.status === 'cancelled' ? 'bg-red-100 text-red-800' : 
+                  booking.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                  booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                   'bg-blue-100 text-blue-800'
                 }`}>
                   {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
@@ -251,7 +219,7 @@ const BookingsList: React.FC<BookingsListProps> = ({
                       <BookCheck size={18} />
                     </button>
                   )}
-                  {booking.status === 'confirmed' && (
+                  {(booking.status === 'confirmed' || booking.status === 'pending') && (
                     <button
                       onClick={() => onStatusUpdate(booking.id, 'cancelled')}
                       className="p-1 text-red-600 hover:bg-red-50 rounded"
@@ -260,7 +228,7 @@ const BookingsList: React.FC<BookingsListProps> = ({
                       <Ban size={18} />
                     </button>
                   )}
-                  {(booking.status === 'confirmed' || booking.status === 'cancelled') && (
+                  {(booking.status === 'confirmed' || booking.status === 'cancelled' || booking.status === 'pending') && (
                     <button
                       onClick={() => onStatusUpdate(booking.id, 'completed')}
                       className="p-1 text-blue-600 hover:bg-blue-50 rounded"
