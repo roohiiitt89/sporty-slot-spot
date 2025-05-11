@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, User, CalendarDays, LogOut, LayoutGrid } from 'lucide-react';
@@ -46,17 +45,17 @@ const Header: React.FC = () => {
   const isAdminUser = userRole === 'admin' || userRole === 'super_admin';
   const isAdminRoute = location.pathname.startsWith('/admin');
   
-  // Don't show regular menu items for admin users
-  if (isAdminUser && !isAdminRoute) {
+  // Don't show the header on admin routes - AdminHome.tsx and Dashboard.tsx have their own navigation
+  if (isAdminUser && isAdminRoute) {
     return null;
   }
   
   return (
-    <header className={`fixed w-full z-50 transition-all duration-300 ${isScrolled || isAdminRoute ? 'bg-white shadow-md py-2' : 'bg-transparent py-4'}`}>
+    <header className={`fixed w-full z-50 transition-all duration-300 ${isScrolled ? 'bg-white shadow-md py-2' : 'bg-transparent py-4'}`}>
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center">
           <Link to={isAdminUser ? "/admin" : "/"} className="flex items-center">
-            <span className={`text-2xl font-bold transition-colors duration-300 ${isScrolled || isAdminRoute ? 'text-indigo' : 'text-white'}`}>Grid2Play</span>
+            <span className={`text-2xl font-bold transition-colors duration-300 ${isScrolled ? 'text-indigo' : 'text-white'}`}>Grid2Play</span>
           </Link>
 
           {/* Desktop Navigation */}
