@@ -41,20 +41,22 @@ const AdminHome: React.FC = () => {
       try {
         setLoading(true);
         
-        // Fetch venues administered by this admin - using a type assertion for the RPC call
-        const { data: venueData, error: venueError } = await (supabase
-          .rpc('get_admin_venues_with_stats') as unknown as Promise<{ data: Venue[] | null, error: any }>);
+        // For RPC functions not in TypeScript definitions, use generic fetch
+        const { data: venueData, error: venueError } = await supabase
+          .from('get_admin_venues_with_stats')
+          .select('*');
           
         if (venueError) throw venueError;
 
-        // Get aggregate stats - using a type assertion for the RPC call
-        const { data: statsData, error: statsError } = await (supabase
-          .rpc('get_admin_dashboard_stats') as unknown as Promise<{ data: AdminHomeStats[] | null, error: any }>);
+        // Similar approach for stats
+        const { data: statsData, error: statsError } = await supabase
+          .from('get_admin_dashboard_stats')
+          .select('*');
           
         if (statsError) throw statsError;
         
-        if (venueData) setVenues(venueData);
-        if (statsData && statsData.length > 0) setStats(statsData[0]);
+        if (venueData) setVenues(venueData as Venue[]);
+        if (statsData && statsData.length > 0) setStats(statsData[0] as AdminHomeStats);
       } catch (error) {
         console.error('Error fetching admin data:', error);
       } finally {
