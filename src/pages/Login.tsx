@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
@@ -6,6 +5,7 @@ import Header from '../components/Header';
 import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/context/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { supabase } from '@/integrations/supabase/client'; // ensure this path is correct
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -13,12 +13,12 @@ const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const isMobile = useIsMobile();
-  
+
   const { signIn } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email || !password) {
       toast({
         title: "Missing information",
@@ -27,12 +27,12 @@ const Login: React.FC = () => {
       });
       return;
     }
-    
+
     setIsLoading(true);
-    
+
     try {
       const { error } = await signIn(email, password);
-      
+
       if (error) {
         toast({
           title: "Login failed",
@@ -56,10 +56,24 @@ const Login: React.FC = () => {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+    });
+
+    if (error) {
+      toast({
+        title: "Google Sign-In failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-navy-dark to-indigo/30">
       <Header />
-      
+
       <div className="pt-24 pb-16">
         <div className="container mx-auto px-4">
           <div className="max-w-md mx-auto backdrop-blur-sm bg-white/10 rounded-xl shadow-xl overflow-hidden border border-white/20">
@@ -75,7 +89,7 @@ const Login: React.FC = () => {
                 <h1 className="text-3xl font-bold text-white">Welcome Back</h1>
                 <p className="text-gray-300 mt-2">Sign in to continue with SportySlot</p>
               </div>
-              
+
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-gray-200 mb-1">
@@ -96,7 +110,7 @@ const Login: React.FC = () => {
                     />
                   </div>
                 </div>
-                
+
                 <div>
                   <label htmlFor="password" className="block text-sm font-medium text-gray-200 mb-1">
                     Password
@@ -120,16 +134,12 @@ const Login: React.FC = () => {
                         onClick={() => setShowPassword(!showPassword)}
                         className="text-gray-400 hover:text-gray-200 focus:outline-none"
                       >
-                        {showPassword ? (
-                          <EyeOff className="h-5 w-5" />
-                        ) : (
-                          <Eye className="h-5 w-5" />
-                        )}
+                        {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                       </button>
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
                     <input
@@ -142,14 +152,14 @@ const Login: React.FC = () => {
                       Remember me
                     </label>
                   </div>
-                  
+
                   <div className="text-sm">
                     <a href="#" className="font-medium text-indigo-light hover:text-white transition-colors">
                       Forgot password?
                     </a>
                   </div>
                 </div>
-                
+
                 <div>
                   <button
                     type="submit"
@@ -170,7 +180,18 @@ const Login: React.FC = () => {
                   </button>
                 </div>
               </form>
-              
+
+              <div className="my-6 text-center">
+                <p className="text-gray-400 mb-2">or</p>
+                <button
+                  onClick={handleGoogleSignIn}
+                  className="w-full py-3 px-4 bg-white/90 text-black font-medium rounded-md hover:bg-white transition-all flex items-center justify-center gap-2 transform hover:scale-[1.02] shadow-lg"
+                >
+                  <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-5 h-5" />
+                  Continue with Google
+                </button>
+              </div>
+
               <div className="mt-6 text-center">
                 <p className="text-gray-300">
                   Don't have an account?{' '}
@@ -183,7 +204,7 @@ const Login: React.FC = () => {
           </div>
         </div>
       </div>
-      
+
       <footer className="bg-navy-dark/50 backdrop-blur-sm py-6">
         <div className="container mx-auto px-4 text-center">
           <p className="text-gray-400">&copy; 2025 SportySlot. All rights reserved.</p>
