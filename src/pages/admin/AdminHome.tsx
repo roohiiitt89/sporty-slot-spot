@@ -41,54 +41,63 @@ const AdminHome: React.FC = () => {
       try {
         setLoading(true);
         
-        // Use direct SQL queries instead of RPC functions
+        // Fetch venues
         const { data: venueData, error: venueError } = await supabase
           .from('venues')
-          .select(`
-            id,
-            name,
-            location,
-            image_url,
-            (select count(*) from bookings where court_id in 
-              (select id from courts where venue_id = venues.id)) as bookings_count,
-            (select count(*) from courts where venue_id = venues.id) as courts_count
-          `)
+          .select('id, name, location, image_url')
           .order('name');
           
         if (venueError) throw venueError;
 
-        // Query for dashboard stats
-        const { data: venueCount, error: venueCountError } = await supabase
-          .from('venues')
-          .select('id', { count: 'exact' });
-          
-        if (venueCountError) throw venueCountError;
-        
-        const { data: bookingsData, error: bookingsError } = await supabase
-          .from('bookings')
-          .select('id', { count: 'exact' });
-          
-        if (bookingsError) throw bookingsError;
-        
-        const { data: recentBookingsData, error: recentBookingsError } = await supabase
-          .from('bookings')
-          .select('id', { count: 'exact' })
-          .gte('booking_date', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
-          
-        if (recentBookingsError) throw recentBookingsError;
-        
+        // Fetch court data for each venue
         const { data: courtsData, error: courtsError } = await supabase
           .from('courts')
-          .select('id', { count: 'exact' });
+          .select('id, venue_id');
           
         if (courtsError) throw courtsError;
         
-        // Set venues
-        if (venueData) setVenues(venueData as Venue[]);
+        // Fetch booking data
+        const { data: bookingsData, error: bookingsError } = await supabase
+          .from('bookings')
+          .select('id, court_id');
+          
+        if (bookingsError) throw bookingsError;
+        
+        // Fetch recent bookings (last 7 days)
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+        
+        const { data: recentBookingsData, error: recentBookingsError } = await supabase
+          .from('bookings')
+          .select('id')
+          .gte('booking_date', oneWeekAgo.toISOString().split('T')[0]);
+          
+        if (recentBookingsError) throw recentBookingsError;
+        
+        // Process venue data with court and booking counts
+        const processedVenues: Venue[] = venueData ? venueData.map(venue => {
+          // Count courts for this venue
+          const venueCourts = courtsData?.filter(court => court.venue_id === venue.id) || [];
+          const courtIds = venueCourts.map(court => court.id);
+          
+          // Count bookings for this venue's courts
+          const venueBookings = bookingsData?.filter(booking => 
+            courtIds.includes(booking.court_id)
+          ) || [];
+          
+          return {
+            ...venue,
+            courts_count: venueCourts.length,
+            bookings_count: venueBookings.length
+          };
+        }) : [];
+        
+        // Set processed venues
+        setVenues(processedVenues);
         
         // Set stats
         setStats({
-          total_venues: venueCount?.length || 0,
+          total_venues: venueData?.length || 0,
           total_bookings: bookingsData?.length || 0,
           recent_bookings: recentBookingsData?.length || 0,
           total_courts: courtsData?.length || 0
