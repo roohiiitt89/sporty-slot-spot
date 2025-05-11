@@ -3,7 +3,7 @@ import Header from '../components/Header';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
-import { LogOut, Edit, Calendar, User, Phone, Mail, CreditCard, ChevronRight, ArrowLeft } from 'lucide-react';
+import { LogOut, Edit, Calendar, User, Phone, Mail, CreditCard, ChevronRight, ArrowLeft, Shield, Info, Clock, DollarSign } from 'lucide-react';
 import SportDisplayName from '@/components/SportDisplayName';
 
 interface Booking {
@@ -207,31 +207,46 @@ const Profile: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
       <Header />
       
       <div className="pt-24 pb-16">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-6xl mx-auto">
-            {/* Profile header */}
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold text-gray-900">My Account</h1>
-              <p className="mt-2 text-gray-600">
-                {activeTab === 'profile' ? 'Manage your personal information' : 'View and manage your bookings'}
-              </p>
+          <div className="max-w-7xl mx-auto">
+            {/* Enhanced Profile header with gradient */}
+            <div className="mb-10 bg-gradient-to-r from-sport-green to-blue-600 rounded-xl p-6 text-white shadow-lg">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h1 className="text-3xl font-bold">My Account</h1>
+                  <p className="mt-2 opacity-90">
+                    {activeTab === 'profile' ? 'Manage your personal information' : 'View and manage your bookings'}
+                  </p>
+                </div>
+                <div className="mt-4 md:mt-0">
+                  <div className="flex items-center space-x-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2">
+                    <div className="h-10 w-10 rounded-full bg-white flex items-center justify-center text-sport-green font-bold">
+                      {profile?.full_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
+                    </div>
+                    <div>
+                      <p className="font-medium">{profile?.full_name || user?.email}</p>
+                      <p className="text-xs opacity-80 capitalize">{userRole || 'User'}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
             
             <div className="flex flex-col md:flex-row gap-8">
-              {/* Sidebar navigation */}
-              <div className="md:w-64 flex-shrink-0">
-                <div className="bg-white rounded-xl shadow-sm p-4 sticky top-28">
-                  <nav className="space-y-1">
+              {/* Enhanced Sidebar navigation */}
+              <div className="md:w-72 flex-shrink-0">
+                <div className="bg-white rounded-xl shadow-md p-6 sticky top-28 border border-gray-100">
+                  <nav className="space-y-2">
                     <button
                       onClick={() => setActiveTab('profile')}
-                      className={`flex items-center w-full p-3 rounded-lg transition-colors ${
+                      className={`flex items-center w-full p-4 rounded-xl transition-all ${
                         activeTab === 'profile'
-                          ? 'bg-sport-green/10 text-sport-green font-medium'
-                          : 'text-gray-700 hover:bg-gray-100'
+                          ? 'bg-gradient-to-r from-sport-green/10 to-blue-100 text-sport-green font-medium shadow-inner'
+                          : 'text-gray-700 hover:bg-gray-50'
                       }`}
                     >
                       <User className="mr-3 h-5 w-5" />
@@ -240,50 +255,68 @@ const Profile: React.FC = () => {
                     
                     <button
                       onClick={() => setActiveTab('bookings')}
-                      className={`flex items-center w-full p-3 rounded-lg transition-colors ${
+                      className={`flex items-center w-full p-4 rounded-xl transition-all ${
                         activeTab === 'bookings'
-                          ? 'bg-sport-green/10 text-sport-green font-medium'
-                          : 'text-gray-700 hover:bg-gray-100'
+                          ? 'bg-gradient-to-r from-sport-green/10 to-blue-100 text-sport-green font-medium shadow-inner'
+                          : 'text-gray-700 hover:bg-gray-50'
                       }`}
                     >
                       <Calendar className="mr-3 h-5 w-5" />
                       <span>My Bookings</span>
+                      {bookings.length > 0 && (
+                        <span className="ml-auto bg-sport-green text-white text-xs font-bold px-2 py-1 rounded-full">
+                          {bookings.length}
+                        </span>
+                      )}
                     </button>
                     
                     {userRole && (userRole === 'admin' || userRole === 'super_admin') && (
                       <a
                         href="/admin"
-                        className="flex items-center w-full p-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+                        className="flex items-center w-full p-4 rounded-xl text-gray-700 hover:bg-gray-50 transition-all"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="mr-3 h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
-                        </svg>
+                        <Shield className="mr-3 h-5 w-5" />
                         <span>Admin Dashboard</span>
                       </a>
                     )}
                     
-                    <button
-                      onClick={() => signOut()}
-                      className="flex items-center w-full p-3 rounded-lg text-red-600 hover:bg-red-50 transition-colors mt-6"
-                    >
-                      <LogOut className="mr-3 h-5 w-5" />
-                      <span>Sign Out</span>
-                    </button>
+                    <div className="pt-4 mt-4 border-t border-gray-100">
+                      <button
+                        onClick={() => signOut()}
+                        className="flex items-center w-full p-4 rounded-xl text-red-600 hover:bg-red-50 transition-all"
+                      >
+                        <LogOut className="mr-3 h-5 w-5" />
+                        <span>Sign Out</span>
+                      </button>
+                    </div>
                   </nav>
+
+                  {/* Help card */}
+                  <div className="mt-8 bg-blue-50 rounded-lg p-4 border border-blue-100">
+                    <div className="flex items-start">
+                      <Info className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                      <div className="ml-3">
+                        <h4 className="text-sm font-medium text-blue-800">Need help?</h4>
+                        <p className="text-xs text-blue-600 mt-1">
+                          Contact our support team for any questions about your account or bookings.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
               
               {/* Main content */}
               <div className="flex-1">
                 {activeTab === 'profile' ? (
-                  <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-                    <div className="p-6 border-b border-gray-200">
+                  <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
+                    <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
                       <div className="flex justify-between items-center">
                         <h2 className="text-xl font-semibold text-gray-900">Profile Information</h2>
                         {!isEditing && (
                           <button
                             onClick={() => setIsEditing(true)}
-                            className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sport-green"
+                            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sport-green transition-all hover:shadow-md"
                           >
                             <Edit className="mr-2 h-4 w-4" />
                             Edit Profile
@@ -305,7 +338,7 @@ const Profile: React.FC = () => {
                               name="full_name"
                               value={formData.full_name}
                               onChange={handleInputChange}
-                              className="block w-full px-4 py-3 border border-gray-300 rounded-md shadow-sm focus:ring-sport-green focus:border-sport-green"
+                              className="block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-sport-green focus:border-sport-green focus:ring-2 focus:outline-none transition-all"
                             />
                           </div>
                           
@@ -318,7 +351,7 @@ const Profile: React.FC = () => {
                               id="email"
                               value={user?.email || ''}
                               disabled
-                              className="block w-full px-4 py-3 border border-gray-300 rounded-md shadow-sm bg-gray-50"
+                              className="block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm bg-gray-50 cursor-not-allowed"
                             />
                             <p className="mt-1 text-sm text-gray-500">Email cannot be changed</p>
                           </div>
@@ -333,11 +366,11 @@ const Profile: React.FC = () => {
                               name="phone"
                               value={formData.phone}
                               onChange={handleInputChange}
-                              className="block w-full px-4 py-3 border border-gray-300 rounded-md shadow-sm focus:ring-sport-green focus:border-sport-green"
+                              className="block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-sport-green focus:border-sport-green focus:ring-2 focus:outline-none transition-all"
                             />
                           </div>
                           
-                          <div className="flex justify-end space-x-3 pt-2">
+                          <div className="flex justify-end space-x-3 pt-4">
                             <button
                               onClick={() => {
                                 setIsEditing(false);
@@ -346,79 +379,81 @@ const Profile: React.FC = () => {
                                   phone: profile?.phone || '',
                                 });
                               }}
-                              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sport-green"
+                              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sport-green transition-all hover:shadow-md"
                             >
                               Cancel
                             </button>
                             <button
                               onClick={updateProfile}
-                              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-sport-green hover:bg-sport-green-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sport-green"
+                              className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-sport-green to-blue-600 hover:from-sport-green-dark hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sport-green transition-all hover:shadow-md"
                             >
                               Save Changes
                             </button>
                           </div>
                         </div>
                       ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                          <div className="space-y-6">
-                            <div>
-                              <h3 className="text-sm font-medium text-gray-500 mb-2">Personal Details</h3>
-                              <div className="space-y-4">
-                                <div className="flex items-start">
-                                  <div className="flex-shrink-0 h-10 w-10 rounded-full bg-sport-green/10 flex items-center justify-center">
-                                    <User className="h-5 w-5 text-sport-green" />
-                                  </div>
-                                  <div className="ml-4">
-                                    <p className="text-sm font-medium text-gray-500">Full Name</p>
-                                    <p className="text-sm font-semibold text-gray-900">
-                                      {profile?.full_name || 'Not provided'}
-                                    </p>
-                                  </div>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                          {/* Personal Details Card */}
+                          <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-6 pb-2 border-b border-gray-200 flex items-center">
+                              <User className="mr-2 h-5 w-5 text-sport-green" />
+                              Personal Details
+                            </h3>
+                            <div className="space-y-6">
+                              <div className="flex items-start">
+                                <div className="flex-shrink-0 h-12 w-12 rounded-xl bg-sport-green/10 flex items-center justify-center">
+                                  <User className="h-5 w-5 text-sport-green" />
                                 </div>
-                                
-                                <div className="flex items-start">
-                                  <div className="flex-shrink-0 h-10 w-10 rounded-full bg-sport-green/10 flex items-center justify-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-sport-green" viewBox="0 0 20 20" fill="currentColor">
-                                      <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                                    </svg>
-                                  </div>
-                                  <div className="ml-4">
-                                    <p className="text-sm font-medium text-gray-500">Account Type</p>
-                                    <p className="text-sm font-semibold text-gray-900 capitalize">
-                                      {userRole || 'User'}
-                                    </p>
-                                  </div>
+                                <div className="ml-4">
+                                  <p className="text-sm font-medium text-gray-500">Full Name</p>
+                                  <p className="text-lg font-semibold text-gray-900">
+                                    {profile?.full_name || 'Not provided'}
+                                  </p>
+                                </div>
+                              </div>
+                              
+                              <div className="flex items-start">
+                                <div className="flex-shrink-0 h-12 w-12 rounded-xl bg-sport-green/10 flex items-center justify-center">
+                                  <Shield className="h-5 w-5 text-sport-green" />
+                                </div>
+                                <div className="ml-4">
+                                  <p className="text-sm font-medium text-gray-500">Account Type</p>
+                                  <p className="text-lg font-semibold text-gray-900 capitalize">
+                                    {userRole || 'User'}
+                                  </p>
                                 </div>
                               </div>
                             </div>
                           </div>
                           
-                          <div className="space-y-6">
-                            <div>
-                              <h3 className="text-sm font-medium text-gray-500 mb-2">Contact Information</h3>
-                              <div className="space-y-4">
-                                <div className="flex items-start">
-                                  <div className="flex-shrink-0 h-10 w-10 rounded-full bg-sport-green/10 flex items-center justify-center">
-                                    <Mail className="h-5 w-5 text-sport-green" />
-                                  </div>
-                                  <div className="ml-4">
-                                    <p className="text-sm font-medium text-gray-500">Email Address</p>
-                                    <p className="text-sm font-semibold text-gray-900">
-                                      {user?.email}
-                                    </p>
-                                  </div>
+                          {/* Contact Information Card */}
+                          <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-6 pb-2 border-b border-gray-200 flex items-center">
+                              <Mail className="mr-2 h-5 w-5 text-sport-green" />
+                              Contact Information
+                            </h3>
+                            <div className="space-y-6">
+                              <div className="flex items-start">
+                                <div className="flex-shrink-0 h-12 w-12 rounded-xl bg-sport-green/10 flex items-center justify-center">
+                                  <Mail className="h-5 w-5 text-sport-green" />
                                 </div>
-                                
-                                <div className="flex items-start">
-                                  <div className="flex-shrink-0 h-10 w-10 rounded-full bg-sport-green/10 flex items-center justify-center">
-                                    <Phone className="h-5 w-5 text-sport-green" />
-                                  </div>
-                                  <div className="ml-4">
-                                    <p className="text-sm font-medium text-gray-500">Phone Number</p>
-                                    <p className="text-sm font-semibold text-gray-900">
-                                      {profile?.phone || 'Not provided'}
-                                    </p>
-                                  </div>
+                                <div className="ml-4">
+                                  <p className="text-sm font-medium text-gray-500">Email Address</p>
+                                  <p className="text-lg font-semibold text-gray-900 break-all">
+                                    {user?.email}
+                                  </p>
+                                </div>
+                              </div>
+                              
+                              <div className="flex items-start">
+                                <div className="flex-shrink-0 h-12 w-12 rounded-xl bg-sport-green/10 flex items-center justify-center">
+                                  <Phone className="h-5 w-5 text-sport-green" />
+                                </div>
+                                <div className="ml-4">
+                                  <p className="text-sm font-medium text-gray-500">Phone Number</p>
+                                  <p className="text-lg font-semibold text-gray-900">
+                                    {profile?.phone || 'Not provided'}
+                                  </p>
                                 </div>
                               </div>
                             </div>
@@ -429,19 +464,23 @@ const Profile: React.FC = () => {
                   </div>
                 ) : (
                   <div>
-                    <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-                      <div className="p-6 border-b border-gray-200">
+                    <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
+                      <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
                         <h2 className="text-xl font-semibold text-gray-900">Booking History</h2>
+                        <p className="mt-1 text-sm text-gray-500">
+                          {bookings.length} {bookings.length === 1 ? 'booking' : 'bookings'} in total
+                        </p>
                       </div>
                       
                       {loading ? (
-                        <div className="p-12 flex justify-center">
-                          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-sport-green"></div>
+                        <div className="p-12 flex flex-col items-center justify-center">
+                          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-sport-green mb-4"></div>
+                          <p className="text-gray-600">Loading your bookings...</p>
                         </div>
                       ) : bookings.length === 0 ? (
                         <div className="p-12 text-center">
                           <svg
-                            className="mx-auto h-12 w-12 text-gray-400"
+                            className="mx-auto h-16 w-16 text-gray-300"
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"
@@ -451,16 +490,16 @@ const Profile: React.FC = () => {
                               vectorEffect="non-scaling-stroke"
                               strokeLinecap="round"
                               strokeLinejoin="round"
-                              strokeWidth={2}
+                              strokeWidth={1.5}
                               d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                             />
                           </svg>
-                          <h3 className="mt-2 text-lg font-medium text-gray-900">No bookings yet</h3>
-                          <p className="mt-1 text-gray-500">You haven't made any bookings yet.</p>
+                          <h3 className="mt-4 text-lg font-medium text-gray-900">No bookings yet</h3>
+                          <p className="mt-2 text-gray-500">You haven't made any bookings yet.</p>
                           <div className="mt-6">
                             <a
                               href="/venues"
-                              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-sport-green hover:bg-sport-green-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sport-green"
+                              className="inline-flex items-center px-5 py-2.5 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-sport-green to-blue-600 hover:from-sport-green-dark hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sport-green transition-all hover:shadow-md"
                             >
                               Browse Venues
                             </a>
@@ -469,15 +508,15 @@ const Profile: React.FC = () => {
                       ) : (
                         <div className="divide-y divide-gray-200">
                           {bookings.map((booking) => (
-                            <div key={booking.id} className="p-6 hover:bg-gray-50 transition-colors">
-                              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+                            <div key={booking.id} className="p-6 hover:bg-gray-50 transition-colors group">
+                              <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-6">
                                 <div className="flex-1">
-                                  <div className="flex items-center">
-                                    <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                                  <div className="flex items-start">
+                                    <div className="flex-shrink-0 h-12 w-12 rounded-xl bg-blue-100 flex items-center justify-center mt-1">
                                       <Calendar className="h-5 w-5 text-blue-600" />
                                     </div>
                                     <div className="ml-4">
-                                      <h3 className="text-base font-medium text-gray-900">
+                                      <h3 className="text-lg font-medium text-gray-900 group-hover:text-sport-green transition-colors">
                                         {booking.court.venue.name}
                                       </h3>
                                       <p className="text-sm text-gray-500">
@@ -491,60 +530,76 @@ const Profile: React.FC = () => {
                                     </div>
                                   </div>
                                   
-                                  <div className="mt-4 grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
-                                    <div>
-                                      <p className="text-gray-500">Date</p>
-                                      <p className="font-medium text-gray-900">
+                                  <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                                    <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Date</p>
+                                      <p className="mt-1 font-medium text-gray-900">
                                         {formatDate(booking.booking_date)}
                                       </p>
                                     </div>
-                                    <div>
-                                      <p className="text-gray-500">Time</p>
-                                      <p className="font-medium text-gray-900">
+                                    
+                                    <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Time</p>
+                                      <p className="mt-1 font-medium text-gray-900">
                                         {formatTime(booking.start_time)} - {formatTime(booking.end_time)}
                                       </p>
                                     </div>
-                                    <div>
-                                      <p className="text-gray-500">Amount</p>
-                                      <p className="font-medium text-gray-900">
+                                    
+                                    <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</p>
+                                      <p className="mt-1 font-medium text-gray-900 flex items-center">
+                                        <DollarSign className="h-4 w-4 mr-1 text-gray-500" />
                                         ₹{booking.total_price.toFixed(2)}
                                       </p>
                                     </div>
-                                    <div>
-                                      <p className="text-gray-500">Status</p>
-                                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>
-                                        {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-                                      </span>
+                                    
+                                    <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Status</p>
+                                      <div className="mt-1">
+                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>
+                                          {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                                        </span>
+                                      </div>
                                     </div>
                                   </div>
                                   
                                   {booking.payment_reference && (
-                                    <div className="mt-4 flex items-start">
-                                      <div className="flex-shrink-0 h-5 w-5 text-blue-500">
-                                        <CreditCard className="h-5 w-5" />
-                                      </div>
-                                      <div className="ml-3">
-                                        <p className="text-sm text-blue-700">
-                                          <span className="font-medium">Payment ID:</span> {booking.payment_reference}
-                                        </p>
-                                        <div className="mt-1 flex items-center">
-                                          <span className="text-xs text-gray-500 mr-2">Status:</span>
-                                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPaymentStatusColor(booking.payment_status)}`}>
-                                            {booking.payment_status || 'Unknown'}
-                                          </span>
+                                    <div className="mt-6 bg-blue-50 p-4 rounded-lg border border-blue-100">
+                                      <div className="flex items-start">
+                                        <div className="flex-shrink-0 h-5 w-5 text-blue-500 mt-0.5">
+                                          <CreditCard className="h-5 w-5" />
+                                        </div>
+                                        <div className="ml-3">
+                                          <p className="text-sm font-medium text-blue-800">
+                                            Payment Details
+                                          </p>
+                                          <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div>
+                                              <p className="text-xs text-blue-600">Reference ID</p>
+                                              <p className="text-sm font-medium text-blue-900 break-all">
+                                                {booking.payment_reference}
+                                              </p>
+                                            </div>
+                                            <div>
+                                              <p className="text-xs text-blue-600">Payment Status</p>
+                                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPaymentStatusColor(booking.payment_status)}`}>
+                                                {booking.payment_status || 'Unknown'}
+                                              </span>
+                                            </div>
+                                          </div>
                                         </div>
                                       </div>
                                     </div>
                                   )}
                                 </div>
                                 
-                                <div className="flex-shrink-0">
+                                <div className="flex-shrink-0 lg:self-center">
                                   <a
                                     href={`/venues/${booking.court.venue.id}`}
-                                    className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sport-green"
+                                    className="inline-flex items-center px-4 py-2.5 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sport-green transition-all hover:shadow-md group-hover:border-sport-green group-hover:text-sport-green"
                                   >
                                     View Venue
-                                    <ChevronRight className="ml-1 h-4 w-4" />
+                                    <ChevronRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                                   </a>
                                 </div>
                               </div>
@@ -561,9 +616,16 @@ const Profile: React.FC = () => {
         </div>
       </div>
       
-      <footer className="bg-white py-6 border-t border-gray-200">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <p className="text-gray-500 text-sm">&copy; {new Date().getFullYear()} SportySlot. All rights reserved.</p>
+      <footer className="bg-white py-8 border-t border-gray-200">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center">
+            <p className="text-gray-500 text-sm">&copy; {new Date().getFullYear()} SportySlot. All rights reserved.</p>
+            <div className="mt-4 md:mt-0 flex space-x-6">
+              <a href="#" className="text-gray-500 hover:text-gray-700 text-sm">Terms</a>
+              <a href="#" className="text-gray-500 hover:text-gray-700 text-sm">Privacy</a>
+              <a href="#" className="text-gray-500 hover:text-gray-700 text-sm">Contact</a>
+            </div>
+          </div>
         </div>
       </footer>
     </div>
