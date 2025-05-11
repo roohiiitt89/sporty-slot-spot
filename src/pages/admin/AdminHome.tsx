@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Dumbbell, Calendar, Map, Users, MessageCircle, BarChart, Settings } from 'lucide-react';
 
+// Define TypeScript interfaces for our data
 interface Venue {
   id: string;
   name: string;
@@ -42,13 +43,13 @@ const AdminHome: React.FC = () => {
         
         // Fetch venues administered by this admin
         const { data: venueData, error: venueError } = await supabase
-          .rpc('get_admin_venues_with_stats');
+          .rpc('get_admin_venues_with_stats') as { data: Venue[] | null, error: any };
           
         if (venueError) throw venueError;
 
         // Get aggregate stats
         const { data: statsData, error: statsError } = await supabase
-          .rpc('get_admin_dashboard_stats');
+          .rpc('get_admin_dashboard_stats') as { data: AdminHomeStats[] | null, error: any };
           
         if (statsError) throw statsError;
         
