@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
@@ -123,24 +122,20 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
         throw error;
       }
       
-      // Ensure we only work with valid status types for our interface
-      const validBookings = data?.filter(booking => 
-        booking.status === 'confirmed' || 
-        booking.status === 'cancelled' || 
-        booking.status === 'completed' ||
-        booking.status === 'pending'
-      );
-      
       // Process all bookings to get user and admin info
       const processedBookings = await Promise.all(
-        validBookings.map(async booking => {
-          let processedBooking = { ...booking } as Booking;
+        data?.map(async booking => {
+          // Create a properly typed booking object with correct initial structure
+          let processedBooking: Booking = {
+            ...booking,
+            admin_booking: null, // Initialize with null, we'll set the proper value below
+            court: booking.court,
+            status: booking.status as Booking['status'],
+          };
           
-          // Flatten admin_booking if it's an array with elements
+          // Handle admin_booking - if it's an array with elements, take the first one
           if (booking.admin_booking && Array.isArray(booking.admin_booking) && booking.admin_booking.length > 0) {
             processedBooking.admin_booking = booking.admin_booking[0] as AdminBookingInfo;
-          } else if (Array.isArray(booking.admin_booking) && booking.admin_booking.length === 0) {
-            processedBooking.admin_booking = null;
           }
           
           // Fetch user info if the booking has a user_id
@@ -185,10 +180,10 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
           }
           
           return processedBooking;
-        })
+        }) || []
       );
       
-      setBookings(processedBookings || []);
+      setBookings(processedBookings);
     } catch (error) {
       console.error('Error fetching bookings:', error);
       toast({

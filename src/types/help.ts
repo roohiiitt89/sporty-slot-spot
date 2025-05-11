@@ -1,5 +1,4 @@
 
-
 export interface HelpRequest {
   id: string;
   user_id: string;
@@ -66,7 +65,7 @@ export interface BookingInfo {
   start_time: string;
   end_time: string;
   booking_date: string;
-  status: string;
+  status: BookingStatus;
   payment_status: string | null;
   payment_method?: PaymentMethod;
   booked_by_admin_id?: string | null;
@@ -87,7 +86,7 @@ export interface Booking {
   start_time: string;
   end_time: string;
   total_price: number;
-  status: 'confirmed' | 'cancelled' | 'completed' | 'pending';
+  status: BookingStatus;
   payment_reference: string | null;
   payment_status: string | null;
   payment_method: string | null;
