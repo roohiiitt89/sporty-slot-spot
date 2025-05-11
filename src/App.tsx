@@ -53,10 +53,8 @@ const App = () => (
               <Route path="/admin/*" element={<AdminDashboard />} />
             </Route>
 
-            {/* Root path - should be treated like other public content routes */}
+            {/* Root path and content routes - also protected from admin access via RouteGuard logic */}
             <Route path="/" element={<Index />} />
-
-            {/* Semi-public routes - accessible to all but with auth-aware features */}
             <Route path="/venues" element={<Venues />} />
             <Route path="/venues/:id" element={<VenueDetails />} />
             <Route path="/sports" element={<Sports />} />

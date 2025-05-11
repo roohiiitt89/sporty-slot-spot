@@ -15,9 +15,14 @@ import {
   X,
   LayoutGrid,
   Star,
-  HelpCircle
+  HelpCircle,
+  UserCircle,
+  LogOut
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Avatar } from '@/components/ui/avatar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { toast } from '@/components/ui/use-toast';
 
 // Define TypeScript interfaces for our data
 interface Venue {
@@ -38,7 +43,7 @@ interface AdminHomeStats {
 
 const AdminHome: React.FC = () => {
   const navigate = useNavigate();
-  const { user, userRole } = useAuth();
+  const { user, userRole, signOut } = useAuth();
   const [venues, setVenues] = useState<Venue[]>([]);
   const [stats, setStats] = useState<AdminHomeStats>({
     total_venues: 0,
@@ -48,6 +53,7 @@ const AdminHome: React.FC = () => {
   });
   const [loading, setLoading] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   useEffect(() => {
     const fetchAdminData = async () => {
@@ -127,6 +133,23 @@ const AdminHome: React.FC = () => {
     fetchAdminData();
   }, [user]);
 
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Logged out",
+        description: "You have been successfully logged out",
+      });
+    } catch (error) {
+      console.error('Error signing out:', error);
+      toast({
+        title: "Error",
+        description: "There was a problem signing out. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const quickLinks = [
     { 
       title: 'Manage Bookings', 
@@ -202,8 +225,38 @@ const AdminHome: React.FC = () => {
               ))}
             </nav>
 
+            {/* Profile Menu */}
+            <Popover open={profileOpen} onOpenChange={setProfileOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" className="flex items-center gap-2">
+                  <UserCircle size={20} />
+                  <span className="hidden sm:inline">{user?.email}</span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-56 p-2" align="end">
+                <div className="flex flex-col space-y-1">
+                  <Button 
+                    variant="ghost" 
+                    className="flex items-center justify-start" 
+                    onClick={() => navigate('/admin/profile')}
+                  >
+                    <UserCircle className="mr-2 h-4 w-4" />
+                    <span>My Profile</span>
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    className="flex items-center justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+                    onClick={handleSignOut}
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Sign Out</span>
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
+
             {/* Mobile Menu Toggle */}
-            <button onClick={toggleMobileMenu} className="md:hidden text-gray-500 focus:outline-none">
+            <button onClick={toggleMobileMenu} className="md:hidden text-gray-500 focus:outline-none ml-4">
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
           </div>
@@ -228,6 +281,17 @@ const AdminHome: React.FC = () => {
                     <span className="ml-2">{item.label}</span>
                   </Button>
                 ))}
+                <Button 
+                  variant="ghost" 
+                  className="flex items-center justify-start w-full col-span-2 border-t mt-2 pt-2" 
+                  onClick={() => {
+                    handleSignOut();
+                    setMobileMenuOpen(false);
+                  }}
+                >
+                  <LogOut className="mr-2 h-4 w-4 text-red-600" />
+                  <span className="text-red-600">Sign Out</span>
+                </Button>
               </div>
             </div>
           </div>

@@ -24,7 +24,7 @@ export const RouteGuard = ({ requireAuth = true, requiredRole, adminOnly = false
 
   // Logged in but on a non-auth page (like login)
   if (!requireAuth && user) {
-    // Redirect admins to admin home, regular users to regular home
+    // Always redirect admins to admin dashboard
     if (isAdmin) {
       return <Navigate to="/admin" />;
     }
@@ -49,8 +49,8 @@ export const RouteGuard = ({ requireAuth = true, requiredRole, adminOnly = false
     return <Navigate to="/" />;
   }
 
-  // Redirect admins to admin home if they try to access user content routes
-  if (user && isAdmin && !location.pathname.startsWith('/admin') && location.pathname !== '/login') {
+  // Always redirect admins to admin dashboard if they try to access any non-admin route
+  if (user && isAdmin && !location.pathname.startsWith('/admin')) {
     return <Navigate to="/admin" />;
   }
 
