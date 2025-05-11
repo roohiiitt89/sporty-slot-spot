@@ -3,7 +3,21 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Dumbbell, Calendar, Map, Users, MessageCircle, BarChart, Settings } from 'lucide-react';
+import { 
+  Dumbbell, 
+  Calendar, 
+  Map, 
+  Users, 
+  MessageCircle, 
+  BarChart, 
+  Settings, 
+  Menu,
+  X,
+  LayoutGrid,
+  Star,
+  HelpCircle
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 // Define TypeScript interfaces for our data
 interface Venue {
@@ -33,6 +47,7 @@ const AdminHome: React.FC = () => {
     total_courts: 0
   });
   const [loading, setLoading] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const fetchAdminData = async () => {
@@ -139,6 +154,21 @@ const AdminHome: React.FC = () => {
     },
   ];
 
+  const adminNavItems = [
+    { path: '/admin', label: 'Dashboard', icon: <LayoutGrid size={18} /> },
+    { path: '/admin/venues', label: 'Venues', icon: <Map size={18} /> },
+    { path: '/admin/bookings', label: 'Bookings', icon: <Calendar size={18} /> },
+    { path: '/admin/courts', label: 'Courts', icon: <Dumbbell size={18} /> },
+    { path: '/admin/analytics', label: 'Analytics', icon: <BarChart size={18} /> },
+    { path: '/admin/reviews', label: 'Reviews', icon: <Star size={18} /> },
+    { path: '/admin/messages', label: 'Messages', icon: <MessageCircle size={18} /> },
+    { path: '/admin/help-requests', label: 'Help Requests', icon: <HelpCircle size={18} /> },
+  ];
+
+  const toggleMobileMenu = () => {
+    setMobileMenuOpen(!mobileMenuOpen);
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -149,6 +179,61 @@ const AdminHome: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      {/* Admin Navbar */}
+      <div className="bg-white shadow-md">
+        <div className="container mx-auto px-4">
+          <div className="flex justify-between items-center py-4">
+            <div className="flex items-center">
+              <h1 className="text-xl font-bold text-indigo-600">Admin Dashboard</h1>
+            </div>
+
+            {/* Desktop Navigation */}
+            <nav className="hidden md:flex items-center space-x-6">
+              {adminNavItems.map((item) => (
+                <Button
+                  key={item.path}
+                  variant="ghost"
+                  className="flex items-center gap-1"
+                  onClick={() => navigate(item.path)}
+                >
+                  {item.icon}
+                  {item.label}
+                </Button>
+              ))}
+            </nav>
+
+            {/* Mobile Menu Toggle */}
+            <button onClick={toggleMobileMenu} className="md:hidden text-gray-500 focus:outline-none">
+              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile Menu */}
+        {mobileMenuOpen && (
+          <div className="md:hidden bg-white border-t border-gray-200">
+            <div className="container mx-auto px-4 py-2">
+              <div className="grid grid-cols-2 gap-2">
+                {adminNavItems.map((item) => (
+                  <Button
+                    key={item.path}
+                    variant="ghost"
+                    className="flex items-center justify-start w-full"
+                    onClick={() => {
+                      navigate(item.path);
+                      setMobileMenuOpen(false);
+                    }}
+                  >
+                    {item.icon}
+                    <span className="ml-2">{item.label}</span>
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="container mx-auto px-4 py-8">
         <div className="bg-gradient-to-r from-indigo-600 to-indigo-800 rounded-xl p-6 md:p-8 mb-8 shadow-lg text-white">
           <h1 className="text-2xl md:text-3xl font-bold mb-2">
