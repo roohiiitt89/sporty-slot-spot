@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
-import { LogOut, Edit, Calendar, User, Phone, Mail, CreditCard, ChevronRight, ArrowLeft, Shield, Info, Clock, DollarSign } from 'lucide-react';
+import { LogOut, Edit, Calendar, User, Phone, Mail, CreditCard, ChevronRight, ArrowLeft, Shield, Info } from 'lucide-react';
 import SportDisplayName from '@/components/SportDisplayName';
 
 interface Booking {
@@ -36,6 +37,7 @@ interface UserProfile {
 }
 
 const Profile: React.FC = () => {
+  const navigate = useNavigate();
   const { user, signOut, userRole } = useAuth();
   const [activeTab, setActiveTab] = useState<'profile' | 'bookings'>('profile');
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -213,23 +215,33 @@ const Profile: React.FC = () => {
       <div className="pt-24 pb-16">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto">
-            {/* Enhanced Profile header with gradient */}
-            <div className="mb-10 bg-gradient-to-r from-sport-green to-blue-600 rounded-xl p-6 text-white shadow-lg">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-                <div>
-                  <h1 className="text-3xl font-bold">My Account</h1>
-                  <p className="mt-2 opacity-90">
-                    {activeTab === 'profile' ? 'Manage your personal information' : 'View and manage your bookings'}
-                  </p>
-                </div>
-                <div className="mt-4 md:mt-0">
-                  <div className="flex items-center space-x-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2">
-                    <div className="h-10 w-10 rounded-full bg-white flex items-center justify-center text-sport-green font-bold">
-                      {profile?.full_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
-                    </div>
-                    <div>
-                      <p className="font-medium">{profile?.full_name || user?.email}</p>
-                      <p className="text-xs opacity-80 capitalize">{userRole || 'User'}</p>
+            {/* Enhanced Profile header with gradient and back button */}
+            <div className="mb-6">
+              <button
+                onClick={() => navigate('/')}
+                className="flex items-center text-gray-600 hover:text-gray-900 transition-colors mb-4"
+              >
+                <ArrowLeft className="w-5 h-5 mr-2" />
+                Back to Home
+              </button>
+              
+              <div className="bg-gradient-to-r from-sport-green to-blue-600 rounded-xl p-6 text-white shadow-lg">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <h1 className="text-3xl font-bold">My Account</h1>
+                    <p className="mt-2 opacity-90">
+                      {activeTab === 'profile' ? 'Manage your personal information' : 'View and manage your bookings'}
+                    </p>
+                  </div>
+                  <div className="mt-4 md:mt-0">
+                    <div className="flex items-center space-x-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2">
+                      <div className="h-10 w-10 rounded-full bg-white flex items-center justify-center text-sport-green font-bold">
+                        {profile?.full_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
+                      </div>
+                      <div>
+                        <p className="font-medium">{profile?.full_name || user?.email}</p>
+                        <p className="text-xs opacity-80 capitalize">{userRole || 'User'}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -547,8 +559,7 @@ const Profile: React.FC = () => {
                                     
                                     <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
                                       <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</p>
-                                      <p className="mt-1 font-medium text-gray-900 flex items-center">
-                                        <DollarSign className="h-4 w-4 mr-1 text-gray-500" />
+                                      <p className="mt-1 font-medium text-gray-900">
                                         ₹{booking.total_price.toFixed(2)}
                                       </p>
                                     </div>
