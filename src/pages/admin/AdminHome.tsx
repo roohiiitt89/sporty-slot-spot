@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -40,20 +41,58 @@ const AdminHome: React.FC = () => {
       try {
         setLoading(true);
         
-        // Use raw query for functions that are not recognized by TypeScript
+        // Use direct SQL queries instead of RPC functions
         const { data: venueData, error: venueError } = await supabase
-          .rpc('get_admin_venues_with_stats') as unknown as { data: Venue[], error: Error | null };
+          .from('venues')
+          .select(`
+            id,
+            name,
+            location,
+            image_url,
+            (select count(*) from bookings where court_id in 
+              (select id from courts where venue_id = venues.id)) as bookings_count,
+            (select count(*) from courts where venue_id = venues.id) as courts_count
+          `)
+          .order('name');
           
         if (venueError) throw venueError;
 
-        // Similar approach for stats
-        const { data: statsData, error: statsError } = await supabase
-          .rpc('get_admin_dashboard_stats') as unknown as { data: AdminHomeStats[], error: Error | null };
+        // Query for dashboard stats
+        const { data: venueCount, error: venueCountError } = await supabase
+          .from('venues')
+          .select('id', { count: 'exact' });
           
-        if (statsError) throw statsError;
+        if (venueCountError) throw venueCountError;
         
-        if (venueData) setVenues(venueData);
-        if (statsData && statsData.length > 0) setStats(statsData[0]);
+        const { data: bookingsData, error: bookingsError } = await supabase
+          .from('bookings')
+          .select('id', { count: 'exact' });
+          
+        if (bookingsError) throw bookingsError;
+        
+        const { data: recentBookingsData, error: recentBookingsError } = await supabase
+          .from('bookings')
+          .select('id', { count: 'exact' })
+          .gte('booking_date', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+          
+        if (recentBookingsError) throw recentBookingsError;
+        
+        const { data: courtsData, error: courtsError } = await supabase
+          .from('courts')
+          .select('id', { count: 'exact' });
+          
+        if (courtsError) throw courtsError;
+        
+        // Set venues
+        if (venueData) setVenues(venueData as Venue[]);
+        
+        // Set stats
+        setStats({
+          total_venues: venueCount?.length || 0,
+          total_bookings: bookingsData?.length || 0,
+          recent_bookings: recentBookingsData?.length || 0,
+          total_courts: courtsData?.length || 0
+        });
       } catch (error) {
         console.error('Error fetching admin data:', error);
       } finally {
