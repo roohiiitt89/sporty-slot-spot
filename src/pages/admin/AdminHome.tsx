@@ -41,15 +41,15 @@ const AdminHome: React.FC = () => {
       try {
         setLoading(true);
         
-        // Fetch venues administered by this admin
-        const { data: venueData, error: venueError } = await supabase
-          .rpc('get_admin_venues_with_stats') as { data: Venue[] | null, error: any };
+        // Fetch venues administered by this admin - using a type assertion for the RPC call
+        const { data: venueData, error: venueError } = await (supabase
+          .rpc('get_admin_venues_with_stats') as unknown as Promise<{ data: Venue[] | null, error: any }>);
           
         if (venueError) throw venueError;
 
-        // Get aggregate stats
-        const { data: statsData, error: statsError } = await supabase
-          .rpc('get_admin_dashboard_stats') as { data: AdminHomeStats[] | null, error: any };
+        // Get aggregate stats - using a type assertion for the RPC call
+        const { data: statsData, error: statsError } = await (supabase
+          .rpc('get_admin_dashboard_stats') as unknown as Promise<{ data: AdminHomeStats[] | null, error: any }>);
           
         if (statsError) throw statsError;
         
