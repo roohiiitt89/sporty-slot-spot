@@ -29,6 +29,19 @@ export interface AvailabilitySlot {
 export type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed';
 export type PaymentMethod = 'online' | 'cash' | 'card' | 'free';
 
+// User info interface
+export interface UserInfo {
+  full_name: string | null;
+  email: string | null;
+  phone: string | null;
+}
+
+// Admin info interface
+export interface AdminInfo {
+  full_name: string | null;
+  email: string | null;
+}
+
 // Extend BookingInfo to include user information
 export interface BookingInfo {
   id: string;
@@ -46,6 +59,8 @@ export interface BookingInfo {
   user_email?: string;
   user_phone?: string;
   admin_booking?: AdminBookingInfo | null;
+  user_info?: UserInfo;
+  admin_info?: AdminInfo;
 }
 
 export interface AdminBookingInfo {

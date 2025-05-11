@@ -24,6 +24,11 @@ interface UserInfo {
   phone: string | null;
 }
 
+interface AdminInfo {
+  full_name: string | null;
+  email: string | null;
+}
+
 interface Booking {
   id: string;
   booking_date: string;
@@ -52,6 +57,7 @@ interface Booking {
     };
   };
   user_info?: UserInfo;
+  admin_info?: AdminInfo;
   admin_booking?: AdminBookingInfo | null;
 }
 
@@ -60,7 +66,7 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'confirmed' | 'cancelled' | 'completed'>('all');
   const [paymentFilter, setPaymentFilter] = useState<'all' | 'completed' | 'pending' | 'failed'>('all');
-  const [paymentMethodFilter, setPaymentFilter2] = useState<'all' | 'cash' | 'online' | 'card' | 'free'>('all');
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState<'all' | 'cash' | 'online' | 'card' | 'free'>('all');
 
   useEffect(() => {
     fetchBookings();
@@ -163,9 +169,19 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
         booking.status === 'completed'
       );
       
-      // Fetch user information for each booking with a user_id
-      const bookingsWithUserInfo = await Promise.all(
+      // Process all bookings to get user and admin info
+      const processedBookings = await Promise.all(
         validBookings.map(async booking => {
+          let processedBooking = { ...booking };
+          
+          // Flatten admin_booking if it's an array with one element
+          if (booking.admin_booking && Array.isArray(booking.admin_booking) && booking.admin_booking.length > 0) {
+            processedBooking.admin_booking = booking.admin_booking[0];
+          } else if (Array.isArray(booking.admin_booking) && booking.admin_booking.length === 0) {
+            processedBooking.admin_booking = null;
+          }
+          
+          // Fetch user info if the booking has a user_id
           if (booking.user_id) {
             try {
               const { data: userData, error: userError } = await supabase
@@ -175,13 +191,10 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
                 .single();
                 
               if (!userError && userData) {
-                return {
-                  ...booking,
-                  user_info: {
-                    full_name: userData.full_name,
-                    email: userData.email,
-                    phone: userData.phone
-                  }
+                processedBooking.user_info = {
+                  full_name: userData.full_name,
+                  email: userData.email,
+                  phone: userData.phone
                 };
               }
             } catch (err) {
@@ -189,19 +202,31 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
             }
           }
           
-          // If it has admin_booking as array with one element, flatten it
-          if (booking.admin_booking && Array.isArray(booking.admin_booking) && booking.admin_booking.length > 0) {
-            return {
-              ...booking,
-              admin_booking: booking.admin_booking[0]
-            };
+          // Fetch admin info if the booking has a booked_by_admin_id
+          if (booking.booked_by_admin_id) {
+            try {
+              const { data: adminData, error: adminError } = await supabase
+                .from('profiles')
+                .select('full_name, email')
+                .eq('id', booking.booked_by_admin_id)
+                .single();
+                
+              if (!adminError && adminData) {
+                processedBooking.admin_info = {
+                  full_name: adminData.full_name,
+                  email: adminData.email
+                };
+              }
+            } catch (err) {
+              console.error('Error fetching admin info:', err);
+            }
           }
           
-          return booking;
+          return processedBooking;
         })
       ) as Booking[];
       
-      setBookings(bookingsWithUserInfo || []);
+      setBookings(processedBookings || []);
     } catch (error) {
       console.error('Error fetching bookings:', error);
       toast({
@@ -348,7 +373,7 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
             <h3 className="text-sm font-medium text-gray-700 mb-2">Filter by Payment Method:</h3>
             <div className="flex space-x-2">
               <button
-                onClick={() => setPaymentFilter2('all')}
+                onClick={() => setPaymentMethodFilter('all')}
                 className={`px-3 py-1 text-xs rounded-md ${
                   paymentMethodFilter === 'all' 
                     ? 'bg-sport-green text-white' 
@@ -358,7 +383,7 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
                 All Methods
               </button>
               <button
-                onClick={() => setPaymentFilter2('cash')}
+                onClick={() => setPaymentMethodFilter('cash')}
                 className={`px-3 py-1 text-xs rounded-md ${
                   paymentMethodFilter === 'cash' 
                     ? 'bg-green-600 text-white' 
@@ -368,7 +393,7 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
                 Cash
               </button>
               <button
-                onClick={() => setPaymentFilter2('online')}
+                onClick={() => setPaymentMethodFilter('online')}
                 className={`px-3 py-1 text-xs rounded-md ${
                   paymentMethodFilter === 'online' 
                     ? 'bg-blue-600 text-white' 
@@ -378,7 +403,7 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
                 Online
               </button>
               <button
-                onClick={() => setPaymentFilter2('card')}
+                onClick={() => setPaymentMethodFilter('card')}
                 className={`px-3 py-1 text-xs rounded-md ${
                   paymentMethodFilter === 'card' 
                     ? 'bg-purple-600 text-white' 
@@ -388,7 +413,7 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
                 Card
               </button>
               <button
-                onClick={() => setPaymentFilter2('free')}
+                onClick={() => setPaymentMethodFilter('free')}
                 className={`px-3 py-1 text-xs rounded-md ${
                   paymentMethodFilter === 'free' 
                     ? 'bg-gray-600 text-white' 

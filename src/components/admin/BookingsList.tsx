@@ -20,6 +20,11 @@ interface UserInfo {
   phone: string | null;
 }
 
+interface AdminInfo {
+  full_name: string | null;
+  email: string | null;
+}
+
 interface Booking {
   id: string;
   booking_date: string;
@@ -48,6 +53,7 @@ interface Booking {
     };
   };
   user_info?: UserInfo;
+  admin_info?: AdminInfo;
   admin_booking?: AdminBookingInfo | null;
 }
 
@@ -163,15 +169,32 @@ const BookingsList: React.FC<BookingsListProps> = ({
               <TableCell>
                 {booking.admin_booking ? (
                   <div>
-                    <p className="font-medium">{booking.admin_booking.customer_name} <span className="text-xs text-purple-600">(Admin Booking)</span></p>
+                    <p className="font-medium">
+                      {booking.admin_booking.customer_name} 
+                      <span className="text-xs text-purple-600"> (Admin Booking)</span>
+                    </p>
                     <p className="text-xs text-gray-500">{booking.admin_booking.customer_phone || 'No phone'}</p>
+                    {booking.admin_info && (
+                      <p className="text-xs text-purple-600">Booked by: {booking.admin_info.full_name || 'Admin'}</p>
+                    )}
                     {booking.admin_booking.notes && (
                       <p className="text-xs text-gray-500 italic mt-1">Note: {booking.admin_booking.notes}</p>
                     )}
                   </div>
+                ) : booking.booked_by_admin_id ? (
+                  <div>
+                    <p className="font-medium">
+                      {booking.guest_name || 'Customer'} 
+                      <span className="text-xs text-purple-600"> (Admin Booking)</span>
+                    </p>
+                    <p className="text-xs text-gray-500">{booking.guest_phone || 'No phone'}</p>
+                    {booking.admin_info && (
+                      <p className="text-xs text-purple-600">Booked by: {booking.admin_info.full_name || 'Admin'}</p>
+                    )}
+                  </div>
                 ) : booking.guest_name ? (
                   <div>
-                    <p className="font-medium">{booking.guest_name} (Guest)</p>
+                    <p className="font-medium">{booking.guest_name} <span className="text-xs text-gray-500">(Guest)</span></p>
                     <p className="text-xs text-gray-500">{booking.guest_phone || 'No phone'}</p>
                   </div>
                 ) : booking.user_info ? (
