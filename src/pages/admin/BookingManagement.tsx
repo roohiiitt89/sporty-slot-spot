@@ -8,7 +8,7 @@ import {
   TabsList, 
   TabsTrigger
 } from "@/components/ui/tabs";
-import { AdminBookingInfo } from '@/types/help';
+import { AdminBookingInfo, Booking } from '@/types/help';
 import BookingsList from '@/components/admin/BookingsList';
 import AdminBookingTab from '@/components/admin/AdminBookingTab';
 import SlotBlockingTab from '@/components/admin/SlotBlockingTab';
@@ -16,49 +16,6 @@ import SlotBlockingTab from '@/components/admin/SlotBlockingTab';
 interface BookingManagementProps {
   userRole: string | null;
   adminVenues: { venue_id: string }[];
-}
-
-interface UserInfo {
-  full_name: string | null;
-  email: string | null;
-  phone: string | null;
-}
-
-interface AdminInfo {
-  full_name: string | null;
-  email: string | null;
-}
-
-interface Booking {
-  id: string;
-  booking_date: string;
-  start_time: string;
-  end_time: string;
-  total_price: number;
-  status: 'confirmed' | 'cancelled' | 'completed';
-  payment_reference: string | null;
-  payment_status: string | null;
-  payment_method: string | null;
-  user_id: string | null;
-  guest_name: string | null;
-  guest_phone: string | null;
-  created_at: string;
-  booked_by_admin_id: string | null;
-  court: {
-    id: string;
-    name: string;
-    venue: {
-      id: string;
-      name: string;
-    };
-    sport: {
-      id: string;
-      name: string;
-    };
-  };
-  user_info?: UserInfo;
-  admin_info?: AdminInfo;
-  admin_booking?: AdminBookingInfo | null;
 }
 
 const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVenues }) => {
@@ -108,10 +65,14 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
           ),
           admin_booking:admin_bookings(
             id,
+            booking_id,
+            admin_id,
             customer_name,
             customer_phone,
             payment_method,
+            payment_status,
             amount_collected,
+            created_at,
             notes
           )
         `)
@@ -166,17 +127,18 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
       const validBookings = data?.filter(booking => 
         booking.status === 'confirmed' || 
         booking.status === 'cancelled' || 
-        booking.status === 'completed'
+        booking.status === 'completed' ||
+        booking.status === 'pending'
       );
       
       // Process all bookings to get user and admin info
       const processedBookings = await Promise.all(
         validBookings.map(async booking => {
-          let processedBooking = { ...booking };
+          let processedBooking = { ...booking } as Booking;
           
-          // Flatten admin_booking if it's an array with one element
+          // Flatten admin_booking if it's an array with elements
           if (booking.admin_booking && Array.isArray(booking.admin_booking) && booking.admin_booking.length > 0) {
-            processedBooking.admin_booking = booking.admin_booking[0];
+            processedBooking.admin_booking = booking.admin_booking[0] as AdminBookingInfo;
           } else if (Array.isArray(booking.admin_booking) && booking.admin_booking.length === 0) {
             processedBooking.admin_booking = null;
           }
@@ -224,7 +186,7 @@ const BookingManagement: React.FC<BookingManagementProps> = ({ userRole, adminVe
           
           return processedBooking;
         })
-      ) as Booking[];
+      );
       
       setBookings(processedBookings || []);
     } catch (error) {
