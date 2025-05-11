@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -41,17 +40,15 @@ const AdminHome: React.FC = () => {
       try {
         setLoading(true);
         
-        // Use rpc with proper type casting
+        // Use raw query for functions that are not recognized by TypeScript
         const { data: venueData, error: venueError } = await supabase
-          .rpc('get_admin_venues_with_stats')
-          .returns<Venue[]>();
+          .rpc('get_admin_venues_with_stats') as unknown as { data: Venue[], error: Error | null };
           
         if (venueError) throw venueError;
 
         // Similar approach for stats
         const { data: statsData, error: statsError } = await supabase
-          .rpc('get_admin_dashboard_stats')
-          .returns<AdminHomeStats[]>();
+          .rpc('get_admin_dashboard_stats') as unknown as { data: AdminHomeStats[], error: Error | null };
           
         if (statsError) throw statsError;
         
