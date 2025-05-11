@@ -16,6 +16,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import VerifyEmail from "./pages/VerifyEmail";
 import AdminDashboard from "./pages/admin/Dashboard";
+import AdminHome from "./pages/admin/AdminHome";
 import Profile from "./pages/Profile";
 import ChallengeDashboard from "./pages/challenge/ChallengeDashboard";
 import TeamDetails from "./pages/challenge/TeamDetails";
@@ -38,8 +39,8 @@ const App = () => (
               <Route path="/verify-email" element={<VerifyEmail />} />
             </Route>
 
-            {/* Protected routes */}
-            <Route element={<RouteGuard requireAuth={true} />}>
+            {/* Protected routes - only for normal users */}
+            <Route element={<RouteGuard requireAuth={true} adminOnly={false} />}>
               <Route path="/profile" element={<Profile />} />
               <Route path="/bookings" element={<Bookings />} />
               <Route path="/challenge" element={<ChallengeDashboard />} />
@@ -47,7 +48,8 @@ const App = () => (
             </Route>
             
             {/* Admin routes - accessible to both admin and super_admin */}
-            <Route element={<RouteGuard requireAuth={true} requiredRole="admin" />}>
+            <Route element={<RouteGuard requireAuth={true} requiredRole="admin" adminOnly={true} />}>
+              <Route path="/admin" element={<AdminHome />} />
               <Route path="/admin/*" element={<AdminDashboard />} />
             </Route>
 
