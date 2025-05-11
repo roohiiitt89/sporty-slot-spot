@@ -313,3 +313,18 @@
 .dynamic-button:hover::before {
   left: 100%;
 }
+
+@keyframes infinite-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-infinite-scroll {
+  animation: infinite-scroll 30s linear infinite;
+}
+
+@media (hover: hover) {
+  .hover\:\[animation-play-state\:paused\]:hover {
+    animation-play-state: paused;
+  }
+}
