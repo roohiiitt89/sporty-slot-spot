@@ -412,24 +412,58 @@ const Index: React.FC = () => {
         </div>
       </section>
 
-      <section id="quotes" ref={quotesRef} className="py-16 bg-indigo relative overflow-hidden">
-        <div className="absolute inset-0 pattern-dots pattern-opacity-10 bg-navy-dark"></div>
-        <div className="container mx-auto px-4 relative z-10">
-          <h2 className={`section-title text-center text-white ${visibleSections.quotes ? 'animate-reveal' : 'opacity-0'}`}>Become A Partner</h2>
-          
-          <div className="max-w-4xl mx-auto mt-10">
-            <div className={`glass-card p-8 ${visibleSections.quotes ? 'animate-reveal animate-float' : 'opacity-0'}`} style={{
-            animationDelay: '0.3s'
-          }}>
-              <div className="text-center">
-                <p className="text-2xl md:text-3xl font-medium text-white italic">
-                  {sportsQuotes[activeQuoteIndex]}
-                </p>
-              </div>
+      <section id="partners" ref={quotesRef} className="py-16 bg-indigo relative overflow-hidden">
+  <div className="absolute inset-0 pattern-dots pattern-opacity-10 bg-navy-dark"></div>
+  <div className="container mx-auto px-4 relative z-10">
+    <h2 className={`text-3xl font-bold text-center text-white mb-10 ${visibleSections.quotes ? 'animate-reveal' : 'opacity-0'}`}>
+      Become A Partner
+      <span className="block w-20 h-1 bg-white mt-2 mx-auto"></span>
+    </h2>
+    
+    <div className="relative w-full max-w-6xl mx-auto overflow-hidden">
+      {/* Gradient fade edges */}
+      <div className="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-indigo to-transparent z-10"></div>
+      <div className="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-indigo to-transparent z-10"></div>
+      
+      {/* Infinite scrolling carousel */}
+      <div className="flex overflow-x-hidden group hover:[animation-play-state:paused]">
+        <div className="flex animate-infinite-scroll whitespace-nowrap">
+          {[
+            "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//%20-3.jpg",
+            "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//%20.jpg",
+            "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//ChatGPT%20Image%20Apr%2018,%202025,%2001_59_47%20AM.png",
+            "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//3e6653285e2d08a596a15f28e50d2735.jpg"
+          ].map((img, idx) => (
+            <div key={idx} className="inline-flex items-center justify-center mx-4">
+              <img 
+                src={img} 
+                alt={`Partner ${idx + 1}`}
+                className="h-32 w-auto object-contain max-w-[200px] md:max-w-[300px] rounded-lg shadow-md hover:scale-105 transition-transform"
+                loading="lazy"
+              />
             </div>
-          </div>
+          ))}
+          {/* Duplicate for seamless looping */}
+          {[
+            "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//%20-3.jpg",
+            "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//%20.jpg",
+            "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//ChatGPT%20Image%20Apr%2018,%202025,%2001_59_47%20AM.png",
+            "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//3e6653285e2d08a596a15f28e50d2735.jpg"
+          ].map((img, idx) => (
+            <div key={`dup-${idx}`} className="inline-flex items-center justify-center mx-4">
+              <img 
+                src={img} 
+                alt={`Partner ${idx + 1}`}
+                className="h-32 w-auto object-contain max-w-[200px] md:max-w-[300px] rounded-lg shadow-md hover:scale-105 transition-transform"
+                loading="lazy"
+              />
+            </div>
+          ))}
         </div>
-      </section>
+      </div>
+    </div>
+  </div>
+</section>
 
       <footer className="bg-navy-dark text-white py-12">
         <div className="container mx-auto px-4">
