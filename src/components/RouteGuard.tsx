@@ -2,7 +2,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 
-interface RouteGuardProps {
+export interface RouteGuardProps {
   requireAuth?: boolean;
   requiredRole?: 'user' | 'admin' | 'super_admin';
   adminOnly?: boolean;

@@ -53,15 +53,8 @@ const App = () => (
               <Route path="/admin/*" element={<AdminDashboard />} />
             </Route>
 
-            {/* Root path - redirect based on role */}
-            <Route 
-              path="/" 
-              element={
-                <RouteGuard requireAuth={false}>
-                  <Index />
-                </RouteGuard>
-              } 
-            />
+            {/* Root path - should be treated like other public content routes */}
+            <Route path="/" element={<Index />} />
 
             {/* Semi-public routes - accessible to all but with auth-aware features */}
             <Route path="/venues" element={<Venues />} />
