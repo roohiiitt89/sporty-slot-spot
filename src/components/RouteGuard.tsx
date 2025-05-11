@@ -40,7 +40,7 @@ export const RouteGuard = ({ requireAuth = true, requiredRole, adminOnly = false
       true; // 'user' role is default
 
     if (!hasAccess) {
-      return <Navigate to={isAdmin ? "/admin" : "/"};
+      return <Navigate to={isAdmin ? "/admin" : "/"} />;
     }
   }
 
