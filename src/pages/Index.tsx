@@ -169,15 +169,12 @@ const Index: React.FC = () => {
   <div className="hero-overlay dark-gradient-overlay"></div>
   <div className="hero-content container mx-auto text-center">
     <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold text-white mb-6 animate-fade-in">
-      Book Now for Your{' '}
-      <span className="text-green-600">
-        <RotatingTypewriter 
-          text={["Game On!", "Match!", "Training!", "Tournament!"]} 
-          delay={80}
-          phraseDelay={2000}
-        />
-      </span>
-    </h1>
+  Book Now for Your{' '}
+  <Typewriter 
+    texts={["Game On!", "Perfect Match!", "Training!", "Tournament!"]}
+    delay={80}
+  />
+</h1>
     <p className="text-xl md:text-2xl text-white mb-10 max-w-3xl mx-auto animate-fade-in" style={{
       animationDelay: '0.2s'
     }}>
