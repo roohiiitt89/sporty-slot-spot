@@ -400,42 +400,47 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
   };
 
   const fetchCourts = async () => {
-    setLoading(prev => ({ ...prev, courts: true }));
-    try {
-      const { data, error } = await supabase
-        .from('courts')
-        .select('id, name, venue_id, sport_id, court_group_id, hourly_rate, description')
-        .eq('venue_id', selectedVenue)
-        .eq('sport_id', selectedSport)
-        .eq('is_active', true)
-        .order('name', { ascending: true });
-        
-      if (error) throw error;
+  setLoading(prev => ({ ...prev, courts: true }));
+  try {
+    const { data, error } = await supabase
+      .from('courts')
+      .select('id, name, venue_id, sport_id, court_group_id, hourly_rate, description')
+      .eq('venue_id', selectedVenue)
+      .eq('sport_id', selectedSport)
+      .eq('is_active', true)
+      .order('name', { ascending: true });
       
-      setCourts(data || []);
-      if (data && data.length > 0) {
+    if (error) throw error;
+    
+    setCourts(data || []);
+    
+    // Reset selection if current court is invalid
+    if (data && data.length > 0) {
+      const currentCourtValid = data.some(court => court.id === selectedCourt);
+      if (!currentCourtValid) {
         setSelectedCourt(data[0].id);
         setCourtRate(data[0].hourly_rate);
-      } else {
-        setSelectedCourt('');
-        setCourtRate(0);
-        toast({
-          title: "No Courts Available",
-          description: "There are no available courts for this sport at the selected venue",
-          variant: "destructive",
-        });
       }
-    } catch (error) {
-      console.error('Error fetching courts:', error);
+    } else {
+      setSelectedCourt('');
+      setCourtRate(0);
       toast({
-        title: "Error",
-        description: "Failed to load courts",
+        title: "No Courts Available",
+        description: "There are no available courts for this sport at the selected venue",
         variant: "destructive",
       });
-    } finally {
-      setLoading(prev => ({ ...prev, courts: false }));
     }
-  };
+  } catch (error) {
+    console.error('Error fetching courts:', error);
+    toast({
+      title: "Error",
+      description: "Failed to load courts",
+      variant: "destructive",
+    });
+  } finally {
+    setLoading(prev => ({ ...prev, courts: false }));
+  }
+};
 
   const fetchAvailability = useCallback(async () => {
     if (!selectedCourt || !selectedDate) return;
