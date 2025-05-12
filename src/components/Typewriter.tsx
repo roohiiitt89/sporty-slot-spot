@@ -3,18 +3,16 @@ import React, { useState, useEffect } from 'react';
 interface TypewriterProps {
   texts: string[];
   delay?: number;
-  loop?: boolean;
 }
 
-const Typewriter: React.FC<TypewriterProps> = ({ texts, delay = 100, loop = true }) => {
+export const Typewriter: React.FC<TypewriterProps> = ({ texts, delay = 100 }) => {
   const [displayText, setDisplayText] = useState('');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [textIndex, setTextIndex] = useState(0);
   const [typingDelay, setTypingDelay] = useState(delay);
 
   useEffect(() => {
-    const currentText = texts[textIndex];
+    const currentText = texts[currentIndex];
     
     const handleTyping = () => {
       if (isDeleting) {
@@ -31,16 +29,16 @@ const Typewriter: React.FC<TypewriterProps> = ({ texts, delay = 100, loop = true
         // Pause at end of text
         setTimeout(() => setIsDeleting(true), 1000);
       } else if (isDeleting && displayText === '') {
-        // Move to next text or loop
+        // Move to next text
         setIsDeleting(false);
-        setTextIndex((textIndex + 1) % texts.length);
-        setTypingDelay(500); // Pause before starting next text
+        setCurrentIndex((currentIndex + 1) % texts.length);
+        setTypingDelay(500);
       }
     };
 
     const timer = setTimeout(handleTyping, typingDelay);
     return () => clearTimeout(timer);
-  }, [displayText, isDeleting, textIndex, texts, delay, typingDelay]);
+  }, [displayText, isDeleting, currentIndex, texts, delay, typingDelay]);
 
   return (
     <span className="text-green-600 inline-block min-w-[120px]">
@@ -49,5 +47,3 @@ const Typewriter: React.FC<TypewriterProps> = ({ texts, delay = 100, loop = true
     </span>
   );
 };
-
-export default Typewriter;
