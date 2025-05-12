@@ -91,7 +91,7 @@ const SlotBlockingForm: React.FC<SlotBlockingFormProps> = ({
   return <div className="bg-emerald-800 rounded-md shadow p-4">
       <h3 className="text-lg font-semibold mb-4">Block Time Slot</h3>
       
-      <div className="mb-4 p-3 bg-red-50 rounded-md">
+      <div className="mb-4 p-3 bg-black rounded-md">
         <p className="font-medium">Slot Details:</p>
         <p>Court: {courtName}</p>
         <p>Date: {format(new Date(date), 'EEEE, MMMM d, yyyy')}</p>
