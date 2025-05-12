@@ -157,9 +157,17 @@ const Index: React.FC = () => {
   const handleSportCardClick = (sportId: string) => {
     navigate(`/venues?sport=${sportId}`);
   };
+  const handleLocationPermissionGranted = () => {
+    setLocationPermissionHandled(true);
+    console.log("Location permission granted");
+  };
   
-  return (
-    <div className="min-h-screen bg-navy-dark text-card-foreground">
+  const handleLocationPermissionDenied = () => {
+    setLocationPermissionHandled(true);
+    console.log("Location permission denied");
+  };
+  
+  return <div className="min-h-screen bg-navy-dark text-card-foreground">
       <Header />
       
       <section className="hero-section">
@@ -173,13 +181,13 @@ const Index: React.FC = () => {
             Book Now for Your <span className="text-[sport-green-dark] text-green-600">Game On!</span>
           </h1>
           <p className="text-xl md:text-2xl text-white mb-10 max-w-3xl mx-auto animate-fade-in" style={{
-            animationDelay: '0.2s'
-          }}>
+          animationDelay: '0.2s'
+        }}>
             Find and book your favorite sports venues easily. Multiple sports, venues, and flexible time slots all in one place.
           </p>
           <div className="flex flex-col md:flex-row justify-center gap-4 animate-fade-in" style={{
-            animationDelay: '0.4s'
-          }}>
+          animationDelay: '0.4s'
+        }}>
             <button onClick={() => setIsBookModalOpen(true)} className="dynamic-button flex items-center justify-center">
               Book A Slot Now
               <ArrowRight className="ml-2 w-5 h-5" />
@@ -220,18 +228,14 @@ const Index: React.FC = () => {
           </div>
           
           <div className={`${visibleSections.venues ? 'animate-reveal' : 'opacity-0'}`}>
-            {loading.venues ? (
-              <div className="flex justify-center py-12">
+            {loading.venues ? <div className="flex justify-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo"></div>
-              </div>
-            ) : venues.length > 0 ? (
-              <Carousel className="w-full">
+              </div> : venues.length > 0 ? <Carousel className="w-full">
                 <CarouselContent className="-ml-2 md:-ml-4">
-                  {venues.map((venue, index) => (
-                    <CarouselItem key={venue.id} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/4">
+                  {venues.map((venue, index) => <CarouselItem key={venue.id} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/4">
                       <div className="venue-card group cursor-pointer overflow-hidden rounded-xl" style={{
-                        animationDelay: `${0.1 * (index + 1)}s`
-                      }} onClick={() => navigate(`/venues/${venue.id}`)}>
+                  animationDelay: `${0.1 * (index + 1)}s`
+                }} onClick={() => navigate(`/venues/${venue.id}`)}>
                         <div className="h-56 overflow-hidden relative">
                           <img src={venue.image_url || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000'} alt={venue.name} className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-110" />
                           <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-30 group-hover:opacity-70 transition-opacity"></div>
@@ -255,88 +259,76 @@ const Index: React.FC = () => {
                           <div className="absolute -bottom-12 -right-12 w-24 h-24 bg-indigo-light rounded-full opacity-0 group-hover:opacity-20 transform translate-x-full translate-y-full group-hover:translate-x-0 group-hover:translate-y-0 transition-all duration-700"></div>
                         </div>
                       </div>
-                    </CarouselItem>
-                  ))}
+                    </CarouselItem>)}
                 </CarouselContent>
                 <div className="flex justify-end mt-6 gap-2">
                   <CarouselPrevious className="relative inset-0 translate-y-0 bg-navy-light hover:bg-indigo hover:text-white text-white" />
                   <CarouselNext className="relative inset-0 translate-y-0 bg-navy-light hover:bg-indigo hover:text-white text-white" />
                 </div>
-              </Carousel>
-            ) : (
-              <div className="text-center py-12">
+              </Carousel> : <div className="text-center py-12">
                 <p className="text-white text-lg">No venues available at the moment. Please check back later.</p>
-              </div>
-            )}
+              </div>}
           </div>
         </div>
       </section>
 
-      <section id="sports" ref={sportsRef} className="py-16 bg-gradient-to-b from-navy-dark to-black/90">
-        <div className="container mx-auto px-4">
-          <div className={`flex justify-between items-center mb-10 ${visibleSections.sports ? 'animate-reveal' : 'opacity-0'}`}>
-            <h2 className="section-title text-white relative">
-              Featured Sports
-              <span className="absolute -bottom-2 left-0 w-20 h-1 bg-indigo-light"></span>
-            </h2>
-            <Link to="/sports" className="text-indigo-light font-semibold flex items-center group hover:text-indigo-dark transition-colors">
-              View All <ChevronRight className="ml-1 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </div>
-          
-          <div className={`${visibleSections.sports ? 'animate-reveal' : 'opacity-0'}`}>
-            {loading.sports ? (
-              <div className="flex justify-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo"></div>
-              </div>
-            ) : sports.length > 0 ? (
-              <Carousel className="w-full">
-                <CarouselContent className="-ml-2 md:-ml-4">
-                  {sports.map((sport, index) => (
-                    <CarouselItem key={sport.id} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/4">
-                      <div className="sport-card group cursor-pointer overflow-hidden rounded-xl" style={{
-                        animationDelay: `${0.1 * (index + 1)}s`
-                      }} onClick={() => handleSportCardClick(sport.id)}>
-                        <div className="h-40 overflow-hidden relative">
-                          <img src={sport.image_url || 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?q=80&w=1000'} alt={sport.name} className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-110" />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-30 group-hover:opacity-70 transition-opacity"></div>
-                          
-                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
-                            <div className="bg-indigo/80 backdrop-blur-sm p-3 rounded-full transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="p-3 bg-navy-light text-white relative overflow-hidden group-hover:bg-indigo transition-colors duration-500">
-                          <h3 className="text-lg font-bold group-hover:text-white transition-colors">
-                            {sport.name}
-                          </h3>
-                          <p className="text-gray-300 mt-1 text-sm line-clamp-2">{sport.description || 'Find venues for this sport'}</p>
-                          
-                          <div className="absolute bottom-0 left-0 w-full h-1 bg-indigo transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-500"></div>
-                          
-                          <div className="absolute -bottom-12 -right-12 w-24 h-24 bg-indigo-light rounded-full opacity-0 group-hover:opacity-20 transform translate-x-full translate-y-full group-hover:translate-x-0 group-hover:translate-y-0 transition-all duration-700"></div>
-                        </div>
+     <section id="sports" ref={sportsRef} className="py-16 bg-gradient-to-b from-navy-dark to-black/90">
+  <div className="container mx-auto px-4">
+    <div className={`flex justify-between items-center mb-10 ${visibleSections.sports ? 'animate-reveal' : 'opacity-0'}`}>
+      <h2 className="section-title text-white relative">
+        Featured Sports
+        <span className="absolute -bottom-2 left-0 w-20 h-1 bg-indigo-light"></span>
+      </h2>
+      <Link to="/sports" className="text-indigo-light font-semibold flex items-center group hover:text-indigo-dark transition-colors">
+        View All <ChevronRight className="ml-1 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+      </Link>
+    </div>
+    
+    <div className={`${visibleSections.sports ? 'animate-reveal' : 'opacity-0'}`}>
+      {loading.sports ? <div className="flex justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo"></div>
+        </div> : sports.length > 0 ? <Carousel className="w-full">
+          <CarouselContent className="-ml-2 md:-ml-4">
+            {sports.map((sport, index) => <CarouselItem key={sport.id} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/4">
+                <div className="sport-card group cursor-pointer overflow-hidden rounded-xl" style={{
+            animationDelay: `${0.1 * (index + 1)}s`
+          }} onClick={() => handleSportCardClick(sport.id)}>
+                  <div className="h-40 overflow-hidden relative"> {/* Changed from h-56 to h-40 */}
+                    <img src={sport.image_url || 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?q=80&w=1000'} alt={sport.name} className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-110" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-30 group-hover:opacity-70 transition-opacity"></div>
+                    
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
+                      <div className="bg-indigo/80 backdrop-blur-sm p-3 rounded-full transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"> {/* Reduced icon size */}
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
                       </div>
-                    </CarouselItem>
-                  ))}
-                </CarouselContent>
-                <div className="flex justify-end mt-6 gap-2">
-                  <CarouselPrevious className="relative inset-0 translate-y-0 bg-navy-light hover:bg-indigo hover:text-white text-white" />
-                  <CarouselNext className="relative inset-0 translate-y-0 bg-navy-light hover:bg-indigo hover:text-white text-white" />
+                    </div>
+                  </div>
+                  <div className="p-3 bg-navy-light text-white relative overflow-hidden group-hover:bg-indigo transition-colors duration-500"> {/* Reduced padding */}
+                    <h3 className="text-lg font-bold group-hover:text-white transition-colors"> {/* Reduced text size */}
+                      {sport.name}
+                    </h3>
+                    <p className="text-gray-300 mt-1 text-sm line-clamp-2">{sport.description || 'Find venues for this sport'}</p> {/* Reduced text size and margin */}
+                    
+                    <div className="absolute bottom-0 left-0 w-full h-1 bg-indigo transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-500"></div>
+                    
+                    <div className="absolute -bottom-12 -right-12 w-24 h-24 bg-indigo-light rounded-full opacity-0 group-hover:opacity-20 transform translate-x-full translate-y-full group-hover:translate-x-0 group-hover:translate-y-0 transition-all duration-700"></div>
+                  </div>
                 </div>
-              </Carousel>
-            ) : (
-              <div className="text-center py-12">
-                <p className="text-white text-lg">No sports available at the moment. Please check back later.</p>
-              </div>
-            )}
+              </CarouselItem>)}
+          </CarouselContent>
+          <div className="flex justify-end mt-6 gap-2">
+            <CarouselPrevious className="relative inset-0 translate-y-0 bg-navy-light hover:bg-indigo hover:text-white text-white" />
+            <CarouselNext className="relative inset-0 translate-y-0 bg-navy-light hover:bg-indigo hover:text-white text-white" />
           </div>
-        </div>
-      </section>
+        </Carousel> : <div className="text-center py-12">
+          <p className="text-white text-lg">No sports available at the moment. Please check back later.</p>
+        </div>}
+    </div>
+  </div>
+</section>
 
       <section id="athletes" ref={athletesRef} className="py-16 bg-gradient-to-b from-black/90 to-navy-dark">
         <div className="container mx-auto px-4">
@@ -351,10 +343,9 @@ const Index: React.FC = () => {
           </div>
           
           <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 ${visibleSections.athletes ? 'animate-reveal' : 'opacity-0'}`}>
-            {athletesBenefits.map((benefit, index) => (
-              <div key={index} className="group" style={{
-                animationDelay: `${0.15 * (index + 1)}s`
-              }}>
+            {athletesBenefits.map((benefit, index) => <div key={index} className="group" style={{
+            animationDelay: `${0.15 * (index + 1)}s`
+          }}>
                 <div className="overflow-hidden rounded-lg bg-navy relative h-80">
                   <img src={benefit.image} alt={benefit.title} className="w-full h-full object-cover filter grayscale group-hover:grayscale-0 transition-all duration-500" />
                   
@@ -364,14 +355,14 @@ const Index: React.FC = () => {
                     <svg className="w-full h-full opacity-0 group-hover:opacity-40 transition-opacity duration-700" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
                       <circle cx="20" cy="20" r="2" fill="#4CAF50" className="animate-pulse-light" />
                       <circle cx="80" cy="30" r="2" fill="#4CAF50" className="animate-pulse-light" style={{
-                        animationDelay: '0.5s'
-                      }} />
+                    animationDelay: '0.5s'
+                  }} />
                       <circle cx="65" cy="65" r="2" fill="#4CAF50" className="animate-pulse-light" style={{
-                        animationDelay: '1s'
-                      }} />
+                    animationDelay: '1s'
+                  }} />
                       <circle cx="30" cy="75" r="2" fill="#4CAF50" className="animate-pulse-light" style={{
-                        animationDelay: '1.5s'
-                      }} />
+                    animationDelay: '1.5s'
+                  }} />
                       <line x1="20" y1="20" x2="80" y2="30" stroke="#4CAF50" strokeWidth="0.5" strokeDasharray="2" />
                       <line x1="80" y1="30" x2="65" y2="65" stroke="#4CAF50" strokeWidth="0.5" strokeDasharray="2" />
                       <line x1="65" y1="65" x2="30" y2="75" stroke="#4CAF50" strokeWidth="0.5" strokeDasharray="2" />
@@ -384,8 +375,7 @@ const Index: React.FC = () => {
                     <p className="text-gray-300 opacity-0 group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">{benefit.description}</p>
                   </div>
                 </div>
-              </div>
-            ))}
+              </div>)}
           </div>
           
           <div className="mt-10 text-center">
@@ -402,8 +392,8 @@ const Index: React.FC = () => {
           <h2 className={`section-title text-center text-white ${visibleSections.forYou ? 'animate-reveal' : 'opacity-0'}`}>For You</h2>
           
           <div className={`max-w-4xl mx-auto ${visibleSections.forYou ? 'animate-reveal' : 'opacity-0'}`} style={{
-            animationDelay: '0.2s'
-          }}>
+          animationDelay: '0.2s'
+        }}>
             <div className="glass-card shadow-2xl overflow-hidden">
               <div className="p-8">
                 <div className="mb-6 flex items-center">
@@ -411,8 +401,10 @@ const Index: React.FC = () => {
                   <h3 className="text-2xl font-bold text-white">Recommended For You</h3>
                 </div>
                 
+                {/* Added StreakBar component here */}
                 <StreakBar />
                 
+                {/* Add Real-Time Availability Widget Here */}
                 <div className="my-8">
                   <HomepageAvailabilityWidget />
                 </div>
@@ -452,54 +444,57 @@ const Index: React.FC = () => {
       </section>
 
       <section id="partners" ref={quotesRef} className="py-16 bg-indigo relative overflow-hidden">
-        <div className="absolute inset-0 pattern-dots pattern-opacity-10 bg-navy-dark"></div>
-        <div className="container mx-auto px-4 relative z-10">
-          <h2 className={`text-3xl font-bold text-center text-white mb-10 ${visibleSections.quotes ? 'animate-reveal' : 'opacity-0'}`}>
-            Become A Partner
-            <span className="block w-20 h-1 bg-white mt-2 mx-auto"></span>
-          </h2>
-          
-          <div className="relative w-full max-w-6xl mx-auto overflow-hidden">
-            <div className="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-indigo to-transparent z-10"></div>
-            <div className="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-indigo to-transparent z-10"></div>
-            
-            <div className="flex overflow-x-hidden group hover:[animation-play-state:paused]">
-              <div className="flex animate-infinite-scroll whitespace-nowrap">
-                {[
-                  "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//%20-3.jpg",
-                  "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//%20.jpg",
-                  "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//ChatGPT%20Image%20Apr%2018,%202025,%2001_59_47%20AM.png",
-                  "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//3e6653285e2d08a596a15f28e50d2735.jpg"
-                ].map((img, idx) => (
-                  <div key={idx} className="inline-flex items-center justify-center mx-4">
-                    <img 
-                      src={img} 
-                      alt={`Partner ${idx + 1}`}
-                      className="h-32 w-auto object-contain max-w-[200px] md:max-w-[300px] rounded-lg shadow-md hover:scale-105 transition-transform"
-                      loading="lazy"
-                    />
-                  </div>
-                ))}
-                {[
-                  "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//%20-3.jpg",
-                  "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//%20.jpg",
-                  "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//ChatGPT%20Image%20Apr%2018,%202025,%2001_59_47%20AM.png",
-                  "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//3e6653285e2d08a596a15f28e50d2735.jpg"
-                ].map((img, idx) => (
-                  <div key={`dup-${idx}`} className="inline-flex items-center justify-center mx-4">
-                    <img 
-                      src={img} 
-                      alt={`Partner ${idx + 1}`}
-                      className="h-32 w-auto object-contain max-w-[200px] md:max-w-[300px] rounded-lg shadow-md hover:scale-105 transition-transform"
-                      loading="lazy"
-                    />
-                  </div>
-                ))}
-              </div>
+  <div className="absolute inset-0 pattern-dots pattern-opacity-10 bg-navy-dark"></div>
+  <div className="container mx-auto px-4 relative z-10">
+    <h2 className={`text-3xl font-bold text-center text-white mb-10 ${visibleSections.quotes ? 'animate-reveal' : 'opacity-0'}`}>
+      Become A Partner
+      <span className="block w-20 h-1 bg-white mt-2 mx-auto"></span>
+    </h2>
+    
+    <div className="relative w-full max-w-6xl mx-auto overflow-hidden">
+      {/* Gradient fade edges */}
+      <div className="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-indigo to-transparent z-10"></div>
+      <div className="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-indigo to-transparent z-10"></div>
+      
+      {/* Infinite scrolling carousel */}
+      <div className="flex overflow-x-hidden group hover:[animation-play-state:paused]">
+        <div className="flex animate-infinite-scroll whitespace-nowrap">
+          {[
+            "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//%20-3.jpg",
+            "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//%20.jpg",
+            "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//ChatGPT%20Image%20Apr%2018,%202025,%2001_59_47%20AM.png",
+            "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//3e6653285e2d08a596a15f28e50d2735.jpg"
+          ].map((img, idx) => (
+            <div key={idx} className="inline-flex items-center justify-center mx-4">
+              <img 
+                src={img} 
+                alt={`Partner ${idx + 1}`}
+                className="h-32 w-auto object-contain max-w-[200px] md:max-w-[300px] rounded-lg shadow-md hover:scale-105 transition-transform"
+                loading="lazy"
+              />
             </div>
-          </div>
+          ))}
+          {/* Duplicate for seamless looping */}
+          {[
+            "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//%20-3.jpg",
+            "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//%20.jpg",
+            "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//ChatGPT%20Image%20Apr%2018,%202025,%2001_59_47%20AM.png",
+            "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//3e6653285e2d08a596a15f28e50d2735.jpg"
+          ].map((img, idx) => (
+            <div key={`dup-${idx}`} className="inline-flex items-center justify-center mx-4">
+              <img 
+                src={img} 
+                alt={`Partner ${idx + 1}`}
+                className="h-32 w-auto object-contain max-w-[200px] md:max-w-[300px] rounded-lg shadow-md hover:scale-105 transition-transform"
+                loading="lazy"
+              />
+            </div>
+          ))}
         </div>
-      </section>
+      </div>
+    </div>
+  </div>
+</section>
 
       <footer className="bg-navy-dark text-white py-12">
         <div className="container mx-auto px-4">
@@ -536,24 +531,4 @@ const Index: React.FC = () => {
               <h3 className="text-lg font-semibold mb-4">Newsletter</h3>
               <p className="text-gray-300 mb-4">Subscribe to get updates on new venues and special offers.</p>
               <form className="flex">
-                <input type="email" placeholder="Your email" className="px-4 py-2 rounded-l-md w-full text-gray-900" />
-                <button type="submit" className="bg-indigo-light hover:bg-indigo-dark text-white px-4 py-2 rounded-r-md transition-colors">
-                  Subscribe
-                </button>
-              </form>
-            </div>
-          </div>
-          
-          <div className="border-t border-gray-700 mt-12 pt-8 text-center text-gray-400">
-            <p>© {new Date().getFullYear()} SportySlot. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
-
-      <BookSlotModal isOpen={isBookModalOpen} onClose={() => setIsBookModalOpen(false)} />
-      <AIChatWidget />
-    </div>
-  );
-};
-
-export default Index;
+                <input type="email" placeholder="Your email" className="px-4 py-2
