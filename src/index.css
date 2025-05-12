@@ -275,3 +275,12 @@
 .venue-card:hover, .sport-card:hover {
   border-color: rgba(99, 102, 241, 0.3);
 }
+
+@keyframes blink {
+  0%, 100% { opacity: 1 }
+  50% { opacity: 0 }
+}
+.animate-blink {
+  animation: blink 1s step-end infinite;
+}
+
