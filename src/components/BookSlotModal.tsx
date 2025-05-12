@@ -375,37 +375,73 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
 };
 
   const fetchCourts = async () => {
-    setLoading(prev => ({ ...prev, courts: true }));
-    try {
-      const { data, error } = await supabase
-        .from('courts')
-        .select('id, name, venue_id, sport_id, court_group_id, hourly_rate, description')
-        .eq('venue_id', selectedVenue)
-        .eq('sport_id', selectedSport)
-        .eq('is_active', true)
-        .order('name', { ascending: true });
-        
-      if (error) throw error;
-      
-      setCourts(data || []);
-      if (data && data.length > 0) {
-        setSelectedCourt(data[0].id);
-        setCourtRate(data[0].hourly_rate);
-      } else {
-        setSelectedCourt('');
-        setCourtRate(0);
-      }
-    } catch (error) {
-      console.error('Error fetching courts:', error);
+  setLoading(prev => ({ ...prev, courts: true }));
+  try {
+    // First validate we have required selections
+    if (!selectedVenue || !selectedSport) {
+      throw new Error('Venue or sport not selected');
+    }
+
+    const { data, error, status } = await supabase
+      .from('courts')
+      .select(`
+        id, 
+        name, 
+        venue_id, 
+        sport_id, 
+        court_group_id, 
+        hourly_rate,
+        description
+      `)
+      .eq('venue_id', selectedVenue)
+      .eq('sport_id', selectedSport)
+      .eq('is_active', true)
+      .order('name', { ascending: true });
+
+    if (error) {
+      console.error('Supabase Error:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
+      throw error;
+    }
+
+    if (!data || data.length === 0) {
+      console.warn('No courts found for:', {
+        venue: selectedVenue,
+        sport: selectedSport
+      });
+      setCourts([]);
+      setSelectedCourt('');
+      setCourtRate(0);
       toast({
-        title: "Error",
-        description: "Failed to load courts",
+        title: "No Courts Available",
+        description: "No active courts found for this venue and sport combination.",
         variant: "destructive",
       });
-    } finally {
-      setLoading(prev => ({ ...prev, courts: false }));
+      return;
     }
-  };
+
+    setCourts(data);
+    setSelectedCourt(data[0].id);
+    setCourtRate(data[0].hourly_rate);
+
+  } catch (error) {
+    console.error('Error fetching courts:', error);
+    toast({
+      title: "Court Loading Error",
+      description: "Failed to load courts. Please try again.",
+      variant: "destructive",
+    });
+    setCourts([]);
+    setSelectedCourt('');
+    setCourtRate(0);
+  } finally {
+    setLoading(prev => ({ ...prev, courts: false }));
+  }
+};
 
   const fetchAvailability = useCallback(async () => {
     if (!selectedCourt || !selectedDate) return;
