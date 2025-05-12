@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Clock, MapPin, Calendar, User, CreditCard, Loader, ChevronRight, Check, ChevronLeft, Activity, RefreshCw } from 'lucide-react';
+import { X, Clock, MapPin, Calendar, User, CreditCard, Loader, ChevronRight, Check, ChevronLeft, Activity, RefreshCw, Info, AlertCircle } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import SportDisplayName from './SportDisplayName';
 import { Button } from '@/components/ui/button';
+import { motion, AnimatePresence } from 'framer-motion';
 
 declare global {
   interface Window {
@@ -23,11 +24,13 @@ interface BookSlotModalProps {
 interface Venue {
   id: string;
   name: string;
+  image_url?: string;
 }
 
 interface Sport {
   id: string;
   name: string;
+  icon_name?: string;
 }
 
 interface Court {
@@ -37,6 +40,7 @@ interface Court {
   sport_id: string;
   court_group_id: string | null;
   hourly_rate: number;
+  description?: string;
 }
 
 interface TimeSlot {
@@ -76,6 +80,35 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
   const [refreshKey, setRefreshKey] = useState(0);
   const [bookingInProgress, setBookingInProgress] = useState(false);
   const [razorpayOrderId, setRazorpayOrderId] = useState('');
+  const [venueDetails, setVenueDetails] = useState<Venue | null>(null);
+  const [sportDetails, setSportDetails] = useState<Sport | null>(null);
+  const [courtDetails, setCourtDetails] = useState<Court | null>(null);
+
+  // Animation variants
+  const fadeIn = {
+    hidden: { opacity: 0, y: 10 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.3 } }
+  };
+
+  const slideUp = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } }
+  };
+
+  const staggerContainer = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const pulse = {
+    scale: [1, 1.05, 1],
+    transition: { duration: 0.8, repeat: Infinity }
+  };
 
   useEffect(() => {
     if (!user) {
@@ -97,6 +130,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
 
     if (venueId) {
       setSelectedVenue(venueId);
+      fetchVenueDetails(venueId);
     }
     
     const bookingChannel = supabase
@@ -139,24 +173,29 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
   useEffect(() => {
     if (selectedVenue) {
       fetchVenueSports(selectedVenue);
+      fetchVenueDetails(selectedVenue);
     } else {
       setVenueSports([]);
       setSelectedSport('');
+      setVenueDetails(null);
     }
   }, [selectedVenue]);
 
   useEffect(() => {
     if (selectedVenue && selectedSport) {
       fetchCourts();
+      fetchSportDetails(selectedSport);
     } else {
       setCourts([]);
       setSelectedCourt('');
+      setSportDetails(null);
     }
   }, [selectedVenue, selectedSport]);
 
   useEffect(() => {
     if (selectedCourt && selectedDate) {
       fetchAvailability();
+      fetchCourtDetails(selectedCourt);
     }
   }, [selectedCourt, selectedDate, refreshKey]);
 
@@ -195,13 +234,62 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     }
   }, [user]);
 
+  const fetchVenueDetails = async (venueId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('venues')
+        .select('*')
+        .eq('id', venueId)
+        .single();
+        
+      if (error) throw error;
+      
+      setVenueDetails(data);
+    } catch (error) {
+      console.error('Error fetching venue details:', error);
+    }
+  };
+
+  const fetchSportDetails = async (sportId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('sports')
+        .select('*')
+        .eq('id', sportId)
+        .single();
+        
+      if (error) throw error;
+      
+      setSportDetails(data);
+    } catch (error) {
+      console.error('Error fetching sport details:', error);
+    }
+  };
+
+  const fetchCourtDetails = async (courtId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('courts')
+        .select('*')
+        .eq('id', courtId)
+        .single();
+        
+      if (error) throw error;
+      
+      setCourtDetails(data);
+    } catch (error) {
+      console.error('Error fetching court details:', error);
+    }
+  };
+
   const fetchVenues = async () => {
     setLoading(prev => ({ ...prev, venues: true }));
     try {
       const { data, error } = await supabase
         .from('venues')
-        .select('id, name')
-        .eq('is_active', true);
+        .select('id, name, image_url')
+        .eq('is_active', true)
+        .order('name', { ascending: true });
         
       if (error) throw error;
       
@@ -223,8 +311,9 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     try {
       const { data, error } = await supabase
         .from('sports')
-        .select('id, name')
-        .eq('is_active', true);
+        .select('id, name, icon_name')
+        .eq('is_active', true)
+        .order('name', { ascending: true });
         
       if (error) throw error;
       
@@ -245,7 +334,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     try {
       const { data, error } = await supabase
         .from('courts')
-        .select(`sport_id, sports:sport_id (id, name)`)
+        .select(`sport_id, sports:sport_id (id, name, icon_name)`)
         .eq('venue_id', venueId)
         .eq('is_active', true);
         
@@ -282,10 +371,11 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     try {
       const { data, error } = await supabase
         .from('courts')
-        .select('id, name, venue_id, sport_id, court_group_id, hourly_rate')
+        .select('id, name, venue_id, sport_id, court_group_id, hourly_rate, description')
         .eq('venue_id', selectedVenue)
         .eq('sport_id', selectedSport)
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .order('name', { ascending: true });
         
       if (error) throw error;
       
@@ -469,7 +559,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
   const createRazorpayOrder = async () => {
     setLoading(prev => ({ ...prev, payment: true }));
     try {
-      const totalAmount = calculateTotalPrice();
+      const totalAmount = calculateTotalPrice() * 100; // Convert to paise
       const receipt = `booking_${Date.now()}`;
       
       const response = await supabase.functions.invoke('create-razorpay-order', {
@@ -532,10 +622,19 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
           address: "Sports Venue Address"
         },
         theme: {
-          color: "#10b981"
+          color: "#047857" // Emerald-800
         },
         handler: function(response: any) {
           handleBooking(response.razorpay_payment_id, response.razorpay_order_id);
+        },
+        modal: {
+          ondismiss: function() {
+            toast({
+              title: "Payment Cancelled",
+              description: "Your booking was not completed",
+              variant: "destructive",
+            });
+          }
         }
       };
       
@@ -703,86 +802,150 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
   }
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-      <div 
-        className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto"
+    >
+      <motion.div 
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+        className="bg-gray-900 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-emerald-800/30"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="sticky top-0 bg-white z-10 p-6 border-b border-gray-100 flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Clock className="text-indigo-600" size={24} />
-            Book Your Slot
+        <div className="sticky top-0 bg-gradient-to-b from-gray-900 to-gray-900/90 z-10 p-6 border-b border-emerald-800/20 flex justify-between items-center backdrop-blur-sm">
+          <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+            <Clock className="text-emerald-400" size={24} />
+            <span className="bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-emerald-600">
+              Book Your Slot
+            </span>
           </h2>
           <button 
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100"
+            className="text-gray-400 hover:text-white transition-colors p-1 rounded-full hover:bg-gray-800/50"
           >
             <X size={24} />
           </button>
         </div>
 
         {/* Progress Steps */}
-        <div className="px-6 pt-4 pb-6 border-b border-gray-100">
+        <div className="px-6 pt-6 pb-4 border-b border-emerald-800/20">
           <div className="flex items-center justify-center">
             {[1, 2, 3].map((step) => (
               <React.Fragment key={step}>
-                <div className={`flex items-center justify-center w-10 h-10 rounded-full ${currentStep >= step ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-400'} transition-colors`}>
+                <motion.div 
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className={`flex items-center justify-center w-10 h-10 rounded-full transition-all duration-300 ${
+                    currentStep === step 
+                      ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-800/30' 
+                      : currentStep > step 
+                        ? 'bg-emerald-800/80 text-emerald-200' 
+                        : 'bg-gray-800 text-gray-400'
+                  }`}
+                >
                   {currentStep > step ? (
-                    <Check size={18} />
+                    <Check size={18} className="text-emerald-200" />
                   ) : (
                     <span className="font-medium">{step}</span>
                   )}
-                </div>
+                </motion.div>
                 {step < 3 && (
-                  <div className={`w-16 h-1 ${currentStep > step ? 'bg-indigo-600' : 'bg-gray-200'} transition-colors`}></div>
+                  <div className={`w-16 h-1 transition-all duration-300 ${
+                    currentStep > step ? 'bg-gradient-to-r from-emerald-600 to-emerald-800' : 'bg-gray-700'
+                  }`}></div>
                 )}
               </React.Fragment>
             ))}
           </div>
-          <div className="flex justify-between mt-2 text-sm text-gray-500">
-            <span className={currentStep === 1 ? 'text-indigo-600 font-medium' : ''}>Details</span>
-            <span className={currentStep === 2 ? 'text-indigo-600 font-medium' : ''}>Slots</span>
-            <span className={currentStep === 3 ? 'text-indigo-600 font-medium' : ''}>Confirm</span>
+          <div className="flex justify-between mt-3 text-sm">
+            <span className={currentStep === 1 ? 'text-emerald-400 font-medium' : 'text-gray-500'}>Details</span>
+            <span className={currentStep === 2 ? 'text-emerald-400 font-medium' : 'text-gray-500'}>Slots</span>
+            <span className={currentStep === 3 ? 'text-emerald-400 font-medium' : 'text-gray-500'}>Confirm</span>
           </div>
         </div>
 
         {/* Step 1: Venue/Sport Selection */}
         {currentStep === 1 && (
-          <div className="p-6 space-y-6">
-            <div className="space-y-1">
-              <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
-                <MapPin size={16} className="text-indigo-500" />
+          <motion.div 
+            initial="hidden"
+            animate="visible"
+            variants={staggerContainer}
+            className="p-6 space-y-6"
+          >
+            <motion.div variants={fadeIn} className="space-y-2">
+              <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
+                <MapPin size={16} className="text-emerald-400" />
                 Select Venue
               </label>
               <select
                 value={selectedVenue}
-                onChange={e => setSelectedVenue(e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm"
+                onChange={e => {
+                  setSelectedVenue(e.target.value);
+                  fetchVenueDetails(e.target.value);
+                }}
+                className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-white placeholder-gray-400 transition-all"
                 disabled={loading.venues || !!venueId}
               >
-                <option value="">Select a venue</option>
+                <option value="" className="bg-gray-800">Select a venue</option>
                 {venues.map(venue => (
-                  <option key={venue.id} value={venue.id}>{venue.name}</option>
+                  <option key={venue.id} value={venue.id} className="bg-gray-800">{venue.name}</option>
                 ))}
               </select>
-              {loading.venues && <p className="mt-1 text-xs text-gray-500">Loading venues...</p>}
-            </div>
+              {loading.venues && (
+                <motion.p 
+                  animate={pulse}
+                  className="mt-1 text-xs text-gray-500 flex items-center gap-1"
+                >
+                  <Loader size={14} className="animate-spin" />
+                  Loading venues...
+                </motion.p>
+              )}
+              {venueDetails && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="mt-2 p-3 bg-gray-800/50 rounded-lg border border-emerald-800/20"
+                >
+                  <div className="flex items-start gap-3">
+                    {venueDetails.image_url && (
+                      <div className="w-16 h-16 rounded-md overflow-hidden">
+                        <img 
+                          src={venueDetails.image_url} 
+                          alt={venueDetails.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+                    <div>
+                      <h4 className="font-medium text-emerald-400">{venueDetails.name}</h4>
+                      <p className="text-xs text-gray-400 mt-1">Select a sport available at this venue</p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </motion.div>
             
-            <div className="space-y-1">
-              <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
-                <Activity size={16} className="text-indigo-500" />
+            <motion.div variants={fadeIn} className="space-y-2">
+              <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
+                <Activity size={16} className="text-emerald-400" />
                 Select Sport
               </label>
               <select
                 value={selectedSport}
-                onChange={e => setSelectedSport(e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm"
+                onChange={e => {
+                  setSelectedSport(e.target.value);
+                  fetchSportDetails(e.target.value);
+                }}
+                className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-white placeholder-gray-400 transition-all"
                 disabled={!selectedVenue || venueSports.length === 0}
               >
-                <option value="">Select a sport</option>
+                <option value="" className="bg-gray-800">Select a sport</option>
                 {venueSports.map(sport => (
-                  <option key={sport.id} value={sport.id}>
+                  <option key={sport.id} value={sport.id} className="bg-gray-800">
                     {selectedVenue ? (
                       <SportDisplayName
                         venueId={selectedVenue}
@@ -795,13 +958,52 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
                   </option>
                 ))}
               </select>
-              {!selectedVenue && <p className="mt-1 text-xs text-gray-500">Please select a venue first</p>}
-              {selectedVenue && venueSports.length === 0 && <p className="mt-1 text-xs text-gray-500">No sports available for this venue</p>}
-            </div>
+              {!selectedVenue && (
+                <p className="mt-1 text-xs text-gray-500 flex items-center gap-1">
+                  <Info size={14} />
+                  Please select a venue first
+                </p>
+              )}
+              {selectedVenue && venueSports.length === 0 && (
+                <p className="mt-1 text-xs text-red-400 flex items-center gap-1">
+                  <AlertCircle size={14} />
+                  No sports available for this venue
+                </p>
+              )}
+              {sportDetails && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="mt-2 p-3 bg-gray-800/50 rounded-lg border border-emerald-800/20"
+                >
+                  <div className="flex items-center gap-3">
+                    {sportDetails.icon_name && (
+                      <div className="w-10 h-10 rounded-full bg-emerald-900/50 flex items-center justify-center">
+                        <span className="text-emerald-400">{sportDetails.icon_name}</span>
+                      </div>
+                    )}
+                    <div>
+                      <h4 className="font-medium text-emerald-400">
+                        {selectedVenue ? (
+                          <SportDisplayName
+                            venueId={selectedVenue}
+                            sportId={sportDetails.id}
+                            defaultName={sportDetails.name}
+                          />
+                        ) : (
+                          sportDetails.name
+                        )}
+                      </h4>
+                      <p className="text-xs text-gray-400 mt-1">Select a court for this sport</p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </motion.div>
             
-            <div className="space-y-1">
-              <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
-                <MapPin size={16} className="text-indigo-500" />
+            <motion.div variants={fadeIn} className="space-y-2">
+              <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
+                <MapPin size={16} className="text-emerald-400" />
                 Select Court
               </label>
               <select
@@ -811,30 +1013,66 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
                   const court = courts.find(c => c.id === e.target.value);
                   if (court) {
                     setCourtRate(court.hourly_rate);
+                    fetchCourtDetails(e.target.value);
                   }
                 }}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm"
+                className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-white placeholder-gray-400 transition-all"
                 disabled={loading.courts || !selectedVenue || !selectedSport}
               >
-                <option value="">Select a court</option>
+                <option value="" className="bg-gray-800">Select a court</option>
                 {courts.map(court => (
-                  <option key={court.id} value={court.id}>{court.name}</option>
+                  <option key={court.id} value={court.id} className="bg-gray-800">{court.name}</option>
                 ))}
               </select>
-              {loading.courts && <p className="mt-1 text-xs text-gray-500">Loading courts...</p>}
-              {!loading.courts && courts.length === 0 && selectedVenue && selectedSport && (
-                <p className="mt-1 text-xs text-red-500">No courts available for this venue and sport combination.</p>
+              {loading.courts && (
+                <motion.p 
+                  animate={pulse}
+                  className="mt-1 text-xs text-gray-500 flex items-center gap-1"
+                >
+                  <Loader size={14} className="animate-spin" />
+                  Loading courts...
+                </motion.p>
               )}
-              {selectedCourt && courts.find(c => c.id === selectedCourt)?.court_group_id && (
-                <p className="mt-2 text-xs text-blue-600 bg-blue-50 p-2 rounded">
-                  Note: This court shares physical space with other sports. Bookings on one will affect availability on others.
+              {!loading.courts && courts.length === 0 && selectedVenue && selectedSport && (
+                <p className="mt-1 text-xs text-red-400 flex items-center gap-1">
+                  <AlertCircle size={14} />
+                  No courts available for this venue and sport combination.
                 </p>
               )}
-            </div>
+              {selectedCourt && courtDetails && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="mt-2 p-3 bg-gray-800/50 rounded-lg border border-emerald-800/20"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-full bg-emerald-900/50 flex items-center justify-center">
+                      <span className="text-emerald-400">🏟️</span>
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-emerald-400">{courtDetails.name}</h4>
+                      {courtDetails.description && (
+                        <p className="text-xs text-gray-400 mt-1">{courtDetails.description}</p>
+                      )}
+                      <div className="mt-2 flex items-center gap-2">
+                        <span className="text-xs px-2 py-1 bg-emerald-900/30 text-emerald-300 rounded-full">
+                          ₹{courtDetails.hourly_rate}/hour
+                        </span>
+                        {courtDetails.court_group_id && (
+                          <span className="text-xs px-2 py-1 bg-blue-900/30 text-blue-300 rounded-full">
+                            Shared Space
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </motion.div>
             
-            <div className="space-y-1">
-              <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
-                <Calendar size={16} className="text-indigo-500" />
+            <motion.div variants={fadeIn} className="space-y-2">
+              <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
+                <Calendar size={16} className="text-emerald-400" />
                 Select Date
               </label>
               <input
@@ -842,147 +1080,184 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
                 value={selectedDate}
                 onChange={e => setSelectedDate(e.target.value)}
                 min={new Date().toISOString().split('T')[0]}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm"
+                className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-white placeholder-gray-400 transition-all"
               />
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         )}
 
         {/* Step 2: Time Slot Selection */}
         {currentStep === 2 && (
-          <div className="p-6">
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <Clock size={20} className="text-indigo-500" />
+          <motion.div 
+            initial="hidden"
+            animate="visible"
+            variants={staggerContainer}
+            className="p-6"
+          >
+            <motion.div variants={fadeIn} className="mb-6">
+              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                <Clock size={20} className="text-emerald-400" />
                 Select Time Slots
               </h3>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-gray-400 mt-1">
                 Available slots for {selectedDate} at {courts.find(c => c.id === selectedCourt)?.name}
               </p>
-            </div>
+            </motion.div>
             
-            <div className="mb-4 flex justify-between items-center">
-              <p className="text-sm font-medium text-gray-700">
-                Showing availability for: <span className="text-indigo-600">{format(new Date(selectedDate), 'PPP')}</span>
+            <motion.div variants={fadeIn} className="mb-4 flex justify-between items-center">
+              <p className="text-sm font-medium text-gray-300">
+                Showing availability for: <span className="text-emerald-400">{format(new Date(selectedDate), 'PPP')}</span>
               </p>
-              <button 
+              <motion.button 
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={() => setRefreshKey(prev => prev + 1)}
-                className="text-sm text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+                className="text-sm text-emerald-400 hover:text-emerald-300 flex items-center gap-1 transition-colors"
               >
-                <RefreshCw size={14} />
+                <RefreshCw size={14} className="animate-spin-once" />
                 Refresh
-              </button>
-            </div>
+              </motion.button>
+            </motion.div>
             
             {loading.availability ? (
-              <div className="flex flex-col items-center justify-center py-8">
-                <Loader className="animate-spin text-indigo-500" size={24} />
-                <p className="mt-2 text-sm text-gray-500">Loading availability...</p>
-              </div>
+              <motion.div 
+                variants={fadeIn}
+                className="flex flex-col items-center justify-center py-8"
+              >
+                <Loader className="animate-spin text-emerald-400" size={24} />
+                <p className="mt-2 text-sm text-gray-400">Loading availability...</p>
+              </motion.div>
             ) : (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                <motion.div 
+                  variants={staggerContainer}
+                  className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3"
+                >
                   {availableTimeSlots.map((slot) => {
                     const slotDisplay = `${formatTime(slot.start_time)} - ${formatTime(slot.end_time)}`;
                     const isSelected = selectedSlots.includes(slotDisplay);
                     return (
-                      <button
+                      <motion.button
                         key={`${slot.start_time}-${slot.end_time}`}
+                        variants={slideUp}
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.98 }}
                         disabled={!slot.is_available}
                         onClick={() => handleSlotClick(slot)}
                         className={`
-                          p-3 rounded-lg border transition-all text-center
+                          p-3 rounded-lg border transition-all text-center transform hover:scale-[1.02] 
                           ${slot.is_available 
                             ? isSelected
-                              ? 'bg-indigo-600 text-white border-indigo-700 shadow-md'
-                              : 'bg-white border-gray-200 hover:border-indigo-300 hover:bg-indigo-50'
-                            : 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'}
-                          ${isSelected ? 'ring-2 ring-indigo-400' : ''}
+                              ? 'bg-emerald-600 text-white border-emerald-700 shadow-lg shadow-emerald-800/30'
+                              : 'bg-gray-800 border-gray-700 hover:border-emerald-500 hover:bg-gray-750 text-gray-200'
+                            : 'bg-gray-800 border-gray-700 text-gray-500 cursor-not-allowed'}
+                          ${isSelected ? 'ring-2 ring-emerald-400' : ''}
                         `}
                       >
                         <div className="font-medium">{slotDisplay}</div>
                         <div className="text-sm mt-1">₹{parseFloat(slot.price).toFixed(2)}</div>
-                      </button>
+                      </motion.button>
                     );
                   })}
-                </div>
+                </motion.div>
                 
                 {availableTimeSlots.length === 0 && (
-                  <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200 mt-4">
-                    <p className="text-gray-500">No available time slots found for this date.</p>
-                  </div>
+                  <motion.div 
+                    variants={fadeIn}
+                    className="text-center py-8 bg-gray-800/50 rounded-lg border border-emerald-800/20 mt-4"
+                  >
+                    <p className="text-gray-400">No available time slots found for this date.</p>
+                  </motion.div>
                 )}
                 
-                <div className="mt-8 flex flex-wrap items-center gap-4 text-sm">
+                <motion.div 
+                  variants={fadeIn}
+                  className="mt-8 flex flex-wrap items-center gap-4 text-sm"
+                >
                   <div className="flex items-center">
-                    <div className="w-3 h-3 bg-indigo-600 rounded-full mr-2"></div>
-                    <span>Selected</span>
+                    <div className="w-3 h-3 bg-emerald-600 rounded-full mr-2"></div>
+                    <span className="text-gray-300">Selected</span>
                   </div>
                   <div className="flex items-center">
-                    <div className="w-3 h-3 bg-white border border-gray-300 rounded-full mr-2"></div>
-                    <span>Available</span>
+                    <div className="w-3 h-3 bg-gray-800 border border-gray-600 rounded-full mr-2"></div>
+                    <span className="text-gray-300">Available</span>
                   </div>
                   <div className="flex items-center">
-                    <div className="w-3 h-3 bg-gray-200 rounded-full mr-2"></div>
-                    <span>Unavailable</span>
+                    <div className="w-3 h-3 bg-gray-800 rounded-full mr-2"></div>
+                    <span className="text-gray-500">Unavailable</span>
                   </div>
-                </div>
+                </motion.div>
                 
                 {selectedSlots.length > 0 && (
-                  <div className="mt-6 p-4 bg-indigo-50 rounded-lg border border-indigo-100">
-                    <h4 className="font-medium text-indigo-800 mb-2">Selected Slots</h4>
+                  <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-6 p-4 bg-emerald-900/20 rounded-lg border border-emerald-800/30"
+                  >
+                    <h4 className="font-medium text-emerald-300 mb-2">Selected Slots</h4>
                     <div className="flex flex-wrap gap-2">
                       {selectedSlots.sort().map(slot => (
-                        <span 
+                        <motion.span 
                           key={slot} 
-                          className="bg-indigo-600 text-white px-3 py-1 rounded-full text-sm flex items-center gap-1"
+                          whileHover={{ scale: 1.05 }}
+                          className="bg-emerald-800/80 text-white px-3 py-1 rounded-full text-sm flex items-center gap-1"
                         >
                           {slot.split(' - ')[0]} <ChevronRight size={14} /> {slot.split(' - ')[1]}
                           <span className="font-semibold ml-1">₹{selectedSlotPrices[slot]?.toFixed(2)}</span>
-                        </span>
+                        </motion.span>
                       ))}
                     </div>
-                    <div className="mt-3 pt-3 border-t border-indigo-100 flex justify-between items-center">
-                      <span className="font-medium text-indigo-800">Total:</span>
-                      <span className="text-lg font-bold text-indigo-900">₹{calculateTotalPrice().toFixed(2)}</span>
+                    <div className="mt-3 pt-3 border-t border-emerald-800/30 flex justify-between items-center">
+                      <span className="font-medium text-emerald-300">Total:</span>
+                      <span className="text-lg font-bold text-emerald-400">₹{calculateTotalPrice().toFixed(2)}</span>
                     </div>
-                  </div>
+                  </motion.div>
                 )}
               </>
             )}
-          </div>
+          </motion.div>
         )}
 
         {/* Step 3: Confirmation */}
         {currentStep === 3 && (
-          <div className="p-6">
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <Check size={20} className="text-indigo-500" />
+          <motion.div 
+            initial="hidden"
+            animate="visible"
+            variants={staggerContainer}
+            className="p-6"
+          >
+            <motion.div variants={fadeIn} className="mb-6">
+              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                <Check size={20} className="text-emerald-400" />
                 Confirm Your Booking
               </h3>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-gray-400 mt-1">
                 Review your booking details before payment
               </p>
-            </div>
+            </motion.div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Booking Summary */}
-              <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
-                <h4 className="font-medium text-gray-900 mb-4 flex items-center gap-2">
-                  <Calendar size={18} className="text-indigo-500" />
+              <motion.div 
+                variants={slideUp}
+                className="bg-gray-800/50 rounded-xl p-5 border border-emerald-800/30"
+              >
+                <h4 className="font-medium text-white mb-4 flex items-center gap-2">
+                  <Calendar size={18} className="text-emerald-400" />
                   Booking Summary
                 </h4>
                 
                 <div className="space-y-3">
                   <div className="flex justify-between">
-                    <span className="text-sm text-gray-500">Venue:</span>
-                    <span className="text-sm font-medium">{venues.find(v => v.id === selectedVenue)?.name}</span>
+                    <span className="text-sm text-gray-400">Venue:</span>
+                    <span className="text-sm font-medium text-white">
+                      {venues.find(v => v.id === selectedVenue)?.name}
+                    </span>
                   </div>
                   
                   <div className="flex justify-between">
-                    <span className="text-sm text-gray-500">Sport:</span>
-                    <span className="text-sm font-medium">
+                    <span className="text-sm text-gray-400">Sport:</span>
+                    <span className="text-sm font-medium text-white">
                       {selectedVenue && selectedSport && (
                         <SportDisplayName 
                           venueId={selectedVenue}
@@ -994,118 +1269,144 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
                   </div>
                   
                   <div className="flex justify-between">
-                    <span className="text-sm text-gray-500">Court:</span>
-                    <span className="text-sm font-medium">{courts.find(c => c.id === selectedCourt)?.name}</span>
+                    <span className="text-sm text-gray-400">Court:</span>
+                    <span className="text-sm font-medium text-white">
+                      {courts.find(c => c.id === selectedCourt)?.name}
+                    </span>
                   </div>
                   
                   <div className="flex justify-between">
-                    <span className="text-sm text-gray-500">Date:</span>
-                    <span className="text-sm font-medium">{format(new Date(selectedDate), 'PPP')}</span>
+                    <span className="text-sm text-gray-400">Date:</span>
+                    <span className="text-sm font-medium text-white">
+                      {format(new Date(selectedDate), 'PPP')}
+                    </span>
                   </div>
                   
-                  <div className="pt-3 mt-3 border-t border-gray-200">
-                    <h5 className="text-sm font-medium text-gray-700 mb-2">Selected Slots:</h5>
+                  <div className="pt-3 mt-3 border-t border-emerald-800/30">
+                    <h5 className="text-sm font-medium text-emerald-300 mb-2">Selected Slots:</h5>
                     <ul className="space-y-2">
                       {selectedSlots.sort().map(slot => (
                         <li key={slot} className="flex justify-between text-sm">
-                          <span>{slot}</span>
-                          <span className="font-medium">₹{selectedSlotPrices[slot]?.toFixed(2)}</span>
+                          <span className="text-gray-300">{slot}</span>
+                          <span className="font-medium text-white">₹{selectedSlotPrices[slot]?.toFixed(2)}</span>
                         </li>
                       ))}
                     </ul>
                   </div>
                   
-                  <div className="pt-3 mt-3 border-t border-gray-200 flex justify-between">
-                    <span className="font-medium">Total:</span>
-                    <span className="font-bold text-indigo-600">₹{calculateTotalPrice().toFixed(2)}</span>
+                  <div className="pt-3 mt-3 border-t border-emerald-800/30 flex justify-between">
+                    <span className="font-medium text-emerald-300">Total:</span>
+                    <span className="font-bold text-emerald-400">₹{calculateTotalPrice().toFixed(2)}</span>
                   </div>
                 </div>
-              </div>
+              </motion.div>
 
               {/* User Information */}
-              <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
-                <h4 className="font-medium text-gray-900 mb-4 flex items-center gap-2">
-                  <User size={18} className="text-indigo-500" />
+              <motion.div 
+                variants={slideUp}
+                className="bg-gray-800/50 rounded-xl p-5 border border-emerald-800/30"
+              >
+                <h4 className="font-medium text-white mb-4 flex items-center gap-2">
+                  <User size={18} className="text-emerald-400" />
                   Your Information
                 </h4>
                 
                 <div className="space-y-3">
                   <div className="flex justify-between">
-                    <span className="text-sm text-gray-500">Name:</span>
-                    <span className="text-sm font-medium">{name || user.email}</span>
+                    <span className="text-sm text-gray-400">Name:</span>
+                    <span className="text-sm font-medium text-white">{name || user.email}</span>
                   </div>
                   
                   <div className="flex justify-between">
-                    <span className="text-sm text-gray-500">Email:</span>
-                    <span className="text-sm font-medium">{user.email}</span>
+                    <span className="text-sm text-gray-400">Email:</span>
+                    <span className="text-sm font-medium text-white">{user.email}</span>
                   </div>
                   
                   {phone && (
                     <div className="flex justify-between">
-                      <span className="text-sm text-gray-500">Phone:</span>
-                      <span className="text-sm font-medium">{phone}</span>
+                      <span className="text-sm text-gray-400">Phone:</span>
+                      <span className="text-sm font-medium text-white">{phone}</span>
                     </div>
                   )}
                   
-                  <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
-                    <h5 className="text-sm font-medium text-blue-800 flex items-center gap-2 mb-1">
+                  <motion.div 
+                    whileHover={{ scale: 1.02 }}
+                    className="mt-4 p-3 bg-emerald-900/20 rounded-lg border border-emerald-800/30"
+                  >
+                    <h5 className="text-sm font-medium text-emerald-300 flex items-center gap-2 mb-1">
                       <CreditCard size={16} />
                       Payment Method
                     </h5>
-                    <p className="text-xs text-blue-700">
+                    <p className="text-xs text-emerald-200">
                       You'll be redirected to Razorpay's secure payment gateway to complete your booking.
                     </p>
-                  </div>
+                  </motion.div>
                 </div>
-              </div>
+              </motion.div>
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* Footer Navigation */}
-        <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4">
+        <div className="sticky bottom-0 bg-gradient-to-t from-gray-900 to-gray-900/80 border-t border-emerald-800/20 p-4 backdrop-blur-sm">
           <div className="flex justify-between">
             {currentStep > 1 ? (
-              <Button
-                onClick={handlePreviousStep}
-                variant="outline"
-                disabled={isSubmitting || bookingInProgress}
-                className="gap-2"
-              >
-                <ChevronLeft size={16} />
-                Previous
-              </Button>
+              <motion.div whileHover={{ scale: 1.03 }}>
+                <Button
+                  onClick={handlePreviousStep}
+                  variant="outline"
+                  disabled={isSubmitting || bookingInProgress}
+                  className="gap-2 bg-transparent border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white hover:border-emerald-500 transition-all"
+                >
+                  <ChevronLeft size={16} />
+                  Previous
+                </Button>
+              </motion.div>
             ) : (
               <div></div>
             )}
             
             {currentStep < 3 ? (
-              <Button
-                onClick={handleNextStep}
-                disabled={isSubmitting || bookingInProgress}
-                className="gap-2 bg-indigo-600 hover:bg-indigo-700"
-              >
-                Next
-                <ChevronRight size={16} />
-              </Button>
+              <motion.div whileHover={{ scale: 1.03 }}>
+                <Button
+                  onClick={handleNextStep}
+                  disabled={isSubmitting || bookingInProgress}
+                  className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white hover:shadow-lg hover:shadow-emerald-800/30 transition-all"
+                >
+                  Next
+                  <ChevronRight size={16} />
+                </Button>
+              </motion.div>
             ) : (
-              <Button
-                onClick={handlePayment}
-                disabled={isSubmitting || bookingInProgress || loading.booking || loading.payment}
-                className="gap-2 bg-indigo-600 hover:bg-indigo-700"
-              >
-                {loading.booking || loading.payment ? (
-                  <Loader className="animate-spin" size={16} />
-                ) : (
-                  <CreditCard size={16} />
-                )}
-                Pay & Confirm Booking
-              </Button>
+              <motion.div whileHover={{ scale: 1.03 }}>
+                <Button
+                  onClick={handlePayment}
+                  disabled={isSubmitting || bookingInProgress || loading.booking || loading.payment}
+                  className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white hover:shadow-lg hover:shadow-emerald-800/30 transition-all"
+                >
+                  {loading.booking || loading.payment ? (
+                    <Loader className="animate-spin" size={16} />
+                  ) : (
+                    <CreditCard size={16} />
+                  )}
+                  Pay & Confirm Booking
+                </Button>
+              </motion.div>
             )}
           </div>
         </div>
-      </div>
-    </div>
+      </motion.div>
+
+      <style jsx>{`
+        .animate-spin-once {
+          animation: spinOnce 0.5s ease-out;
+        }
+        @keyframes spinOnce {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+    </motion.div>
   );
 };
 
