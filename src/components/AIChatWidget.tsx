@@ -241,12 +241,17 @@ const AIChatWidget = () => {
     ));
   };
 
+  // Calculate position for the chat button based on screen size and other widgets
+  const buttonPositionClasses = isMobile 
+    ? 'bottom-24 right-4' // Moved up to prevent overlap on mobile
+    : 'bottom-6 right-6'; // Default position for desktop
+
   return (
     <>
       {/* Floating Chat Button */}
       <button
         onClick={toggleChat}
-        className={`fixed z-50 ${isMobile ? 'bottom-20 right-4' : 'bottom-6 right-6'} w-14 h-14 rounded-full bg-gradient-to-r from-indigo to-indigo-dark text-white flex items-center justify-center shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-light`}
+        className={`fixed z-50 ${buttonPositionClasses} w-14 h-14 rounded-full bg-gradient-to-r from-indigo to-indigo-dark text-white flex items-center justify-center shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-light`}
         aria-label="Open chat assistant"
       >
         {isLoading ? (
