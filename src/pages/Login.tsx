@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
@@ -42,7 +43,7 @@ const Login: React.FC = () => {
       } else {
         toast({
           title: "Login successful",
-          description: "Welcome back to SportySlot!",
+          description: "Welcome back to Grid2Play!",
         });
       }
     } catch (error: any) {
@@ -87,7 +88,7 @@ const Login: React.FC = () => {
                   </svg>
                 </div>
                 <h1 className="text-3xl font-bold text-white">Welcome Back</h1>
-                <p className="text-gray-300 mt-2">Sign in to continue with SportySlot</p>
+                <p className="text-gray-300 mt-2">Sign in to continue with Grid2Play</p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-6">
@@ -207,7 +208,7 @@ const Login: React.FC = () => {
 
       <footer className="bg-navy-dark/50 backdrop-blur-sm py-6">
         <div className="container mx-auto px-4 text-center">
-          <p className="text-gray-400">&copy; 2025 SportySlot. All rights reserved.</p>
+          <p className="text-gray-400">&copy; 2025 Grid2Play. All rights reserved.</p>
         </div>
       </footer>
     </div>
