@@ -11,6 +11,8 @@ import { StreakBar } from '@/components/StreakBar';
 import { LocationPermissionRequest } from '@/components/LocationPermissionRequest';
 import { NearbyVenues } from '@/components/NearbyVenues';
 import HomepageAvailabilityWidget from '@/components/HomepageAvailabilityWidget';
+import AIChatWidget from '@/components/AIChatWidget';
+
 interface Venue {
   id: string;
   name: string;
@@ -62,6 +64,8 @@ const Index: React.FC = () => {
     venues: true,
     sports: true
   });
+  const [locationPermissionHandled, setLocationPermissionHandled] = useState(false);
+  
   const venuesRef = useRef<HTMLDivElement>(null);
   const sportsRef = useRef<HTMLDivElement>(null);
   const athletesRef = useRef<HTMLDivElement>(null);
@@ -177,12 +181,17 @@ const Index: React.FC = () => {
       </section>
 
       {/* Add Location Permission Request here */}
-      <div className="container mx-auto px-4 -mt-6 relative z-10">
-        <LocationPermissionRequest />
-      </div>
+      {!locationPermissionHandled && (
+        <div className="container mx-auto px-4 -mt-6 relative z-10">
+          <LocationPermissionRequest
+            onPermissionGranted={handleLocationPermissionGranted}
+            onPermissionDenied={handleLocationPermissionDenied}
+          />
+        </div>
+      )}
 
       {/* Add Near You Section after the hero section */}
-      <NearbyVenues />
+      <NearbyVenues className="pt-0" />
 
       <section id="venues" ref={venuesRef} className="py-16 bg-gradient-to-b from-black/90 to-navy-dark">
         <div className="container mx-auto px-4">
@@ -515,6 +524,9 @@ const Index: React.FC = () => {
       </footer>
 
       {isBookModalOpen && <BookSlotModal onClose={() => setIsBookModalOpen(false)} />}
+      
+      {/* Add AI Chat Widget */}
+      <AIChatWidget />
     </div>;
 };
 export default Index;
