@@ -187,7 +187,7 @@ const SlotBlockingTab: React.FC<SlotBlockingTabProps> = ({
             
             {/* Venue Selection */}
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-white mb-1">
                 Venue
               </label>
               <select value={selectedVenue?.id || ''} onChange={e => {
