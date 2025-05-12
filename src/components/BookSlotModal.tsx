@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { X } from 'lucide-react';
+import { X, Clock, MapPin, Calendar, User, CreditCard, Loader, ChevronRight, Check, ChevronLeft, Activity, RefreshCw } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
@@ -8,7 +8,6 @@ import { format } from 'date-fns';
 import SportDisplayName from './SportDisplayName';
 import { Button } from '@/components/ui/button';
 
-// Declare Razorpay types based on their SDK
 declare global {
   interface Window {
     Razorpay: any;
@@ -79,7 +78,6 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
   const [razorpayOrderId, setRazorpayOrderId] = useState('');
 
   useEffect(() => {
-    // Check if user is logged in, if not redirect to login
     if (!user) {
       toast({
         title: "Authentication Required",
@@ -97,12 +95,10 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     const today = new Date();
     setSelectedDate(today.toISOString().split('T')[0]);
 
-    // If a venue ID was passed, ensure it's selected
     if (venueId) {
       setSelectedVenue(venueId);
     }
     
-    // Setup real-time subscription for bookings
     const bookingChannel = supabase
       .channel('booking-updates')
       .on('postgres_changes', {
@@ -111,7 +107,6 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
         table: 'bookings'
       }, (payload) => {
         console.log('Booking change detected:', payload);
-        // Refresh availability data when a booking is created/updated/deleted
         if (selectedCourt && selectedDate) {
           setRefreshKey(prev => prev + 1);
         }
@@ -123,7 +118,6 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     };
   }, [venueId, user, navigate, onClose]);
 
-  // Dynamic Razorpay script loading
   useEffect(() => {
     const loadRazorpayScript = () => {
       return new Promise((resolve) => {
@@ -139,7 +133,6 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       });
     };
 
-    // Load Razorpay script
     loadRazorpayScript();
   }, []);
 
@@ -161,17 +154,14 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     }
   }, [selectedVenue, selectedSport]);
 
-  // Effect for fetching availability with the refresh key
   useEffect(() => {
     if (selectedCourt && selectedDate) {
       fetchAvailability();
     }
   }, [selectedCourt, selectedDate, refreshKey]);
 
-  // Add periodic refresh of availability data
   useEffect(() => {
     if (currentStep === 2 && selectedCourt && selectedDate) {
-      // Refresh availability data every 15 seconds
       const intervalId = setInterval(() => {
         setRefreshKey(prev => prev + 1);
       }, 15000);
@@ -190,9 +180,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
             .eq('id', user.id)
             .single();
             
-          if (error) {
-            throw error;
-          }
+          if (error) throw error;
           
           if (data) {
             setName(data.full_name || '');
@@ -215,16 +203,14 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
         .select('id, name')
         .eq('is_active', true);
         
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
       
       setVenues(data || []);
     } catch (error) {
       console.error('Error fetching venues:', error);
       toast({
         title: "Error",
-        description: "Failed to load venues. Please try again.",
+        description: "Failed to load venues",
         variant: "destructive",
       });
     } finally {
@@ -240,16 +226,14 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
         .select('id, name')
         .eq('is_active', true);
         
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
       
       setSports(data || []);
     } catch (error) {
       console.error('Error fetching sports:', error);
       toast({
         title: "Error",
-        description: "Failed to load sports. Please try again.",
+        description: "Failed to load sports",
         variant: "destructive",
       });
     } finally {
@@ -261,19 +245,13 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     try {
       const { data, error } = await supabase
         .from('courts')
-        .select(`
-          sport_id,
-          sports:sport_id (id, name)
-        `)
+        .select(`sport_id, sports:sport_id (id, name)`)
         .eq('venue_id', venueId)
         .eq('is_active', true);
         
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
       
       if (data) {
-        // Extract unique sports from courts
         const uniqueSportsMap = new Map();
         data.forEach(item => {
           if (item.sports && !uniqueSportsMap.has(item.sports.id)) {
@@ -284,15 +262,12 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
         const uniqueSports = Array.from(uniqueSportsMap.values()) as Sport[];
         setVenueSports(uniqueSports);
         
-        // If there's only one sport, select it automatically
         if (uniqueSports.length === 1) {
           setSelectedSport(uniqueSports[0].id);
         } 
-        // If sportId is provided and exists in the venue sports, select it
         else if (sportId && uniqueSports.some(sport => sport.id === sportId)) {
           setSelectedSport(sportId);
         }
-        // Otherwise clear the selection
         else if (!sportId || !uniqueSports.some(sport => sport.id === sportId)) {
           setSelectedSport('');
         }
@@ -312,9 +287,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
         .eq('sport_id', selectedSport)
         .eq('is_active', true);
         
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
       
       setCourts(data || []);
       if (data && data.length > 0) {
@@ -328,7 +301,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       console.error('Error fetching courts:', error);
       toast({
         title: "Error",
-        description: "Failed to load courts. Please try again.",
+        description: "Failed to load courts",
         variant: "destructive",
       });
     } finally {
@@ -341,25 +314,20 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     
     setLoading(prev => ({ ...prev, availability: true }));
     try {
-      // This function automatically checks for conflicts with other courts in the same group
       const { data, error } = await supabase
         .rpc('get_available_slots', { 
           p_court_id: selectedCourt, 
           p_date: selectedDate 
         });
       
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
       
       const { data: templateSlots, error: templateError } = await supabase
         .from('template_slots')
         .select('start_time, end_time, price')
         .eq('court_id', selectedCourt);
         
-      if (templateError) {
-        throw templateError;
-      }
+      if (templateError) throw templateError;
       
       const priceMap: Record<string, string> = {};
       templateSlots?.forEach(slot => {
@@ -377,7 +345,6 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       
       setAvailableTimeSlots(slotsWithPrice);
       
-      // Check if any previously selected slots are no longer available
       const updatedSelectedSlots = selectedSlots.filter(slotDisplay => {
         const [startTime, endTime] = slotDisplay.split(' - ').map(t => convertTo24Hour(t));
         const slotStillAvailable = slotsWithPrice.some(slot => 
@@ -386,15 +353,13 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
           slot.is_available
         );
         
-        // If a slot is no longer available, show a toast
         if (!slotStillAvailable && selectedSlots.length > 0) {
           toast({
             title: "Slot no longer available",
-            description: `The time slot ${slotDisplay} is no longer available and has been removed from your selection.`,
+            description: `The time slot ${slotDisplay} is no longer available`,
             variant: "destructive",
           });
           
-          // Remove from prices as well
           const updatedPrices = { ...selectedSlotPrices };
           delete updatedPrices[slotDisplay];
           setSelectedSlotPrices(updatedPrices);
@@ -403,7 +368,6 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
         return slotStillAvailable;
       });
       
-      // Update selected slots if any were removed
       if (updatedSelectedSlots.length !== selectedSlots.length) {
         setSelectedSlots(updatedSelectedSlots);
       }
@@ -411,7 +375,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       console.error('Error fetching availability:', error);
       toast({
         title: "Error",
-        description: "Failed to load availability. Please try again.",
+        description: "Failed to load availability",
         variant: "destructive",
       });
     } finally {
@@ -453,7 +417,6 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       delete newSelectedSlotPrices[slotDisplay];
       setSelectedSlotPrices(newSelectedSlotPrices);
     } else {
-      // Add the slot without checking for continuity
       const updatedSlots = [...selectedSlots, slotDisplay];
       
       const sortedSlots = updatedSlots.sort((a, b) => {
@@ -480,7 +443,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       if (!selectedVenue || !selectedSport || !selectedCourt || !selectedDate) {
         toast({
           title: "Missing information",
-          description: "Please select all required fields to continue.",
+          description: "Please select all required fields",
           variant: "destructive",
         });
         return;
@@ -490,7 +453,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       if (selectedSlots.length === 0) {
         toast({
           title: "No slots selected",
-          description: "Please select at least one time slot to continue.",
+          description: "Please select at least one time slot",
           variant: "destructive",
         });
         return;
@@ -521,16 +484,14 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
         }
       });
       
-      if (response.error) {
-        throw new Error(response.error);
-      }
+      if (response.error) throw new Error(response.error);
       
       return response.data;
     } catch (error) {
       console.error('Error creating Razorpay order:', error);
       toast({
         title: "Payment Error",
-        description: "Could not initialize payment. Please try again.",
+        description: "Could not initialize payment",
         variant: "destructive",
       });
       return null;
@@ -543,20 +504,18 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     if (!user || !selectedCourt || !selectedDate || selectedSlots.length === 0) {
       toast({
         title: "Missing information",
-        description: "Please complete all booking details.",
+        description: "Please complete all booking details",
         variant: "destructive",
       });
       return;
     }
     
     try {
-      // Create Razorpay order
       const orderData = await createRazorpayOrder();
       if (!orderData) return;
       
       const { order, key_id } = orderData;
       
-      // Initialize Razorpay options
       const options = {
         key: key_id, 
         amount: order.amount,
@@ -576,12 +535,10 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
           color: "#10b981"
         },
         handler: function(response: any) {
-          // On successful payment, call the booking function
           handleBooking(response.razorpay_payment_id, response.razorpay_order_id);
         }
       };
       
-      // Open Razorpay checkout
       const razorpayInstance = new window.Razorpay(options);
       razorpayInstance.open();
       
@@ -589,7 +546,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       console.error("Payment initialization error:", error);
       toast({
         title: "Payment Error",
-        description: "Failed to initialize payment. Please try again.",
+        description: "Failed to initialize payment",
         variant: "destructive",
       });
     }
@@ -599,13 +556,12 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     if (!selectedCourt || !selectedDate || selectedSlots.length === 0) {
       toast({
         title: "Missing information",
-        description: "Please complete all booking details.",
+        description: "Please complete all booking details",
         variant: "destructive",
       });
       return;
     }
     
-    // Check if user is authenticated
     if (!user) {
       toast({
         title: "Authentication Required",
@@ -616,11 +572,10 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       return;
     }
     
-    // Prevent double submissions
     if (isSubmitting || bookingInProgress) {
       toast({
         title: "Booking in progress",
-        description: "Please wait while we process your booking.",
+        description: "Please wait while we process your booking",
       });
       return;
     }
@@ -630,14 +585,12 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     setLoading(prev => ({ ...prev, booking: true }));
     
     try {
-      // First refresh availability to ensure selected slots are still available
       await fetchAvailability();
       
-      // If any selected slots were removed during the refresh, stop the booking process
       if (selectedSlots.length === 0) {
         toast({
           title: "Booking failed",
-          description: "Your selected slots are no longer available. Please select new time slots.",
+          description: "Your selected slots are no longer available",
           variant: "destructive",
         });
         setCurrentStep(2);
@@ -653,7 +606,6 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
         return startTimeA.localeCompare(startTimeB);
       });
       
-      // Identify continuous blocks to minimize the number of bookings
       const bookingBlocks = [];
       let currentBlock = [sortedSlots[0]];
       
@@ -662,32 +614,26 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
         const nextSlotStart = convertTo24Hour(sortedSlots[i].split(' - ')[0]);
         
         if (currentSlotEnd === nextSlotStart) {
-          // Continuous slot, add to current block
           currentBlock.push(sortedSlots[i]);
         } else {
-          // Non-continuous, start a new block
           bookingBlocks.push([...currentBlock]);
           currentBlock = [sortedSlots[i]];
         }
       }
       
-      // Add the last block
       bookingBlocks.push(currentBlock);
       
-      // Use a transaction to ensure all bookings succeed or fail together
       const bookingResults = [];
       
       for (const block of bookingBlocks) {
         const startTime = convertTo24Hour(block[0].split(' - ')[0]);
         const endTime = convertTo24Hour(block[block.length - 1].split(' - ')[1]);
         
-        // Calculate price for this block
         const blockPrice = block.reduce((total, slot) => {
           return total + selectedSlotPrices[slot];
         }, 0);
         
         try {
-          // Use our enhanced create_booking_with_lock function for concurrency safety
           const { data, error } = await supabase.rpc('create_booking_with_lock', {
             p_court_id: selectedCourt,
             p_user_id: user.id,
@@ -699,13 +645,10 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
             p_payment_status: 'completed'
           });
           
-          if (error) {
-            throw new Error(error.message || 'Error creating booking');
-          }
+          if (error) throw new Error(error.message || 'Error creating booking');
           
           bookingResults.push(data);
         } catch (error: any) {
-          // If there's a conflict or lock issue, propagate the error
           if (error.message?.includes('conflicts with an existing reservation') || 
               error.message?.includes('already been booked') ||
               error.message?.includes('Another user is currently booking')) {
@@ -717,7 +660,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       
       toast({
         title: "Booking successful!",
-        description: `You have successfully booked ${bookingResults.length} slot(s).`,
+        description: `You have successfully booked ${bookingResults.length} slot(s)`,
       });
       
       navigate('/profile');
@@ -725,29 +668,27 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     } catch (error: any) {
       console.error('Error creating booking:', error);
       
-      // Special handling for conflict errors
       if (error.message?.includes('conflicts with an existing reservation') || 
           error.message?.includes('already been booked')) {
         toast({
           title: "Booking unavailable",
-          description: "Someone just booked one of your selected slots. Please refresh and select available times.",
+          description: "Someone just booked one of your selected slots",
           variant: "destructive",
         });
       } else if (error.message?.includes('Another user is currently booking')) {
         toast({
           title: "Booking in progress",
-          description: "Another user is currently booking this time slot. Please wait a moment and try again.",
+          description: "Another user is currently booking this time slot",
           variant: "destructive",
         });
       } else {
         toast({
           title: "Booking failed",
-          description: error.message || "There was an issue creating your booking. Please try again.",
+          description: error.message || "There was an issue creating your booking",
           variant: "destructive",
         });
       }
       
-      // Refresh availability and go back to step 2
       setCurrentStep(2);
       setRefreshKey(prev => prev + 1);
     } finally {
@@ -757,58 +698,67 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     }
   };
 
-  // If user is not logged in, return nothing
   if (!user) {
     return null;
   }
 
   return (
-    <div className="modal-bg" onClick={onClose}>
-      <div className="modal-content animate-fade-in" onClick={e => e.stopPropagation()}>
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="modal-header">Book Your Slot</h2>
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+      <div 
+        className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="sticky top-0 bg-white z-10 p-6 border-b border-gray-100 flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <Clock className="text-indigo-600" size={24} />
+            Book Your Slot
+          </h2>
           <button 
             onClick={onClose}
-            className="text-gray-700 hover:text-gray-900 transition-colors"
+            className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100"
           >
-            <X className="w-6 h-6" />
+            <X size={24} />
           </button>
         </div>
 
-        <div className="flex justify-center mb-8">
-          <div className="flex items-center">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-              currentStep === 1 ? 'bg-sport-green text-white' : 'bg-gray-200 text-gray-600'
-            }`}>
-              1
-            </div>
-            <div className="w-16 h-1 bg-gray-200">
-              <div className={`h-full ${currentStep > 1 ? 'bg-sport-green' : ''}`}></div>
-            </div>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-              currentStep === 2 ? 'bg-sport-green text-white' : currentStep > 2 ? 'bg-sport-green-light text-white' : 'bg-gray-200 text-gray-600'
-            }`}>
-              2
-            </div>
-            <div className="w-16 h-1 bg-gray-200">
-              <div className={`h-full ${currentStep > 2 ? 'bg-sport-green' : ''}`}></div>
-            </div>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-              currentStep === 3 ? 'bg-sport-green text-white' : 'bg-gray-200 text-gray-600'
-            }`}>
-              3
-            </div>
+        {/* Progress Steps */}
+        <div className="px-6 pt-4 pb-6 border-b border-gray-100">
+          <div className="flex items-center justify-center">
+            {[1, 2, 3].map((step) => (
+              <React.Fragment key={step}>
+                <div className={`flex items-center justify-center w-10 h-10 rounded-full ${currentStep >= step ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-400'} transition-colors`}>
+                  {currentStep > step ? (
+                    <Check size={18} />
+                  ) : (
+                    <span className="font-medium">{step}</span>
+                  )}
+                </div>
+                {step < 3 && (
+                  <div className={`w-16 h-1 ${currentStep > step ? 'bg-indigo-600' : 'bg-gray-200'} transition-colors`}></div>
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+          <div className="flex justify-between mt-2 text-sm text-gray-500">
+            <span className={currentStep === 1 ? 'text-indigo-600 font-medium' : ''}>Details</span>
+            <span className={currentStep === 2 ? 'text-indigo-600 font-medium' : ''}>Slots</span>
+            <span className={currentStep === 3 ? 'text-indigo-600 font-medium' : ''}>Confirm</span>
           </div>
         </div>
 
+        {/* Step 1: Venue/Sport Selection */}
         {currentStep === 1 && (
-          <div className="space-y-6">
-            <div>
-              <label className="block text-gray-700 mb-2 font-medium">Select Venue</label>
+          <div className="p-6 space-y-6">
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                <MapPin size={16} className="text-indigo-500" />
+                Select Venue
+              </label>
               <select
                 value={selectedVenue}
                 onChange={e => setSelectedVenue(e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sport-green bg-white"
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm"
                 disabled={loading.venues || !!venueId}
               >
                 <option value="">Select a venue</option>
@@ -819,12 +769,15 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
               {loading.venues && <p className="mt-1 text-xs text-gray-500">Loading venues...</p>}
             </div>
             
-            <div>
-              <label className="block text-gray-700 mb-2 font-medium">Select Sport</label>
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                <Activity size={16} className="text-indigo-500" />
+                Select Sport
+              </label>
               <select
                 value={selectedSport}
                 onChange={e => setSelectedSport(e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sport-green bg-white"
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm"
                 disabled={!selectedVenue || venueSports.length === 0}
               >
                 <option value="">Select a sport</option>
@@ -846,8 +799,11 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
               {selectedVenue && venueSports.length === 0 && <p className="mt-1 text-xs text-gray-500">No sports available for this venue</p>}
             </div>
             
-            <div>
-              <label className="block text-gray-700 mb-2 font-medium">Select Court</label>
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                <MapPin size={16} className="text-indigo-500" />
+                Select Court
+              </label>
               <select
                 value={selectedCourt}
                 onChange={e => {
@@ -857,7 +813,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
                     setCourtRate(court.hourly_rate);
                   }
                 }}
-                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sport-green bg-white"
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm"
                 disabled={loading.courts || !selectedVenue || !selectedSport}
               >
                 <option value="">Select a court</option>
@@ -870,109 +826,126 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
                 <p className="mt-1 text-xs text-red-500">No courts available for this venue and sport combination.</p>
               )}
               {selectedCourt && courts.find(c => c.id === selectedCourt)?.court_group_id && (
-                <p className="mt-1 text-xs text-blue-600">
+                <p className="mt-2 text-xs text-blue-600 bg-blue-50 p-2 rounded">
                   Note: This court shares physical space with other sports. Bookings on one will affect availability on others.
                 </p>
               )}
             </div>
             
-            <div>
-              <label className="block text-gray-700 mb-2 font-medium">Select Date</label>
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                <Calendar size={16} className="text-indigo-500" />
+                Select Date
+              </label>
               <input
                 type="date"
                 value={selectedDate}
                 onChange={e => setSelectedDate(e.target.value)}
                 min={new Date().toISOString().split('T')[0]}
-                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sport-green bg-white"
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm"
               />
             </div>
           </div>
         )}
 
+        {/* Step 2: Time Slot Selection */}
         {currentStep === 2 && (
-          <div>
+          <div className="p-6">
             <div className="mb-6">
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">Select Time Slots</h3>
-              <p className="text-gray-600">Click on the available slots to select them. You can select multiple slots, they don't need to be continuous.</p>
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <Clock size={20} className="text-indigo-500" />
+                Select Time Slots
+              </h3>
+              <p className="text-sm text-gray-500 mt-1">
+                Available slots for {selectedDate} at {courts.find(c => c.id === selectedCourt)?.name}
+              </p>
             </div>
             
-            <div className="mb-4">
-              <p className="font-medium text-gray-700">Selected Date: <span className="text-sport-green">{selectedDate}</span></p>
-              <div className="flex items-center text-xs mt-1 text-blue-600">
-                <span>Availability automatically refreshes every 15 seconds.</span>
-                <button 
-                  onClick={() => setRefreshKey(prev => prev + 1)}
-                  className="ml-2 text-blue-700 underline"
-                >
-                  Refresh now
-                </button>
-              </div>
+            <div className="mb-4 flex justify-between items-center">
+              <p className="text-sm font-medium text-gray-700">
+                Showing availability for: <span className="text-indigo-600">{format(new Date(selectedDate), 'PPP')}</span>
+              </p>
+              <button 
+                onClick={() => setRefreshKey(prev => prev + 1)}
+                className="text-sm text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+              >
+                <RefreshCw size={14} />
+                Refresh
+              </button>
             </div>
             
             {loading.availability ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-sport-green mx-auto"></div>
-                <p className="mt-2 text-gray-600">Loading availability...</p>
+              <div className="flex flex-col items-center justify-center py-8">
+                <Loader className="animate-spin text-indigo-500" size={24} />
+                <p className="mt-2 text-sm text-gray-500">Loading availability...</p>
               </div>
             ) : (
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                  {availableTimeSlots.map((slot, index) => {
+                  {availableTimeSlots.map((slot) => {
                     const slotDisplay = `${formatTime(slot.start_time)} - ${formatTime(slot.end_time)}`;
+                    const isSelected = selectedSlots.includes(slotDisplay);
                     return (
-                      <div
+                      <button
                         key={`${slot.start_time}-${slot.end_time}`}
-                        className={`
-                          p-3 rounded-md cursor-pointer transition-all text-center
-                          ${slot.is_available 
-                            ? selectedSlots.includes(slotDisplay) 
-                              ? 'bg-sport-green text-white border border-sport-green' 
-                              : 'bg-white border border-sport-green-light hover:bg-sport-green-light/10' 
-                            : 'bg-gray-200 text-gray-500 cursor-not-allowed border border-gray-300'}
-                        `}
+                        disabled={!slot.is_available}
                         onClick={() => handleSlotClick(slot)}
+                        className={`
+                          p-3 rounded-lg border transition-all text-center
+                          ${slot.is_available 
+                            ? isSelected
+                              ? 'bg-indigo-600 text-white border-indigo-700 shadow-md'
+                              : 'bg-white border-gray-200 hover:border-indigo-300 hover:bg-indigo-50'
+                            : 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'}
+                          ${isSelected ? 'ring-2 ring-indigo-400' : ''}
+                        `}
                       >
-                        <div>{slotDisplay}</div>
-                        <div className="font-semibold">₹{parseFloat(slot.price).toFixed(2)}</div>
-                      </div>
+                        <div className="font-medium">{slotDisplay}</div>
+                        <div className="text-sm mt-1">₹{parseFloat(slot.price).toFixed(2)}</div>
+                      </button>
                     );
                   })}
                 </div>
                 
                 {availableTimeSlots.length === 0 && (
-                  <div className="text-center py-8 bg-gray-50 rounded-md">
-                    <p className="text-gray-600">No available time slots found for this date.</p>
+                  <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200 mt-4">
+                    <p className="text-gray-500">No available time slots found for this date.</p>
                   </div>
                 )}
                 
-                <div className="mt-6 flex flex-wrap items-center gap-4">
+                <div className="mt-8 flex flex-wrap items-center gap-4 text-sm">
                   <div className="flex items-center">
-                    <div className="w-4 h-4 bg-sport-green rounded-sm mr-2"></div>
-                    <span className="text-sm">Selected</span>
+                    <div className="w-3 h-3 bg-indigo-600 rounded-full mr-2"></div>
+                    <span>Selected</span>
                   </div>
                   <div className="flex items-center">
-                    <div className="w-4 h-4 border border-sport-green-light bg-white rounded-sm mr-2"></div>
-                    <span className="text-sm">Available</span>
+                    <div className="w-3 h-3 bg-white border border-gray-300 rounded-full mr-2"></div>
+                    <span>Available</span>
                   </div>
                   <div className="flex items-center">
-                    <div className="w-4 h-4 bg-gray-200 rounded-sm mr-2"></div>
-                    <span className="text-sm">Unavailable</span>
+                    <div className="w-3 h-3 bg-gray-200 rounded-full mr-2"></div>
+                    <span>Unavailable</span>
                   </div>
                 </div>
                 
                 {selectedSlots.length > 0 && (
-                  <div className="mt-6 p-4 bg-gray-50 rounded-md border border-gray-200">
-                    <h4 className="font-medium mb-2">Selected Slots:</h4>
+                  <div className="mt-6 p-4 bg-indigo-50 rounded-lg border border-indigo-100">
+                    <h4 className="font-medium text-indigo-800 mb-2">Selected Slots</h4>
                     <div className="flex flex-wrap gap-2">
                       {selectedSlots.sort().map(slot => (
-                        <span key={slot} className="bg-sport-green text-white px-2 py-1 rounded text-sm">
-                          {slot} - ₹{selectedSlotPrices[slot]?.toFixed(2)}
+                        <span 
+                          key={slot} 
+                          className="bg-indigo-600 text-white px-3 py-1 rounded-full text-sm flex items-center gap-1"
+                        >
+                          {slot.split(' - ')[0]} <ChevronRight size={14} /> {slot.split(' - ')[1]}
+                          <span className="font-semibold ml-1">₹{selectedSlotPrices[slot]?.toFixed(2)}</span>
                         </span>
                       ))}
                     </div>
-                    {selectedSlots.length > 0 && (
-                      <p className="mt-3 font-medium">Total Price: ₹{calculateTotalPrice().toFixed(2)}</p>
-                    )}
+                    <div className="mt-3 pt-3 border-t border-indigo-100 flex justify-between items-center">
+                      <span className="font-medium text-indigo-800">Total:</span>
+                      <span className="text-lg font-bold text-indigo-900">₹{calculateTotalPrice().toFixed(2)}</span>
+                    </div>
                   </div>
                 )}
               </>
@@ -980,153 +953,158 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
           </div>
         )}
 
+        {/* Step 3: Confirmation */}
         {currentStep === 3 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-xl font-semibold text-gray-800 mb-6">Booking Details</h3>
+          <div className="p-6">
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <Check size={20} className="text-indigo-500" />
+                Confirm Your Booking
+              </h3>
+              <p className="text-sm text-gray-500 mt-1">
+                Review your booking details before payment
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Booking Summary */}
+              <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
+                <h4 className="font-medium text-gray-900 mb-4 flex items-center gap-2">
+                  <Calendar size={18} className="text-indigo-500" />
+                  Booking Summary
+                </h4>
                 
-                <div className="bg-gray-50 rounded-md p-4 space-y-3 border border-gray-200">
-                  <p><span className="font-medium">Venue:</span> {venues.find(v => v.id === selectedVenue)?.name}</p>
-                  <p>
-                    <span className="font-medium">Sport:</span> {selectedVenue && selectedSport && (
-                      <SportDisplayName 
-                        venueId={selectedVenue}
-                        sportId={selectedSport}
-                        defaultName={sports.find(s => s.id === selectedSport)?.name || ''}
-                      />
-                    )}
-                  </p>
-                  <p><span className="font-medium">Court:</span> {courts.find(c => c.id === selectedCourt)?.name}</p>
-                  <p><span className="font-medium">Date:</span> {selectedDate}</p>
-                  
-                  <div>
-                    <p className="font-medium">Selected Slots:</p>
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      {selectedSlots.sort().map(slot => (
-                        <span key={slot} className="bg-sport-green text-white px-2 py-1 rounded text-sm">
-                          {slot} - ₹{selectedSlotPrices[slot]?.toFixed(2)}
-                        </span>
-                      ))}
-                    </div>
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-500">Venue:</span>
+                    <span className="text-sm font-medium">{venues.find(v => v.id === selectedVenue)?.name}</span>
                   </div>
                   
-                  <p className="mt-2 font-medium text-lg">Total Price: ₹{calculateTotalPrice().toFixed(2)}</p>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-500">Sport:</span>
+                    <span className="text-sm font-medium">
+                      {selectedVenue && selectedSport && (
+                        <SportDisplayName 
+                          venueId={selectedVenue}
+                          sportId={selectedSport}
+                          defaultName={sports.find(s => s.id === selectedSport)?.name || ''}
+                        />
+                      )}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-500">Court:</span>
+                    <span className="text-sm font-medium">{courts.find(c => c.id === selectedCourt)?.name}</span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-500">Date:</span>
+                    <span className="text-sm font-medium">{format(new Date(selectedDate), 'PPP')}</span>
+                  </div>
+                  
+                  <div className="pt-3 mt-3 border-t border-gray-200">
+                    <h5 className="text-sm font-medium text-gray-700 mb-2">Selected Slots:</h5>
+                    <ul className="space-y-2">
+                      {selectedSlots.sort().map(slot => (
+                        <li key={slot} className="flex justify-between text-sm">
+                          <span>{slot}</span>
+                          <span className="font-medium">₹{selectedSlotPrices[slot]?.toFixed(2)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  
+                  <div className="pt-3 mt-3 border-t border-gray-200 flex justify-between">
+                    <span className="font-medium">Total:</span>
+                    <span className="font-bold text-indigo-600">₹{calculateTotalPrice().toFixed(2)}</span>
+                  </div>
                 </div>
               </div>
-            </div>
-            
-            <div className="space-y-6">
-              <h3 className="text-xl font-semibold text-gray-800 mb-6">Your Information</h3>
-              
-              <div className="bg-gray-50 rounded-md p-4 space-y-3 border border-gray-200">
-                <p><span className="font-medium">Booking as:</span> {name || user.email}</p>
-                <p><span className="font-medium">Account Email:</span> {user.email}</p>
-                {phone && <p><span className="font-medium">Phone:</span> {phone}</p>}
-                <p className="text-sm text-gray-600">You're signed in. Your booking will be linked to your account.</p>
-              </div>
 
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
-                <h4 className="text-sm font-medium text-blue-800 flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Payment Information
+              {/* User Information */}
+              <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
+                <h4 className="font-medium text-gray-900 mb-4 flex items-center gap-2">
+                  <User size={18} className="text-indigo-500" />
+                  Your Information
                 </h4>
-                <p className="mt-2 text-sm text-blue-700">
-                  You'll be redirected to Razorpay's secure payment gateway to complete your booking payment.
-                </p>
+                
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-500">Name:</span>
+                    <span className="text-sm font-medium">{name || user.email}</span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-500">Email:</span>
+                    <span className="text-sm font-medium">{user.email}</span>
+                  </div>
+                  
+                  {phone && (
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-500">Phone:</span>
+                      <span className="text-sm font-medium">{phone}</span>
+                    </div>
+                  )}
+                  
+                  <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                    <h5 className="text-sm font-medium text-blue-800 flex items-center gap-2 mb-1">
+                      <CreditCard size={16} />
+                      Payment Method
+                    </h5>
+                    <p className="text-xs text-blue-700">
+                      You'll be redirected to Razorpay's secure payment gateway to complete your booking.
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         )}
 
-        <div className="mt-10 flex justify-between">
-          {currentStep > 1 ? (
-            <Button
-              onClick={handlePreviousStep}
-              variant="outline"
-              disabled={isSubmitting || bookingInProgress}
-              className="py-3 px-6 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors font-medium"
-            >
-              Previous
-            </Button>
-          ) : (
-            <div></div>
-          )}
-          
-          {currentStep < 3 ? (
-            <Button
-              onClick={handleNextStep}
-              variant="default"
-              disabled={isSubmitting || bookingInProgress}
-              className="py-3 px-6 bg-sport-green text-white rounded-md hover:bg-sport-green-dark transition-colors font-medium"
-            >
-              Next
-            </Button>
-          ) : (
-            <Button
-              onClick={handlePayment}
-              disabled={isSubmitting || bookingInProgress || loading.booking || loading.payment}
-              variant="default"
-              className="py-3 px-6 bg-sport-green text-white rounded-md hover:bg-sport-green-dark transition-colors flex items-center font-medium"
-            >
-              {loading.booking || loading.payment ? (
-                <>
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Processing...
-                </>
-              ) : (
-                'Pay & Book Now'
-              )}
-            </Button>
-          )}
+        {/* Footer Navigation */}
+        <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4">
+          <div className="flex justify-between">
+            {currentStep > 1 ? (
+              <Button
+                onClick={handlePreviousStep}
+                variant="outline"
+                disabled={isSubmitting || bookingInProgress}
+                className="gap-2"
+              >
+                <ChevronLeft size={16} />
+                Previous
+              </Button>
+            ) : (
+              <div></div>
+            )}
+            
+            {currentStep < 3 ? (
+              <Button
+                onClick={handleNextStep}
+                disabled={isSubmitting || bookingInProgress}
+                className="gap-2 bg-indigo-600 hover:bg-indigo-700"
+              >
+                Next
+                <ChevronRight size={16} />
+              </Button>
+            ) : (
+              <Button
+                onClick={handlePayment}
+                disabled={isSubmitting || bookingInProgress || loading.booking || loading.payment}
+                className="gap-2 bg-indigo-600 hover:bg-indigo-700"
+              >
+                {loading.booking || loading.payment ? (
+                  <Loader className="animate-spin" size={16} />
+                ) : (
+                  <CreditCard size={16} />
+                )}
+                Pay & Confirm Booking
+              </Button>
+            )}
+          </div>
         </div>
       </div>
-      
-      <style>
-        {`
-        .modal-bg {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background-color: rgba(0, 0, 0, 0.75);
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          z-index: 50;
-          padding: 1rem;
-        }
-        .modal-content {
-          background: #ffffff;
-          color: #1E293B;
-          border-radius: 0.75rem;
-          padding: 2rem;
-          width: 100%;
-          max-width: 700px;
-          max-height: 90vh;
-          overflow-y: auto;
-          box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-        }
-        .modal-header {
-          font-size: 1.5rem;
-          font-weight: 600;
-          color: #1E293B;
-        }
-        .animate-fade-in {
-          animation: fadeIn 0.3s ease-out;
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        `}
-      </style>
     </div>
   );
 };
