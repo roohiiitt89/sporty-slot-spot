@@ -162,7 +162,7 @@ const AdminBookingForm: React.FC<AdminBookingFormProps> = ({
   return <div className="bg-emerald-800 rounded-md shadow p-4">
       <h3 className="text-lg font-semibold mb-4">Create Booking for Customer</h3>
       
-      <div className="mb-4 p-3 bg-indigo-50 rounded-md">
+      <div className="mb-4 p-3 bg-black rounded-md">
         <p className="font-medium">Slot Summary:</p>
         <p>Venue: {venueName}</p>
         <p>Court: {courtName}</p>
