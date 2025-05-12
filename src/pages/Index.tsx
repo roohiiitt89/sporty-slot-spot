@@ -146,6 +146,16 @@ const Index: React.FC = () => {
   const handleSportCardClick = (sportId: string) => {
     navigate(`/venues?sport=${sportId}`);
   };
+  const handleLocationPermissionGranted = () => {
+    setLocationPermissionHandled(true);
+    console.log("Location permission granted");
+  };
+  
+  const handleLocationPermissionDenied = () => {
+    setLocationPermissionHandled(true);
+    console.log("Location permission denied");
+  };
+  
   return <div className="min-h-screen bg-navy-dark text-card-foreground">
       <Header />
       
@@ -185,13 +195,14 @@ const Index: React.FC = () => {
         <div className="container mx-auto px-4 -mt-6 relative z-10">
           <LocationPermissionRequest
             onPermissionGranted={handleLocationPermissionGranted}
-            onPermissionDenied={handleLocationPermissionDenied}
           />
         </div>
       )}
 
       {/* Add Near You Section after the hero section */}
-      <NearbyVenues className="pt-0" />
+      <div className="pt-0">
+        <NearbyVenues />
+      </div>
 
       <section id="venues" ref={venuesRef} className="py-16 bg-gradient-to-b from-black/90 to-navy-dark">
         <div className="container mx-auto px-4">

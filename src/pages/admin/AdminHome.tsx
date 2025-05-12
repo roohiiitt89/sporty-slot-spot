@@ -17,9 +17,13 @@ import HelpRequestsManagement from './HelpRequestsManagement';
 import SportDisplayNames from './SportDisplayNames';
 import AIChatWidget from '@/components/AIChatWidget';
 
+interface VenueAdmin {
+  venue_id: string;
+}
+
 const AdminHome: React.FC = () => {
   const { user, userRole } = useAuth();
-  const [adminVenues, setAdminVenues] = useState<{ venue_id: string }[]>([]);
+  const [adminVenues, setAdminVenues] = useState<VenueAdmin[]>([]);
   const [activeTab, setActiveTab] = useState('dashboard');
 
   useEffect(() => {
@@ -34,11 +38,13 @@ const AdminHome: React.FC = () => {
         // For super admins, get all venues
         const { data, error } = await supabase
           .from('venues')
-          .select('id as venue_id')
+          .select('id')
           .eq('is_active', true);
           
         if (error) throw error;
-        setAdminVenues(data || []);
+        // Transform the data to match the VenueAdmin interface
+        const transformedData = data?.map(item => ({ venue_id: item.id })) || [];
+        setAdminVenues(transformedData);
       } else {
         // For regular admins, get only assigned venues
         const { data, error } = await supabase.rpc('get_admin_venues');
@@ -64,6 +70,7 @@ const AdminHome: React.FC = () => {
     }
   }, []);
 
+  // Make sure to pass props that components actually accept
   return (
     <div className="p-6 bg-navy-dark min-h-screen text-white">
       <div className="max-w-7xl mx-auto">
@@ -95,43 +102,43 @@ const AdminHome: React.FC = () => {
           </div>
           
           <TabsContent value="dashboard" className="space-y-4">
-            <AnalyticsDashboard userRole={userRole} adminVenues={adminVenues} />
+            <AnalyticsDashboard />
           </TabsContent>
           
           <TabsContent value="bookings">
-            <BookingManagement userRole={userRole} adminVenues={adminVenues} />
+            <BookingManagement />
           </TabsContent>
           
           <TabsContent value="venues">
-            <VenueManagement userRole={userRole} adminVenues={adminVenues} />
+            <VenueManagement />
           </TabsContent>
           
           <TabsContent value="courts">
-            <CourtManagement userRole={userRole} adminVenues={adminVenues} />
+            <CourtManagement />
           </TabsContent>
           
           <TabsContent value="sports">
-            <SportManagement userRole={userRole} />
+            <SportManagement />
           </TabsContent>
           
           <TabsContent value="slots">
-            <TemplateSlotManagement userRole={userRole} adminVenues={adminVenues} />
+            <TemplateSlotManagement />
           </TabsContent>
           
           <TabsContent value="sportdisplay">
-            <SportDisplayNames userRole={userRole} adminVenues={adminVenues} />
+            <SportDisplayNames />
           </TabsContent>
           
           <TabsContent value="reviews">
-            <ReviewManagement userRole={userRole} adminVenues={adminVenues} />
+            <ReviewManagement />
           </TabsContent>
           
           <TabsContent value="messages">
-            <MessageManagement userRole={userRole} adminVenues={adminVenues} />
+            <MessageManagement />
           </TabsContent>
           
           <TabsContent value="help">
-            <HelpRequestsManagement userRole={userRole} />
+            <HelpRequestsManagement />
           </TabsContent>
         </Tabs>
         
