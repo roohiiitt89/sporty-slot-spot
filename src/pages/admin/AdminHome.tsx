@@ -70,7 +70,6 @@ const AdminHome: React.FC = () => {
     }
   }, []);
 
-  // Make sure to pass props that components actually accept
   return (
     <div className="p-6 bg-navy-dark min-h-screen text-white">
       <div className="max-w-7xl mx-auto">
@@ -106,39 +105,39 @@ const AdminHome: React.FC = () => {
           </TabsContent>
           
           <TabsContent value="bookings">
-            <BookingManagement />
+            <BookingManagement userRole={userRole} adminVenues={adminVenues} />
           </TabsContent>
           
           <TabsContent value="venues">
-            <VenueManagement />
+            <VenueManagement userRole={userRole} adminVenues={adminVenues} />
           </TabsContent>
           
           <TabsContent value="courts">
-            <CourtManagement />
+            <CourtManagement userRole={userRole} adminVenues={adminVenues} />
           </TabsContent>
           
           <TabsContent value="sports">
-            <SportManagement />
+            <SportManagement userRole={userRole} />
           </TabsContent>
           
           <TabsContent value="slots">
-            <TemplateSlotManagement />
+            <TemplateSlotManagement userRole={userRole} adminVenues={adminVenues} />
           </TabsContent>
           
           <TabsContent value="sportdisplay">
-            <SportDisplayNames />
+            <SportDisplayNames userRole={userRole} adminVenues={adminVenues} />
           </TabsContent>
           
           <TabsContent value="reviews">
-            <ReviewManagement />
+            <ReviewManagement userRole={userRole} adminVenues={adminVenues} />
           </TabsContent>
           
           <TabsContent value="messages">
-            <MessageManagement />
+            <MessageManagement userRole={userRole} adminVenues={adminVenues} />
           </TabsContent>
           
           <TabsContent value="help">
-            <HelpRequestsManagement />
+            <HelpRequestsManagement userRole={userRole} />
           </TabsContent>
         </Tabs>
         
