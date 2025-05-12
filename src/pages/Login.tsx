@@ -1,7 +1,8 @@
+
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
-import Header from '../components/Header';
+import CustomHeader from '../components/CustomHeader';
 import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/context/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -42,7 +43,7 @@ const Login: React.FC = () => {
       } else {
         toast({
           title: "Login successful",
-          description: "Welcome back to SportySlot!",
+          description: "Welcome back to Grid2Play!",
         });
       }
     } catch (error: any) {
@@ -72,7 +73,7 @@ const Login: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-navy-dark to-indigo/30">
-      <Header />
+      <CustomHeader />
 
       <div className="pt-24 pb-16">
         <div className="container mx-auto px-4">
@@ -87,7 +88,7 @@ const Login: React.FC = () => {
                   </svg>
                 </div>
                 <h1 className="text-3xl font-bold text-white">Welcome Back</h1>
-                <p className="text-gray-300 mt-2">Sign in to continue with SportySlot</p>
+                <p className="text-gray-300 mt-2">Sign in to continue with Grid2Play</p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-6">
@@ -154,7 +155,7 @@ const Login: React.FC = () => {
                   </div>
 
                   <div className="text-sm">
-                    <a href="#" className="font-medium text-indigo-light hover:text-white transition-colors">
+                    <a href="mailto:support@grid2play.com" className="font-medium text-indigo-light hover:text-white transition-colors">
                       Forgot password?
                     </a>
                   </div>
@@ -200,6 +201,10 @@ const Login: React.FC = () => {
                   </Link>
                 </p>
               </div>
+              
+              <div className="mt-8 pt-4 border-t border-white/10 text-center text-sm text-gray-400">
+                Need help? Contact us at <a href="mailto:support@grid2play.com" className="text-indigo-light hover:underline">support@grid2play.com</a>
+              </div>
             </div>
           </div>
         </div>
@@ -207,7 +212,7 @@ const Login: React.FC = () => {
 
       <footer className="bg-navy-dark/50 backdrop-blur-sm py-6">
         <div className="container mx-auto px-4 text-center">
-          <p className="text-gray-400">&copy; 2025 SportySlot. All rights reserved.</p>
+          <p className="text-gray-400">&copy; 2025 Grid2Play. All rights reserved.</p>
         </div>
       </footer>
     </div>

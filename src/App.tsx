@@ -16,7 +16,6 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import VerifyEmail from "./pages/VerifyEmail";
 import AdminDashboard from "./pages/admin/Dashboard";
-import AdminHome from "./pages/admin/AdminHome";
 import Profile from "./pages/Profile";
 import ChallengeDashboard from "./pages/challenge/ChallengeDashboard";
 import TeamDetails from "./pages/challenge/TeamDetails";
@@ -49,7 +48,7 @@ const App = () => (
             
             {/* Admin routes - accessible to both admin and super_admin */}
             <Route element={<RouteGuard requireAuth={true} requiredRole="admin" adminOnly={true} />}>
-              <Route path="/admin" element={<AdminHome />} />
+              <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/*" element={<AdminDashboard />} />
             </Route>
 

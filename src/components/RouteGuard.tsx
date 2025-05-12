@@ -49,7 +49,7 @@ export const RouteGuard = ({ requireAuth = true, requiredRole, adminOnly = false
     return <Navigate to="/" />;
   }
 
-  // Always redirect admins to admin dashboard if they try to access any non-admin route
+  // Redirect admins to admin dashboard if they try to access any non-admin route
   if (user && isAdmin && !location.pathname.startsWith('/admin')) {
     return <Navigate to="/admin" />;
   }
