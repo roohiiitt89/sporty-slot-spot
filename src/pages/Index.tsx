@@ -5,20 +5,36 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import CustomHeader from '@/components/CustomHeader';
-import LocationPermissionRequest from '@/components/LocationPermissionRequest';
-import NearbyVenues from '@/components/NearbyVenues';
+import { LocationPermissionRequest } from '@/components/LocationPermissionRequest';
+import { NearbyVenues } from '@/components/NearbyVenues';
 import HomepageAvailabilityWidget from '@/components/HomepageAvailabilityWidget';
 import VenueCard from '@/components/VenueCard';
 import ImprovedBookSlotModal from '@/components/ImprovedBookSlotModal';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Link } from 'react-router-dom';
 
+// Define proper types to avoid recursion issues
+interface VenueData {
+  id: string;
+  name: string;
+  address?: string;
+  featured_image_url?: string;
+  is_featured?: boolean;
+  avg_rating?: number;
+}
+
+interface SportData {
+  id: string;
+  name: string;
+  icon_url?: string;
+}
+
 const Index: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const isMobile = useIsMobile();
-  const [featuredVenues, setFeaturedVenues] = useState<any[]>([]);
-  const [popularSports, setPopularSports] = useState<any[]>([]);
+  const [featuredVenues, setFeaturedVenues] = useState<VenueData[]>([]);
+  const [popularSports, setPopularSports] = useState<SportData[]>([]);
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
   const [selectedVenue, setSelectedVenue] = useState<string | undefined>(undefined);
   const [selectedSport, setSelectedSport] = useState<string | undefined>(undefined);
