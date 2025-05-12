@@ -247,7 +247,7 @@ const SlotBlockingTab: React.FC<SlotBlockingTabProps> = ({
           </div>
           
           {/* Already Blocked Slots */}
-          <div className="bg-white rounded-md shadow p-4">
+          <div className="bg-emerald-800 rounded-md shadow p-4">
             <h3 className="text-md font-medium mb-3">Currently Blocked Slots</h3>
             
             {blockedSlots.length > 0 ? <ul className="space-y-2">
