@@ -341,14 +341,14 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       if (error) throw error;
       
       if (data) {
-        const uniqueSportsMap = new Map();
+        const uniqueSportsMap = new Map<string, Sport>();
         data.forEach(item => {
           if (item.sports && !uniqueSportsMap.has(item.sports.id)) {
             uniqueSportsMap.set(item.sports.id, item.sports);
           }
         });
         
-        const uniqueSports = Array.from(uniqueSportsMap.values()) as Sport[];
+        const uniqueSports = Array.from(uniqueSportsMap.values());
         setVenueSports(uniqueSports);
         
         if (uniqueSports.length === 1) {
@@ -363,6 +363,11 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       }
     } catch (error) {
       console.error('Error fetching venue sports:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load sports for this venue",
+        variant: "destructive",
+      });
     }
   };
 
@@ -386,6 +391,11 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       } else {
         setSelectedCourt('');
         setCourtRate(0);
+        toast({
+          title: "No Courts Available",
+          description: "There are no available courts for this sport at the selected venue",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error('Error fetching courts:', error);
