@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,38 +15,41 @@ import MessageManagement from './MessageManagement';
 import HelpRequestsManagement from './HelpRequestsManagement';
 import SportDisplayNames from './SportDisplayNames';
 import AIChatWidget from '@/components/AIChatWidget';
-
 interface VenueAdmin {
   venue_id: string;
 }
-
 const AdminHome: React.FC = () => {
-  const { user, userRole } = useAuth();
+  const {
+    user,
+    userRole
+  } = useAuth();
   const [adminVenues, setAdminVenues] = useState<VenueAdmin[]>([]);
   const [activeTab, setActiveTab] = useState('dashboard');
-
   useEffect(() => {
     if (user) {
       fetchAdminVenues();
     }
   }, [user]);
-
   const fetchAdminVenues = async () => {
     try {
       if (userRole === 'super_admin') {
         // For super admins, get all venues
-        const { data, error } = await supabase
-          .from('venues')
-          .select('id')
-          .eq('is_active', true);
-          
+        const {
+          data,
+          error
+        } = await supabase.from('venues').select('id').eq('is_active', true);
         if (error) throw error;
         // Transform the data to match the VenueAdmin interface
-        const transformedData = data?.map(item => ({ venue_id: item.id })) || [];
+        const transformedData = data?.map(item => ({
+          venue_id: item.id
+        })) || [];
         setAdminVenues(transformedData);
       } else {
         // For regular admins, get only assigned venues
-        const { data, error } = await supabase.rpc('get_admin_venues');
+        const {
+          data,
+          error
+        } = await supabase.rpc('get_admin_venues');
         if (error) throw error;
         setAdminVenues(data || []);
       }
@@ -55,7 +57,6 @@ const AdminHome: React.FC = () => {
       console.error('Error fetching admin venues:', error);
     }
   };
-
   const handleTabChange = (value: string) => {
     setActiveTab(value);
     // Update URL hash for navigation
@@ -69,9 +70,7 @@ const AdminHome: React.FC = () => {
       setActiveTab(hash);
     }
   }, []);
-
-  return (
-    <div className="p-6 bg-navy-dark min-h-screen text-white">
+  return <div className="p-6 bg-navy-dark min-h-screen text-white">
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
           <div>
@@ -80,20 +79,16 @@ const AdminHome: React.FC = () => {
           </div>
         </div>
         
-        <Tabs 
-          value={activeTab} 
-          onValueChange={handleTabChange}
-          className="space-y-4"
-        >
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
           <div className="overflow-x-auto pb-2">
             <TabsList className="bg-navy-light">
               <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
               <TabsTrigger value="bookings">Bookings</TabsTrigger>
               <TabsTrigger value="venues">Venues</TabsTrigger>
-              <TabsTrigger value="courts">Courts</TabsTrigger>
+              
               <TabsTrigger value="sports">Sports</TabsTrigger>
-              <TabsTrigger value="slots">Slot Templates</TabsTrigger>
-              <TabsTrigger value="sportdisplay">Sport Names</TabsTrigger>
+              
+              
               <TabsTrigger value="reviews">Reviews</TabsTrigger>
               <TabsTrigger value="messages">Messages</TabsTrigger>
               <TabsTrigger value="help">Help Desk</TabsTrigger>
@@ -144,8 +139,6 @@ const AdminHome: React.FC = () => {
         {/* Add AI Chat Widget */}
         <AIChatWidget />
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default AdminHome;
