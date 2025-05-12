@@ -159,7 +159,7 @@ const AdminBookingForm: React.FC<AdminBookingFormProps> = ({
     const hour12 = hour % 12 || 12;
     return `${hour12}:${minutes} ${ampm}`;
   };
-  return <div className="bg-white rounded-md shadow p-4">
+  return <div className="bg-emerald-800 rounded-md shadow p-4">
       <h3 className="text-lg font-semibold mb-4">Create Booking for Customer</h3>
       
       <div className="mb-4 p-3 bg-indigo-50 rounded-md">
