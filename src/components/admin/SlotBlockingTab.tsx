@@ -212,7 +212,7 @@ const SlotBlockingTab: React.FC<SlotBlockingTabProps> = ({
             
             {/* Court Selection */}
             {selectedVenue && <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-white mb-1">
                   Court
                 </label>
                 <div className="grid grid-cols-2 gap-2">
