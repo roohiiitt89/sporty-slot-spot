@@ -219,7 +219,7 @@ const AdminBookingTab: React.FC<AdminBookingTabProps> = ({
           </div>
           
           {/* Availability View */}
-          <div className="bg-white rounded-md shadow p-4">
+          <div className="bg-emerald-800 rounded-md shadow p-4">
             <h3 className="text-md font-medium mb-3">Available Time Slots</h3>
             {selectedCourtId ? <AvailabilityWidget courtId={selectedCourtId} date={format(selectedDate, 'yyyy-MM-dd')} onSelectSlot={handleSlotSelect} isAdmin={true} /> : <p className="text-gray-500 text-center py-4">Select a court to view availability</p>}
           </div>
