@@ -936,3 +936,146 @@ const ImprovedBookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId,
             <div className="space-y-6">
               <div>
                 <h3 className="text-xl font-semibold text-gray-800 mb-6">Booking Details</h3>
+                
+                <div className="bg-gray-50 rounded-md p-4 space-y-3 border border-gray-200">
+                  <p><span className="font-medium">Venue:</span> {venues.find(v => v.id === selectedVenue)?.name}</p>
+                  <p>
+                    <span className="font-medium">Sport:</span> {selectedVenue && selectedSport && (
+                      <SportDisplayName 
+                        venueId={selectedVenue}
+                        sportId={selectedSport}
+                        defaultName={sports.find(s => s.id === selectedSport)?.name || ''}
+                      />
+                    )}
+                  </p>
+                  <p><span className="font-medium">Court:</span> {courts.find(c => c.id === selectedCourt)?.name}</p>
+                  <p><span className="font-medium">Date:</span> {format(selectedDate, 'PPP')}</p>
+                  
+                  <div>
+                    <p className="font-medium">Selected Slots:</p>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {selectedSlots.sort().map(slot => (
+                        <span key={slot} className="bg-indigo text-white px-2 py-1 rounded text-sm">
+                          {slot} - ₹{selectedSlotPrices[slot]?.toFixed(2)}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <p className="mt-2 font-medium text-lg">Total Price: ₹{calculateTotalPrice().toFixed(2)}</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="space-y-6">
+              <h3 className="text-xl font-semibold text-gray-800 mb-6">Your Information</h3>
+              
+              <div className="bg-gray-50 rounded-md p-4 space-y-3 border border-gray-200">
+                <p><span className="font-medium">Booking as:</span> {name || user.email}</p>
+                <p><span className="font-medium">Account Email:</span> {user.email}</p>
+                {phone && <p><span className="font-medium">Phone:</span> {phone}</p>}
+                <p className="text-sm text-gray-600">You're signed in. Your booking will be linked to your account.</p>
+              </div>
+
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
+                <h4 className="text-sm font-medium text-blue-800 flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Payment Information
+                </h4>
+                <p className="mt-2 text-sm text-blue-700">
+                  You'll be redirected to Razorpay's secure payment gateway to complete your booking payment.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-10 flex justify-between">
+          {currentStep > 1 ? (
+            <Button
+              onClick={handlePreviousStep}
+              variant="outline"
+              disabled={isSubmitting || bookingInProgress}
+              className="py-3 px-6 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors font-medium"
+            >
+              Previous
+            </Button>
+          ) : (
+            <div></div>
+          )}
+          
+          {currentStep === 2 && (
+            <Button
+              onClick={handlePayment}
+              disabled={isSubmitting || bookingInProgress || loading.booking || loading.payment}
+              variant="default"
+              className="py-3 px-6 bg-indigo text-white rounded-md hover:bg-indigo-dark transition-colors flex items-center font-medium"
+            >
+              {loading.booking || loading.payment ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Processing...
+                </>
+              ) : (
+                'Pay & Book Now'
+              )}
+            </Button>
+          )}
+        </div>
+
+        {/* Support Email */}
+        <div className="mt-4 text-center text-sm text-gray-500">
+          Have questions? Contact <a href="mailto:support@grid2play.com" className="text-indigo hover:underline">support@grid2play.com</a>
+        </div>
+      </div>
+
+      <style>
+        {`
+        .modal-bg {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: rgba(0, 0, 0, 0.75);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          z-index: 50;
+          padding: 1rem;
+        }
+        .modal-content {
+          background: #ffffff;
+          color: #1E293B;
+          border-radius: 0.75rem;
+          padding: 2rem;
+          width: 100%;
+          max-width: 700px;
+          max-height: 90vh;
+          overflow-y: auto;
+          box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        }
+        .modal-header {
+          font-size: 1.5rem;
+          font-weight: 600;
+          color: #1E293B;
+        }
+        .animate-fade-in {
+          animation: fadeIn 0.3s ease-out;
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        `}
+      </style>
+    </div>
+  );
+};
+
+export default ImprovedBookSlotModal;
