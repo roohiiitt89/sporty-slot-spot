@@ -120,17 +120,6 @@ const Index: React.FC = () => {
       }));
     }
   };
-
-  const handleLocationPermissionGranted = () => {
-    setLocationPermissionHandled(true);
-    console.log("Location permission granted");
-  };
-  
-  const handleLocationPermissionDenied = () => {
-    setLocationPermissionHandled(true);
-    console.log("Location permission denied");
-  };
-
   useEffect(() => {
     const observerOptions = {
       threshold: 0.2
@@ -531,4 +520,24 @@ const Index: React.FC = () => {
               <h3 className="text-lg font-semibold mb-4">Newsletter</h3>
               <p className="text-gray-300 mb-4">Subscribe to get updates on new venues and special offers.</p>
               <form className="flex">
-                <input type="email" placeholder="Your email" className="px-4 py-2
+                <input type="email" placeholder="Your email" className="px-4 py-2 rounded-l-md w-full focus:outline-none text-navy-dark" />
+                <button className="bg-indigo px-4 py-2 rounded-r-md hover:bg-indigo-dark transition-colors">
+                  Subscribe
+                </button>
+              </form>
+            </div>
+          </div>
+          
+          <div className="mt-8 pt-8 border-t border-navy text-center text-gray-400">
+            <p>&copy; 2025 SportySlot. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
+
+      {isBookModalOpen && <BookSlotModal onClose={() => setIsBookModalOpen(false)} />}
+      
+      {/* Add AI Chat Widget */}
+      <AIChatWidget />
+    </div>;
+};
+export default Index;
