@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, Calendar as CalendarIcon } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
@@ -914,3 +915,12 @@ const ImprovedBookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId,
 
           {/* Support Email */}
           <div className="mt-4 text-center text-sm text-gray-500">
+            Need help? Contact us at <a href="mailto:support@grid2play.com" className="text-indigo hover:underline">support@grid2play.com</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ImprovedBookSlotModal;
