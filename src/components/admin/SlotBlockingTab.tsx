@@ -224,7 +224,7 @@ const SlotBlockingTab: React.FC<SlotBlockingTabProps> = ({
             
             {/* Date Selection */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-white mb-1">
                 Date
               </label>
               <Popover>
