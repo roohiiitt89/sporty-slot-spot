@@ -175,7 +175,7 @@ const AdminBookingTab: React.FC<AdminBookingTabProps> = ({
                   setSelectedSlot(null);
                 }
               }
-            }} className="w-full px-3 py-2 border border-gray-300 rounded-md">
+            }} className="w-full px-3 py-2 border border-black  rounded-md">
                 {venues.map(venue => <option key={venue.id} value={venue.id}>
                     {venue.name}
                   </option>)}
