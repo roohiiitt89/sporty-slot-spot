@@ -1,3 +1,5 @@
+can you fix the errors cant select sports and courts :
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, Clock, MapPin, Calendar, User, CreditCard, Loader, ChevronRight, Check, ChevronLeft, Activity, RefreshCw, Info, AlertCircle } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
@@ -234,21 +236,47 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     }
   }, [user]);
 
-  const fetchVenueDetails = async (venueId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('venues')
-        .select('*')
-        .eq('id', venueId)
-        .single();
-        
-      if (error) throw error;
+  const fetchVenueSports = async (venueId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('courts')
+      .select(`sport_id, sports!inner(id, name, icon_name, is_active)`)
+      .eq('venue_id', venueId)
+      .eq('is_active', true)
+      .eq('sports.is_active', true);
+
+    if (error) throw error;
+    
+    if (data) {
+      // Process sports data
+      const sportsMap = new Map<string, Sport>();
+      data.forEach(item => {
+        if (item.sports && !sportsMap.has(item.sports.id)) {
+          sportsMap.set(item.sports.id, item.sports);
+        }
+      });
       
-      setVenueDetails(data);
-    } catch (error) {
-      console.error('Error fetching venue details:', error);
+      const uniqueSports = Array.from(sportsMap.values());
+      setVenueSports(uniqueSports);
+      
+      // Handle auto-selection logic
+      if (uniqueSports.length === 1) {
+        setSelectedSport(uniqueSports[0].id);
+      } else if (sportId && uniqueSports.some(sport => sport.id === sportId)) {
+        setSelectedSport(sportId);
+      } else if (!sportId || !uniqueSports.some(sport => sport.id === sportId)) {
+        setSelectedSport('');
+      }
     }
-  };
+  } catch (error) {
+    console.error('Error fetching venue sports:', error);
+    toast({
+      title: "Error",
+      description: "Failed to load sports for this venue",
+      variant: "destructive",
+    });
+  }
+};
 
   const fetchSportDetails = async (sportId: string) => {
     try {
@@ -306,24 +334,23 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     }
   };
 
-   const fetchSports = async () => {
+  const fetchSports = async () => {
     setLoading(prev => ({ ...prev, sports: true }));
     try {
       const { data, error } = await supabase
         .from('sports')
-        .select('id, name')
-        .eq('is_active', true);
+        .select('id, name, icon_name')
+        .eq('is_active', true)
+        .order('name', { ascending: true });
         
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
       
       setSports(data || []);
     } catch (error) {
       console.error('Error fetching sports:', error);
       toast({
         title: "Error",
-        description: "Failed to load sports. Please try again.",
+        description: "Failed to load sports",
         variant: "destructive",
       });
     } finally {
@@ -335,44 +362,40 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     try {
       const { data, error } = await supabase
         .from('courts')
-        .select(`
-          sport_id,
-          sports:sport_id (id, name)
-        `)
+        .select(`sport_id, sports:sport_id (id, name, icon_name)`)
         .eq('venue_id', venueId)
         .eq('is_active', true);
         
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
       
       if (data) {
-        // Extract unique sports from courts
-        const uniqueSportsMap = new Map();
+        const uniqueSportsMap = new Map<string, Sport>();
         data.forEach(item => {
           if (item.sports && !uniqueSportsMap.has(item.sports.id)) {
             uniqueSportsMap.set(item.sports.id, item.sports);
           }
         });
         
-        const uniqueSports = Array.from(uniqueSportsMap.values()) as Sport[];
+        const uniqueSports = Array.from(uniqueSportsMap.values());
         setVenueSports(uniqueSports);
         
-        // If there's only one sport, select it automatically
         if (uniqueSports.length === 1) {
           setSelectedSport(uniqueSports[0].id);
         } 
-        // If sportId is provided and exists in the venue sports, select it
         else if (sportId && uniqueSports.some(sport => sport.id === sportId)) {
           setSelectedSport(sportId);
         }
-        // Otherwise clear the selection
         else if (!sportId || !uniqueSports.some(sport => sport.id === sportId)) {
           setSelectedSport('');
         }
       }
     } catch (error) {
       console.error('Error fetching venue sports:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load sports for this venue",
+        variant: "destructive",
+      });
     }
   };
 
@@ -381,14 +404,13 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     try {
       const { data, error } = await supabase
         .from('courts')
-        .select('id, name, venue_id, sport_id, court_group_id, hourly_rate')
+        .select('id, name, venue_id, sport_id, court_group_id, hourly_rate, description')
         .eq('venue_id', selectedVenue)
         .eq('sport_id', selectedSport)
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .order('name', { ascending: true });
         
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
       
       setCourts(data || []);
       if (data && data.length > 0) {
@@ -397,12 +419,17 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       } else {
         setSelectedCourt('');
         setCourtRate(0);
+        toast({
+          title: "No Courts Available",
+          description: "There are no available courts for this sport at the selected venue",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error('Error fetching courts:', error);
       toast({
         title: "Error",
-        description: "Failed to load courts. Please try again.",
+        description: "Failed to load courts",
         variant: "destructive",
       });
     } finally {
@@ -410,30 +437,25 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     }
   };
 
-  onst fetchAvailability = useCallback(async () => {
+  const fetchAvailability = useCallback(async () => {
     if (!selectedCourt || !selectedDate) return;
     
     setLoading(prev => ({ ...prev, availability: true }));
     try {
-      // This function automatically checks for conflicts with other courts in the same group
       const { data, error } = await supabase
         .rpc('get_available_slots', { 
           p_court_id: selectedCourt, 
           p_date: selectedDate 
         });
       
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
       
       const { data: templateSlots, error: templateError } = await supabase
         .from('template_slots')
         .select('start_time, end_time, price')
         .eq('court_id', selectedCourt);
         
-      if (templateError) {
-        throw templateError;
-      }
+      if (templateError) throw templateError;
       
       const priceMap: Record<string, string> = {};
       templateSlots?.forEach(slot => {
