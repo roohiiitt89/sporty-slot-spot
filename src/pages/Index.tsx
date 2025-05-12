@@ -12,6 +12,8 @@ import { LocationPermissionRequest } from '@/components/LocationPermissionReques
 import { NearbyVenues } from '@/components/NearbyVenues';
 import HomepageAvailabilityWidget from '@/components/HomepageAvailabilityWidget';
 import AIChatWidget from '@/components/AIChatWidget';
+import RotatingTypewriter from '@/components/RotatingTypewriter';
+
 
 interface Venue {
   id: string;
@@ -159,32 +161,39 @@ const Index: React.FC = () => {
   return <div className="min-h-screen bg-navy-dark text-card-foreground">
       <Header />
       
-      <section className="hero-section">
-        <video autoPlay muted loop playsInline className="hero-video">
-          <source src="https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/vedios//mixkit-one-on-one-in-a-soccer-game-43483-full-hd%20(1).mp4" type="video/mp4" />
-          Your browser does not support the video tag.
-        </video>
-        <div className="hero-overlay dark-gradient-overlay"></div>
-        <div className="hero-content container mx-auto text-center">
-          <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold text-white mb-6 animate-fade-in">
-            Book Now for Your <span className="text-[sport-green-dark] text-green-600">Game On!</span>
-          </h1>
-          <p className="text-xl md:text-2xl text-white mb-10 max-w-3xl mx-auto animate-fade-in" style={{
-          animationDelay: '0.2s'
-        }}>
-            Find and book your favorite sports venues easily. Multiple sports, venues, and flexible time slots all in one place.
-          </p>
-          <div className="flex flex-col md:flex-row justify-center gap-4 animate-fade-in" style={{
-          animationDelay: '0.4s'
-        }}>
-            <button onClick={() => setIsBookModalOpen(true)} className="dynamic-button flex items-center justify-center">
-              Book A Slot Now
-              <ArrowRight className="ml-2 w-5 h-5" />
-            </button>
-            <Link to="/venues" className="nike-button bg-white text-indigo border border-indigo">
-              Browse Venues
-            </Link>
-          </div>
+<section className="hero-section">
+  <video autoPlay muted loop playsInline className="hero-video">
+    <source src="https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/vedios//mixkit-one-on-one-in-a-soccer-game-43483-full-hd%20(1).mp4" type="video/mp4" />
+    Your browser does not support the video tag.
+  </video>
+  <div className="hero-overlay dark-gradient-overlay"></div>
+  <div className="hero-content container mx-auto text-center">
+    <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold text-white mb-6 animate-fade-in">
+      Book Now for Your{' '}
+      <span className="text-green-600">
+        <RotatingTypewriter 
+          text={["Game On!", "Match!", "Training!", "Tournament!"]} 
+          delay={80}
+          phraseDelay={2000}
+        />
+      </span>
+    </h1>
+    <p className="text-xl md:text-2xl text-white mb-10 max-w-3xl mx-auto animate-fade-in" style={{
+      animationDelay: '0.2s'
+    }}>
+      Find and book your favorite sports venues easily. Multiple sports, venues, and flexible time slots all in one place.
+    </p>
+    <div className="flex flex-col md:flex-row justify-center gap-4 animate-fade-in" style={{
+      animationDelay: '0.4s'
+    }}>
+      <button onClick={() => setIsBookModalOpen(true)} className="dynamic-button flex items-center justify-center">
+        Book A Slot Now
+        <ArrowRight className="ml-2 w-5 h-5" />
+      </button>
+      <Link to="/venues" className="nike-button bg-white text-indigo border border-indigo">
+        Browse Venues
+      </Link>
+    </div>
           
           <EnterChallengeButton />
         </div>
