@@ -331,40 +331,48 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
   };
 
   const fetchVenueSports = async (venueId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('courts')
-        .select(`sport_id, sports:sport_id (id, name, icon_name)`)
-        .eq('venue_id', venueId)
-        .eq('is_active', true);
-        
-      if (error) throw error;
+  try {
+    const { data, error } = await supabase
+      .from('courts')
+      .select(`sport_id, sports!inner(id, name, is_active)`)
+      .eq('venue_id', venueId)
+      .eq('sports.is_active', true)
+      .eq('is_active', true);
+
+    if (error) throw error;
+    
+    if (data) {
+      // Extract unique sports from courts
+      const uniqueSportsMap = new Map<string, Sport>();
+      data.forEach(item => {
+        if (item.sports && !uniqueSportsMap.has(item.sports.id)) {
+          uniqueSportsMap.set(item.sports.id, item.sports);
+        }
+      });
       
-      if (data) {
-        const uniqueSportsMap = new Map();
-        data.forEach(item => {
-          if (item.sports && !uniqueSportsMap.has(item.sports.id)) {
-            uniqueSportsMap.set(item.sports.id, item.sports);
-          }
-        });
-        
-        const uniqueSports = Array.from(uniqueSportsMap.values()) as Sport[];
-        setVenueSports(uniqueSports);
-        
-        if (uniqueSports.length === 1) {
-          setSelectedSport(uniqueSports[0].id);
-        } 
-        else if (sportId && uniqueSports.some(sport => sport.id === sportId)) {
-          setSelectedSport(sportId);
-        }
-        else if (!sportId || !uniqueSports.some(sport => sport.id === sportId)) {
-          setSelectedSport('');
-        }
+      const uniqueSports = Array.from(uniqueSportsMap.values());
+      setVenueSports(uniqueSports);
+      
+      // Auto-select sport if only one exists or if pre-selected sport is valid
+      if (uniqueSports.length === 1) {
+        setSelectedSport(uniqueSports[0].id);
+      } 
+      else if (sportId && uniqueSports.some(s => s.id === sportId)) {
+        setSelectedSport(sportId);
       }
-    } catch (error) {
-      console.error('Error fetching venue sports:', error);
+      else {
+        setSelectedSport('');
+      }
     }
-  };
+  } catch (error) {
+    console.error('Error fetching venue sports:', error);
+    toast({
+      title: "Sports Loading Error",
+      description: "Could not load sports for this venue",
+      variant: "destructive",
+    });
+  }
+};
 
   const fetchCourts = async () => {
     setLoading(prev => ({ ...prev, courts: true }));
