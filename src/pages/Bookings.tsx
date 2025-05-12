@@ -5,7 +5,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { Calendar, Clock, MapPin, ChevronRight, ArrowLeft, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
 interface Booking {
   id: string;
   booking_date: string;
@@ -24,30 +23,29 @@ interface Booking {
     };
   };
 }
-
 const Bookings: React.FC = () => {
-  const { user } = useAuth();
+  const {
+    user
+  } = useAuth();
   const navigate = useNavigate();
   const [upcomingBookings, setUpcomingBookings] = useState<Booking[]>([]);
   const [pastBookings, setPastBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
-
   useEffect(() => {
     if (user) {
       fetchBookings();
     }
   }, [user]);
-
   const fetchBookings = async () => {
     setLoading(true);
     try {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const todayStr = today.toISOString().split('T')[0];
-      
-      const { data: upcomingData, error: upcomingError } = await supabase
-        .from('bookings')
-        .select(`
+      const {
+        data: upcomingData,
+        error: upcomingError
+      } = await supabase.from('bookings').select(`
           id, 
           booking_date, 
           start_time, 
@@ -59,18 +57,16 @@ const Bookings: React.FC = () => {
             venue:venues (name, location),
             sport:sports (name)
           )
-        `)
-        .eq('user_id', user?.id)
-        .gte('booking_date', todayStr)
-        .in('status', ['pending', 'confirmed'])
-        .order('booking_date', { ascending: false })
-        .order('start_time', { ascending: true });
-      
+        `).eq('user_id', user?.id).gte('booking_date', todayStr).in('status', ['pending', 'confirmed']).order('booking_date', {
+        ascending: false
+      }).order('start_time', {
+        ascending: true
+      });
       if (upcomingError) throw upcomingError;
-      
-      const { data: pastData, error: pastError } = await supabase
-        .from('bookings')
-        .select(`
+      const {
+        data: pastData,
+        error: pastError
+      } = await supabase.from('bookings').select(`
           id, 
           booking_date, 
           start_time, 
@@ -82,15 +78,12 @@ const Bookings: React.FC = () => {
             venue:venues (name, location),
             sport:sports (name)
           )
-        `)
-        .eq('user_id', user?.id)
-        .or(`booking_date.lt.${todayStr},status.eq.cancelled,status.eq.completed`)
-        .order('booking_date', { ascending: false })
-        .order('start_time', { ascending: true })
-        .limit(5);
-      
+        `).eq('user_id', user?.id).or(`booking_date.lt.${todayStr},status.eq.cancelled,status.eq.completed`).order('booking_date', {
+        ascending: false
+      }).order('start_time', {
+        ascending: true
+      }).limit(5);
       if (pastError) throw pastError;
-      
       setUpcomingBookings(upcomingData || []);
       setPastBookings(pastData || []);
     } catch (error) {
@@ -98,13 +91,12 @@ const Bookings: React.FC = () => {
       toast({
         title: 'Error',
         description: 'Failed to load bookings',
-        variant: 'destructive',
+        variant: 'destructive'
       });
     } finally {
       setLoading(false);
     }
   };
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'confirmed':
@@ -119,7 +111,6 @@ const Bookings: React.FC = () => {
         return 'bg-gray-100 text-gray-800';
     }
   };
-
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('en-US', {
       day: 'numeric',
@@ -127,7 +118,6 @@ const Bookings: React.FC = () => {
       year: 'numeric'
     });
   };
-
   const formatTime = (timeStr: string) => {
     const [hours, minutes] = timeStr.split(':');
     const hour = parseInt(hours, 10);
@@ -135,65 +125,44 @@ const Bookings: React.FC = () => {
     const hour12 = hour % 12 || 12;
     return `${hour12}:${minutes} ${amPm}`;
   };
-
-  return (
-    <div className="min-h-screen bg-gray-50">
+  return <div className="min-h-screen bg-gray-50">
       <Header />
 
-      <main className="pt-24 pb-16">
+      <main className=" bg-emerald-800 pt-24 pb-16">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-4xl mx-auto">
             {/* Back Button and Header */}
             <div className="mb-8">
-              <button
-                onClick={() => navigate('/')}
-                className="flex items-center text-gray-700 hover:text-gray-900 transition-colors mb-6"
-              >
+              <button onClick={() => navigate('/')} className="flex items-center text-gray-700 hover:text-gray-900 transition-colors mb-6">
                 <ArrowLeft className="w-5 h-5 mr-2" />
                 Back to Home
               </button>
 
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <h1 className="text-3xl font-bold text-gray-900">My Bookings</h1>
-                <button
-                  onClick={() => navigate('/venues')}
-                  className="px-4 py-2 bg-green-700 text-white rounded-md hover:bg-green-800 transition-colors flex items-center"
-                >
+                <button onClick={() => navigate('/venues')} className="px-4 py-2 bg-green-700 text-white rounded-md hover:bg-green-800 transition-colors flex items-center">
                   <Calendar className="w-4 h-4 mr-2" />
                   Book New Slot
                 </button>
               </div>
             </div>
 
-            {loading ? (
-              <div className="flex justify-center items-center min-h-[300px]">
+            {loading ? <div className="flex justify-center items-center min-h-[300px]">
                 <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
-              </div>
-            ) : (
-              <div className="space-y-12">
+              </div> : <div className="space-y-12">
                 {/* Upcoming Bookings */}
                 <section>
                   <h2 className="text-xl font-semibold text-gray-800 mb-6 pb-2 border-b border-gray-200">
                     Upcoming Bookings
                   </h2>
                   
-                  {upcomingBookings.length === 0 ? (
-                    <div className="bg-white rounded-lg shadow-sm p-6 text-center">
+                  {upcomingBookings.length === 0 ? <div className="bg-white rounded-lg shadow-sm p-6 text-center">
                       <p className="text-gray-500">No upcoming bookings found</p>
-                      <button
-                        onClick={() => navigate('/venues')}
-                        className="mt-4 text-indigo-600 hover:text-indigo-800 font-medium"
-                      >
+                      <button onClick={() => navigate('/venues')} className="mt-4 text-indigo-600 hover:text-indigo-800 font-medium">
                         Book your first slot
                       </button>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {upcomingBookings.map((booking) => (
-                        <div 
-                          key={booking.id}
-                          className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-100 hover:shadow-md transition-shadow"
-                        >
+                    </div> : <div className="space-y-4">
+                      {upcomingBookings.map(booking => <div key={booking.id} className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-100 hover:shadow-md transition-shadow">
                           <div className="p-6">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                               <div>
@@ -230,10 +199,8 @@ const Bookings: React.FC = () => {
                               <span>{booking.court.venue.location}</span>
                             </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                        </div>)}
+                    </div>}
                 </section>
 
                 {/* Past Bookings */}
@@ -242,12 +209,9 @@ const Bookings: React.FC = () => {
                     Past Bookings
                   </h2>
                   
-                  {pastBookings.length === 0 ? (
-                    <div className="bg-white rounded-lg shadow-sm p-6 text-center">
+                  {pastBookings.length === 0 ? <div className="bg-white rounded-lg shadow-sm p-6 text-center">
                       <p className="text-gray-500">No past bookings found</p>
-                    </div>
-                  ) : (
-                    <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                    </div> : <div className="bg-white rounded-lg shadow-sm overflow-hidden">
                       <div className="overflow-x-auto">
                         <table className="w-full">
                           <thead className="bg-gray-50">
@@ -260,36 +224,32 @@ const Bookings: React.FC = () => {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-200">
-                            {pastBookings.map((booking) => (
-                              <tr key={booking.id} className="hover:bg-gray-50">
-                                <td className="py-3 px-4">
+                            {pastBookings.map(booking => <tr key={booking.id} className="hover:bg-gray-50">
+                                <td className="bg-black text-white py-3 px-4">
                                   {formatDate(booking.booking_date)}
                                 </td>
-                                <td className="py-3 px-4">
+                                <td className="bg-black text-white py-3 px-4">
                                   <p className="font-medium">{booking.court.venue.name}</p>
                                   <p className="text-sm text-gray-500">{booking.court.name}</p>
                                 </td>
-                                <td className="py-3 px-4">
+                                <td className="bg-black text-white py-3 px-4">
                                   {formatTime(booking.start_time)} - {formatTime(booking.end_time)}
                                 </td>
-                                <td className="py-3 px-4">
+                                <td className="bg-black text-white py-3 px-4">
                                   ₹{booking.total_price.toFixed(2)}
                                 </td>
-                                <td className="py-3 px-4">
+                                <td className="bg-black text-white py-3 px-4">
                                   <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(booking.status)}`}>
                                     {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                                   </span>
                                 </td>
-                              </tr>
-                            ))}
+                              </tr>)}
                           </tbody>
                         </table>
                       </div>
-                    </div>
-                  )}
+                    </div>}
                 </section>
-              </div>
-            )}
+              </div>}
           </div>
         </div>
       </main>
@@ -299,8 +259,6 @@ const Bookings: React.FC = () => {
           <p className="text-gray-500 text-sm">&copy; {new Date().getFullYear()} SportySlot. All rights reserved.</p>
         </div>
       </footer>
-    </div>
-  );
+    </div>;
 };
-
 export default Bookings;
