@@ -58,6 +58,22 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
+
+
+   const { data: bookings, error } = await supabase
+  .from('bookings')
+  .select('*')
+  .eq('user_id', userId)
+  .gte('booking_date', today)
+  .order('booking_date', { ascending: true });
+
+  if (error) throw error;
+
+
+
+
+
+
     
     // Prepare complete message history with system prompt
     const completeMessages = [
