@@ -199,7 +199,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       fetchAvailability();
       fetchCourtDetails(selectedCourt);
     }
-  }, [selectedCourt, selectedDate, refreshKey]);
+  }, [selectedCourt, selectedDate]);
 
   /* useEffect(() => {
     if (currentStep === 2 && selectedCourt && selectedDate) {
