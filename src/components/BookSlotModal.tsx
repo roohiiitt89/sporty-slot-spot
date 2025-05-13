@@ -133,25 +133,32 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       fetchVenueDetails(venueId);
     }
     
-    const bookingChannel = supabase
-      .channel('booking-updates')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'bookings'
-      }, (payload) => {
-        console.log('Booking change detected:', payload);
-        if (selectedCourt && selectedDate) {
-          setRefreshKey(prev => prev + 1);
-        }
-      })
-      .subscribe();
-      
-    return () => {
-      supabase.removeChannel(bookingChannel);
-    };
-  }, [venueId, user, navigate, onClose]);
+     // Only subscribe to changes for the CURRENTLY SELECTED court and date
+  const bookingChannel = supabase
+    .channel('booking-updates')
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'bookings',
+      filter: selectedCourt && selectedDate 
+        ? `court_id=eq.${selectedCourt},booking_date=eq.${selectedDate}`
+        : undefined
+    }, (payload) => {
+      console.log('Relevant booking change detected:', payload);
+      // Only refresh if the change matches our current selection
+      if (
+        payload.new.court_id === selectedCourt &&
+        payload.new.booking_date === selectedDate
+      ) {
+        setRefreshKey(prev => prev + 1);
+      }
+    })
+    .subscribe();
 
+  return () => {
+    supabase.removeChannel(bookingChannel);
+  };
+}, [user, selectedCourt, selectedDate]);
   useEffect(() => {
     const loadRazorpayScript = () => {
       return new Promise((resolve) => {
