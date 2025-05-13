@@ -14,7 +14,7 @@ import HomepageAvailabilityWidget from '@/components/HomepageAvailabilityWidget'
 import AIChatWidget from '@/components/AIChatWidget';
 import RotatingTypewriter from '@/components/RotatingTypewriter';
 import { Typewriter } from '@/components/Typewriter';
-
+import Link from 'next/link';
 
 
 interface Venue {
