@@ -111,52 +111,46 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
   };
 
   useEffect(() => {
-  if (!user) {
-    toast({
-      title: "Authentication Required",
-      description: "Please log in to book a slot",
-      variant: "destructive",
-    });
-    onClose();
-    navigate('/login');
-    return;
-  }
-  
-  fetchVenues();
-  fetchSports();
-  
-  // Only set default date if not already set
-  if (!selectedDate) {
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to book a slot",
+        variant: "destructive",
+      });
+      onClose();
+      navigate('/login');
+      return;
+    }
+    
+    fetchVenues();
+    fetchSports();
+    
     const today = new Date();
     setSelectedDate(today.toISOString().split('T')[0]);
-  }
 
-  if (venueId) {
-    setSelectedVenue(venueId);
-    fetchVenueDetails(venueId);
-  }
-  
-  const bookingChannel = supabase
-    .channel('booking-updates')
-    .on('postgres_changes', {
-      event: '*',
-      schema: 'public',
-      table: 'bookings'
-    }, (payload) => {
-      console.log('Booking change detected:', payload);
-      if (selectedCourt && selectedDate) {
-        setRefreshKey(prev => prev + 1);
-      }
-    })
-    .subscribe();
+    if (venueId) {
+      setSelectedVenue(venueId);
+      fetchVenueDetails(venueId);
+    }
     
-  return () => {
-    supabase.removeChannel(bookingChannel);
-  };
-}, [venueId, user, navigate, onClose]);
-
-
-
+    const bookingChannel = supabase
+      .channel('booking-updates')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'bookings'
+      }, (payload) => {
+        console.log('Booking change detected:', payload);
+        if (selectedCourt && selectedDate) {
+          setRefreshKey(prev => prev + 1);
+        }
+      })
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(bookingChannel);
+    };
+  }, [venueId, user, navigate, onClose]);
 
   useEffect(() => {
     const loadRazorpayScript = () => {
@@ -205,66 +199,15 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     }
   }, [selectedCourt, selectedDate, refreshKey]);
 
- // Replace the initial useEffect with:
-useEffect(() => {
-  if (!user) {
-    toast({
-      title: "Authentication Required",
-      description: "Please log in to book a slot",
-      variant: "destructive",
-    });
-    onClose();
-    navigate('/login');
-    return;
-  }
-  
-  fetchVenues();
-  fetchSports();
-  
-  // Only set default date if no date is selected
-  if (!selectedDate) {
-    const today = new Date();
-    setSelectedDate(today.toISOString().split('T')[0]);
-  }
-
-  if (venueId) {
-    setSelectedVenue(venueId);
-    fetchVenueDetails(venueId);
-  }
-  
-  const bookingChannel = supabase
-    .channel('booking-updates')
-    .on('postgres_changes', {
-      event: '*',
-      schema: 'public',
-      table: 'bookings'
-    }, (payload) => {
-      console.log('Booking change detected:', payload);
-      if (selectedCourt && selectedDate) {
+  useEffect(() => {
+    if (currentStep === 2 && selectedCourt && selectedDate) {
+      const intervalId = setInterval(() => {
         setRefreshKey(prev => prev + 1);
-      }
-    })
-    .subscribe();
-    
-  return () => {
-    supabase.removeChannel(bookingChannel);
-  };
-}, [venueId, user, navigate, onClose]);
-
-// Update the refresh useEffect to:
-useEffect(() => {
-  if (currentStep === 2 && selectedCourt && selectedDate) {
-    const intervalId = setInterval(() => {
-      // Only refresh if we're still on step 2 and have valid selections
-      if (currentStep === 2 && selectedCourt && selectedDate) {
-        setRefreshKey(prev => prev + 1);
-      }
-    }, 60000);
-    
-    return () => clearInterval(intervalId);
-  }
-}, [currentStep, selectedCourt, selectedDate]);
-
+      }, 60000);
+      
+      return () => clearInterval(intervalId);
+    }
+  }, [currentStep, selectedCourt, selectedDate]);
 
   useEffect(() => {
     if (user) {
@@ -1202,24 +1145,20 @@ useEffect(() => {
   )}
 </motion.div>
             
-           <motion.div variants={fadeIn} className="space-y-2">
-  <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
-    <Calendar size={16} className="text-emerald-400" />
-    Select Date
-  </label>
-  <input
-    type="date"
-    value={selectedDate}
-    onChange={e => {
-      // Only update if we have a valid date
-      if (e.target.value) {
-        setSelectedDate(e.target.value);
-      }
-    }}
-    min={new Date().toISOString().split('T')[0]}
-    className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-white placeholder-gray-400 transition-all"
-  />
-</motion.div>
+            <motion.div variants={fadeIn} className="space-y-2">
+              <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
+                <Calendar size={16} className="text-emerald-400" />
+                Select Date
+              </label>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={e => setSelectedDate(e.target.value)}
+                min={new Date().toISOString().split('T')[0]}
+                className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-white placeholder-gray-400 transition-all"
+              />
+            </motion.div>
+          </motion.div>
         )}
 
         {/* Step 2: Time Slot Selection */}
