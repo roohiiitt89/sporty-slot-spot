@@ -134,23 +134,18 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     }
  
 
-  // Only subscribe to changes for the CURRENTLY SELECTED court and date
+ useEffect(() => {
+  if (!user) return;
+
   const bookingChannel = supabase
     .channel('booking-updates')
     .on('postgres_changes', {
       event: '*',
       schema: 'public',
-      table: 'bookings',
-      filter: selectedCourt && selectedDate 
-        ? `court_id=eq.${selectedCourt},booking_date=eq.${selectedDate}`
-        : undefined
+      table: 'bookings'
     }, (payload) => {
-      console.log('Relevant booking change detected:', payload);
-      // Only refresh if the change matches our current selection
-      if (
-        payload.new.court_id === selectedCourt &&
-        payload.new.booking_date === selectedDate
-      ) {
+      console.log('Booking change detected:', payload);
+      if (selectedCourt && selectedDate) {
         setRefreshKey(prev => prev + 1);
       }
     })
@@ -159,7 +154,18 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
   return () => {
     supabase.removeChannel(bookingChannel);
   };
-}, [user, selectedCourt, selectedDate]); // Only resubscribe when these change
+}, [user, selectedCourt, selectedDate]);
+
+// Add this additional effect for periodic refreshes
+useEffect(() => {
+  if (currentStep === 2 && selectedCourt && selectedDate) {
+    const intervalId = setInterval(() => {
+      setRefreshKey(prev => prev + 1);
+    }, 15000);
+    
+    return () => clearInterval(intervalId);
+  }
+}, [currentStep, selectedCourt, selectedDate]);
     
   useEffect(() => {
     const loadRazorpayScript = () => {
@@ -409,78 +415,77 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
   };
 
   const fetchAvailability = useCallback(async () => {
-    if (!selectedCourt || !selectedDate) return;
+  if (!selectedCourt || !selectedDate) return;
+  
+  setLoading(prev => ({ ...prev, availability: true }));
+  try {
+    const { data, error } = await supabase
+      .rpc('get_available_slots', { 
+        p_court_id: selectedCourt, 
+        p_date: selectedDate 
+      });
     
-    setLoading(prev => ({ ...prev, availability: true }));
-    try {
-      const { data, error } = await supabase
-        .rpc('get_available_slots', { 
-          p_court_id: selectedCourt, 
-          p_date: selectedDate 
+    if (error) throw error;
+    
+    const { data: templateSlots, error: templateError } = await supabase
+      .from('template_slots')
+      .select('start_time, end_time, price')
+      .eq('court_id', selectedCourt);
+      
+    if (templateError) throw templateError;
+    
+    const priceMap: Record<string, string> = {};
+    templateSlots?.forEach(slot => {
+      const key = `${slot.start_time}-${slot.end_time}`;
+      priceMap[key] = slot.price;
+    });
+    
+    const slotsWithPrice = data?.map(slot => {
+      const key = `${slot.start_time}-${slot.end_time}`;
+      return {
+        ...slot,
+        price: priceMap[key] || courtRate.toString()
+      };
+    }) || [];
+    
+    setAvailableTimeSlots(slotsWithPrice);
+    
+    // Only update selected slots if they're no longer available
+    const updatedSelectedSlots = selectedSlots.filter(slotDisplay => {
+      const [startTime, endTime] = slotDisplay.split(' - ').map(t => convertTo24Hour(t));
+      const stillAvailable = slotsWithPrice.some(slot => 
+        slot.start_time === startTime && 
+        slot.end_time === endTime && 
+        slot.is_available
+      );
+      
+      if (!stillAvailable) {
+        const updatedPrices = { ...selectedSlotPrices };
+        delete updatedPrices[slotDisplay];
+        setSelectedSlotPrices(updatedPrices);
+        toast({
+          title: "Slot unavailable",
+          description: `${slotDisplay} was booked by someone else`,
+          variant: "destructive",
         });
-      
-      if (error) throw error;
-      
-      const { data: templateSlots, error: templateError } = await supabase
-        .from('template_slots')
-        .select('start_time, end_time, price')
-        .eq('court_id', selectedCourt);
-        
-      if (templateError) throw templateError;
-      
-      const priceMap: Record<string, string> = {};
-      templateSlots?.forEach(slot => {
-        const key = `${slot.start_time}-${slot.end_time}`;
-        priceMap[key] = slot.price;
-      });
-      
-      const slotsWithPrice = data?.map(slot => {
-        const key = `${slot.start_time}-${slot.end_time}`;
-        return {
-          ...slot,
-          price: priceMap[key] || courtRate.toString()
-        };
-      }) || [];
-      
-      setAvailableTimeSlots(slotsWithPrice);
-      
-      const updatedSelectedSlots = selectedSlots.filter(slotDisplay => {
-        const [startTime, endTime] = slotDisplay.split(' - ').map(t => convertTo24Hour(t));
-        const slotStillAvailable = slotsWithPrice.some(slot => 
-          slot.start_time === startTime && 
-          slot.end_time === endTime && 
-          slot.is_available
-        );
-        
-        if (!slotStillAvailable && selectedSlots.length > 0) {
-          toast({
-            title: "Slot no longer available",
-            description: `The time slot ${slotDisplay} is no longer available`,
-            variant: "destructive",
-          });
-          
-          const updatedPrices = { ...selectedSlotPrices };
-          delete updatedPrices[slotDisplay];
-          setSelectedSlotPrices(updatedPrices);
-        }
-        
-        return slotStillAvailable;
-      });
-      
-      if (updatedSelectedSlots.length !== selectedSlots.length) {
-        setSelectedSlots(updatedSelectedSlots);
       }
-    } catch (error) {
-      console.error('Error fetching availability:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load availability",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(prev => ({ ...prev, availability: false }));
+      return stillAvailable;
+    });
+    
+    if (updatedSelectedSlots.length !== selectedSlots.length) {
+      setSelectedSlots(updatedSelectedSlots);
     }
-  }, [selectedCourt, selectedDate, courtRate, selectedSlots, selectedSlotPrices]);
+  } catch (error) {
+    console.error('Error fetching availability:', error);
+    toast({
+      title: "Error",
+      description: "Failed to load availability. Please try again.",
+      variant: "destructive",
+    });
+  } finally {
+    setLoading(prev => ({ ...prev, availability: false }));
+  }
+}, [selectedCourt, selectedDate, courtRate, selectedSlots, selectedSlotPrices]);
 
   const formatTime = (time: string) => {
     const [hour, minute] = time.split(':').map(n => parseInt(n));
@@ -505,7 +510,19 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
 
   const handleSlotClick = (slot: TimeSlot) => {
     if (!slot.is_available) return;
-    
+
+  
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const newDate = e.target.value;
+  setSelectedDate(newDate);
+  
+  // Only fetch if court is already selected
+  if (selectedCourt) {
+    fetchAvailability();
+  }
+};
+
+
     const slotDisplay = `${formatTime(slot.start_time)} - ${formatTime(slot.end_time)}`;
     const slotPrice = parseFloat(slot.price);
     
@@ -1149,13 +1166,13 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
                 <Calendar size={16} className="text-emerald-400" />
                 Select Date
               </label>
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={e => setSelectedDate(e.target.value)}
-                min={new Date().toISOString().split('T')[0]}
-                className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-white placeholder-gray-400 transition-all"
-              />
+             <input
+  type="date"
+  value={selectedDate}
+  onChange={handleDateChange}
+  min={new Date().toISOString().split('T')[0]}
+  className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-white placeholder-gray-400 transition-all"
+/>
             </motion.div>
           </motion.div>
         )}
@@ -1208,31 +1225,28 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
                   className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3"
                 >
                   {availableTimeSlots.map((slot) => {
-  const slotDisplay = `${formatTime(slot.start_time)} - ${formatTime(slot.end_time)}`;
-  const isSelected = selectedSlots.includes(slotDisplay);
-  return (
-    <motion.button
-      key={`${slot.start_time}-${slot.end_time}`}
-      variants={slideUp}
-      whileHover={{ scale: slot.is_available ? 1.03 : 1 }}
-      whileTap={{ scale: slot.is_available ? 0.98 : 1 }}
-      disabled={!slot.is_available}
-      onClick={() => handleSlotClick(slot)}
-      className={`
-        p-2 rounded-lg border transition-all text-center text-sm transform
-        ${slot.is_available 
-          ? isSelected
-            ? 'bg-emerald-600 text-white border-emerald-700 shadow-lg shadow-emerald-800/30'
-            : 'bg-gray-800 border-gray-600 hover:border-emerald-500 hover:bg-gray-750 text-gray-200'
-          : 'bg-red-900/60 border-red-800 text-red-200 cursor-not-allowed'}
-        ${isSelected ? 'ring-2 ring-emerald-400' : ''}
-      `}
-    >
-      <div className="font-medium">{slotDisplay}</div>
-      <div className="text-xs mt-1">₹{parseFloat(slot.price).toFixed(2)}</div>
-    </motion.button>
-  );
-})}
+    const slotDisplay = `${formatTime(slot.start_time)} - ${formatTime(slot.end_time)}`;
+    const isSelected = selectedSlots.includes(slotDisplay);
+    return (
+      <button
+        key={`${slot.start_time}-${slot.end_time}`}
+        onClick={() => handleSlotClick(slot)}
+        disabled={!slot.is_available}
+        className={`
+          p-3 rounded-md border transition-all text-center
+          ${slot.is_available
+            ? isSelected
+              ? 'bg-emerald-600 text-white border-emerald-700 shadow-lg shadow-emerald-800/30'
+              : 'bg-gray-800 border-gray-600 hover:border-emerald-500 hover:bg-gray-750 text-gray-200'
+            : 'bg-gray-900/60 border-gray-800 text-gray-400 cursor-not-allowed'}
+        `}
+      >
+        <div className="font-medium">{slotDisplay}</div>
+        <div className="text-xs mt-1">₹{parseFloat(slot.price).toFixed(2)}</div>
+      </button>
+    );
+  })}
+</div>
                 </motion.div>
                 
                 {availableTimeSlots.length === 0 && (
