@@ -1,6 +1,5 @@
-
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Send, MessageSquare, Loader2, ChevronDown, Bot } from 'lucide-react';
+import { X, Send, MessageSquare, Loader2, Bot } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,41 +9,25 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: Date;
-  // For function calls
-  functionCall?: {
-    name: string;
-    arguments: any;
-    result: any;
-  }
-}
-
-// Maximum number of messages to store
 const MAX_MESSAGES = 15;
-// Maximum number of queries per user per week
 const MAX_QUERIES_PER_WEEK = 15;
 
 const AIChatWidget = () => {
   const { user, userRole } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [queryCount, setQueryCount] = useState(0);
   const [showWelcome, setShowWelcome] = useState(true);
   const [apiKeySet, setApiKeySet] = useState(true);
   const [retryCount, setRetryCount] = useState(0);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const scrollRef = useRef(null);
+  const inputRef = useRef(null);
   const isMobile = useIsMobile();
 
-  // Welcome message and examples
   const welcomeMessage = `👋 Hello${user?.email ? ` ${user.email.split('@')[0]}` : ''}! I'm your Grid2Play sports assistant. How can I help you today?`;
-  
+
   const examples = [
     "Show me my upcoming bookings",
     "Are there any badminton courts available tomorrow?",
@@ -91,8 +74,6 @@ const AIChatWidget = () => {
           const data = JSON.parse(countData);
           const lastWeek = new Date();
           lastWeek.setDate(lastWeek.getDate() - 7);
-          
-          // Reset count if last query was more than a week ago
           if (new Date(data.timestamp) < lastWeek) {
             setQueryCount(0);
           } else {
@@ -105,38 +86,8 @@ const AIChatWidget = () => {
     }
   }, [user]);
 
-  // Check if input contains "key" or "keys" to set API key
-  useEffect(() => {
-    if (userRole === 'admin' || userRole === 'super_admin') {
-      if (retryCount > 0 && !apiKeySet) {
-        const checkForApiKey = async () => {
-          try {
-            // Simulate checking if API key is set
-            const { data, error } = await supabase.functions.invoke('ai-assistant', {
-              body: {
-                messages: [{ role: "user", content: "Hello" }],
-                userId: user?.id,
-                role: userRole
-              }
-            });
-            
-            if (!error && data.message) {
-              setApiKeySet(true);
-            }
-          } catch (err) {
-            console.log('API key not set yet');
-          }
-        };
-        
-        checkForApiKey();
-      }
-    }
-  }, [retryCount, userRole, apiKeySet, user]);
-
   // Handle opening and closing the chat
-  const toggleChat = () => {
-    setIsOpen(!isOpen);
-  };
+  const toggleChat = () => setIsOpen(!isOpen);
 
   // Handle sending a message
   const sendMessage = async () => {
@@ -149,39 +100,31 @@ const AIChatWidget = () => {
       });
       return;
     }
-    
+
     // Check if admin is providing API key
-    if ((userRole === 'admin' || userRole === 'super_admin') && 
-        (inputValue.toLowerCase().includes('key') || inputValue.toLowerCase().includes('keys'))) {
-      
-      // Mock response for API key setup
+    if ((userRole === 'admin' || userRole === 'super_admin') &&
+      (inputValue.toLowerCase().includes('key') || inputValue.toLowerCase().includes('keys'))) {
       setApiKeySet(true);
-      
-      const userMessage: Message = {
+      const userMessage = {
         id: `user-${Date.now()}`,
         role: 'user',
         content: inputValue,
         timestamp: new Date()
       };
-      
       setMessages(prev => [...prev, userMessage]);
       setInputValue('');
-      
-      // Add assistant response acknowledging key setup
       setTimeout(() => {
-        const assistantMessage: Message = {
+        const assistantMessage = {
           id: `assistant-${Date.now()}`,
           role: 'assistant',
           content: "OpenAI API key has been updated successfully. The AI assistant is now ready to use!",
           timestamp: new Date()
         };
-        
         setMessages(prev => [...prev, assistantMessage]);
       }, 1000);
-      
       return;
     }
-    
+
     // Check if user has exceeded weekly query limit
     if (queryCount >= MAX_QUERIES_PER_WEEK) {
       toast({
@@ -191,64 +134,55 @@ const AIChatWidget = () => {
       });
       return;
     }
-    
-    const userMessage: Message = {
+
+    const userMessage = {
       id: `user-${Date.now()}`,
       role: 'user',
       content: inputValue,
       timestamp: new Date()
     };
-    
-    // Add user message to chat
+
+    // Add user message to chat immediately
     setMessages(prev => [...prev, userMessage]);
     setInputValue('');
     setIsLoading(true);
     setShowWelcome(false);
-    
+
     try {
-      // Prepare conversation history for API
-      const messageHistory = messages
-        .filter(msg => msg.id !== "welcome-message") // Exclude welcome message
+      // Prepare conversation history for API (exclude welcome message)
+      const messageHistory = [...messages.filter(msg => msg.id !== "welcome-message"), userMessage]
         .map(msg => ({
           role: msg.role,
           content: msg.content
         }));
-      
-      // Add the new message
-      messageHistory.push({
-        role: "user",
-        content: inputValue
-      });
-      
+
       // Call the Edge Function
       const { data, error } = await supabase.functions.invoke('ai-assistant', {
         body: {
           messages: messageHistory,
-          userId: user.id, // Always send user ID
+          userId: user.id,
           role: userRole
         }
       });
-      
-      if (error) throw error;
-      
-      // Add assistant response to chat
-      const assistantMessage: Message = {
+
+      if (error || !data?.message?.content) throw error || new Error("No response from assistant");
+
+      const assistantMessage = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
         content: data.message.content,
         timestamp: new Date(),
         functionCall: data.functionCall
       };
-      
+
       setMessages(prev => {
         const newMessages = [...prev, assistantMessage];
-        // Limit the number of messages
         if (newMessages.length > MAX_MESSAGES) {
           return newMessages.slice(newMessages.length - MAX_MESSAGES);
         }
         return newMessages;
       });
-      
+
       // Update query count in localStorage
       const newCount = queryCount + 1;
       setQueryCount(newCount);
@@ -256,21 +190,14 @@ const AIChatWidget = () => {
         count: newCount,
         timestamp: new Date()
       }));
-      
-      // Reset retry count if successful
       setRetryCount(0);
-      
+
     } catch (error) {
       console.error('Error sending message:', error);
-      
-      // Increment retry count for API key checking logic
       setRetryCount(prev => prev + 1);
-      
-      // Check if we should suggest API key setup
+
       if (userRole === 'admin' || userRole === 'super_admin') {
         setApiKeySet(false);
-        
-        // Add error message with API key prompt for admins
         setMessages(prev => [...prev, {
           id: `error-${Date.now()}`,
           role: 'assistant',
@@ -283,8 +210,6 @@ const AIChatWidget = () => {
           description: "Failed to get response from AI assistant",
           variant: "destructive"
         });
-        
-        // Add error message to chat
         setMessages(prev => [...prev, {
           id: `error-${Date.now()}`,
           role: 'assistant',
@@ -297,24 +222,19 @@ const AIChatWidget = () => {
     }
   };
 
-  // Handle pressing Enter to send message
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
     }
   };
 
-  // Handle clicking on an example query
-  const handleExampleClick = (example: string) => {
+  const handleExampleClick = (example) => {
     setInputValue(example);
-    if (inputRef.current) {
-      inputRef.current.focus();
-    }
+    if (inputRef.current) inputRef.current.focus();
   };
 
-  // Format message content with newlines
-  const formatMessageContent = (content: string) => {
+  const formatMessageContent = (content) => {
     return content.split('\n').map((line, i) => (
       <React.Fragment key={i}>
         {line}
@@ -387,7 +307,6 @@ const AIChatWidget = () => {
             <X className="h-5 w-5" />
           </button>
         </div>
-        
         {/* Chat Messages */}
         <ScrollArea className="flex-grow p-4" ref={scrollRef}>
           <div className="space-y-4">
@@ -421,7 +340,6 @@ const AIChatWidget = () => {
                       </>
                     )}
                   </Avatar>
-                  
                   <div
                     className={`rounded-lg p-3 text-sm ${
                       message.role === 'user'
@@ -430,13 +348,12 @@ const AIChatWidget = () => {
                     }`}
                   >
                     <p>{formatMessageContent(message.content)}</p>
-                    
                     {/* Display function call result if available */}
                     {message.functionCall && message.functionCall.result && message.functionCall.result.success && (
                       <div className="mt-2 p-2 bg-green-800/30 rounded border border-green-700/30 text-green-100">
                         <p className="text-xs font-medium mb-1">
-                          {message.functionCall.name === 'book_court' 
-                            ? 'Booking Confirmed!' 
+                          {message.functionCall.name === 'book_court'
+                            ? 'Booking Confirmed!'
                             : 'Information Retrieved'}
                         </p>
                         {message.functionCall.name === 'book_court' && (
@@ -446,148 +363,61 @@ const AIChatWidget = () => {
                         )}
                       </div>
                     )}
-                    
                     {/* Display timestamp */}
                     <p className={`text-xs mt-1 ${
                       message.role === 'user' ? 'text-indigo-100' : 'text-gray-400'
                     }`}>
-                      {message.timestamp.toLocaleTimeString([], { 
-                        hour: '2-digit', 
-                        minute: '2-digit' 
+                      {message.timestamp.toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit'
                       })}
                     </p>
                   </div>
                 </div>
               </div>
             ))}
-            
-            {isLoading && (
-              <div className="flex justify-start">
-                <div className="flex gap-2 max-w-[80%]">
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-indigo-light/20 text-indigo-light">
-                      <Bot className="h-4 w-4" />
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="rounded-lg bg-navy-light text-white p-4">
-                    <div className="flex items-center gap-2">
-                      <div className="dot-typing"></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
-          
-          {/* Examples */}
-          {showWelcome && (
-            <div className="mt-4 space-y-2">
-              <p className="text-xs text-gray-400 mb-2">Try asking:</p>
-              <div className="flex flex-wrap gap-2">
-                {examples.map((example, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleExampleClick(example)}
-                    className="bg-navy-light text-indigo-200 text-xs px-3 py-1.5 rounded-full hover:bg-navy transition-colors"
-                  >
-                    {example}
-                  </button>
-                ))}
-              </div>
-              
-              {/* Query Counter */}
-              <div className="text-xs text-gray-400 mt-4">
-                <p>Queries used: {queryCount}/{MAX_QUERIES_PER_WEEK} this week</p>
-              </div>
-            </div>
-          )}
-          
-          {/* Admin API Key Setup Prompt */}
-          {!apiKeySet && (userRole === 'admin' || userRole === 'super_admin') && retryCount > 0 && (
-            <div className="mt-4 p-3 bg-amber-800/30 border border-amber-700/30 rounded-md">
-              <p className="text-amber-200 text-sm font-medium">OpenAI API Key Required</p>
-              <p className="text-amber-100/80 text-xs mt-1">
-                As an admin, please type "keys" to set up the OpenAI API key for the AI assistant.
-              </p>
-            </div>
-          )}
         </ScrollArea>
-        
-        {/* Chat Input */}
-        <div className="p-4 border-t border-gray-700 bg-navy-dark/60">
-          <div className="flex gap-2">
-            <Input
-              ref={inputRef}
-              className="flex-grow bg-navy-light border-gray-700 text-white placeholder-gray-400 focus:ring-indigo focus:border-indigo"
-              placeholder="Ask about courts, bookings, etc."
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyPress={handleKeyPress}
-              disabled={isLoading || !user || queryCount >= MAX_QUERIES_PER_WEEK}
-            />
-            <Button
-              onClick={sendMessage}
-              disabled={isLoading || !inputValue.trim() || !user || queryCount >= MAX_QUERIES_PER_WEEK}
-              className="bg-indigo hover:bg-indigo-dark text-white"
-            >
-              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            </Button>
+        {/* Input Area */}
+        <form
+          className="p-4 border-t border-gray-700 bg-navy-light flex gap-2"
+          onSubmit={e => {
+            e.preventDefault();
+            sendMessage();
+          }}
+        >
+          <Input
+            ref={inputRef}
+            value={inputValue}
+            onChange={e => setInputValue(e.target.value)}
+            onKeyDown={handleKeyPress}
+            placeholder="Type your message..."
+            disabled={isLoading}
+            className="flex-1"
+          />
+          <Button type="submit" disabled={isLoading || !inputValue.trim()}>
+            {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+          </Button>
+        </form>
+        {/* Example Queries */}
+        {showWelcome && (
+          <div className="p-4 bg-navy-light border-t border-gray-700">
+            <div className="text-xs text-gray-300 mb-2">Try asking:</div>
+            <div className="flex flex-wrap gap-2">
+              {examples.map((ex, idx) => (
+                <button
+                  key={idx}
+                  className="bg-indigo-light/20 text-indigo-light px-3 py-1 rounded-full text-xs hover:bg-indigo-light/40"
+                  onClick={() => handleExampleClick(ex)}
+                  type="button"
+                >
+                  {ex}
+                </button>
+              ))}
+            </div>
           </div>
-          
-          {!user && (
-            <p className="text-xs text-amber-400 mt-2">
-              Please sign in to use the AI assistant
-            </p>
-          )}
-          
-          {queryCount >= MAX_QUERIES_PER_WEEK && (
-            <p className="text-xs text-amber-400 mt-2">
-              You've reached your weekly query limit
-            </p>
-          )}
-        </div>
+        )}
       </div>
-      
-      {/* Dot Typing Animation CSS */}
-      <style>
-        {`
-        .dot-typing {
-          position: relative;
-          left: -9999px;
-          width: 6px;
-          height: 6px;
-          border-radius: 5px;
-          background-color: #9089fc;
-          color: #9089fc;
-          box-shadow: 9984px 0 0 0 #9089fc, 9999px 0 0 0 #9089fc, 10014px 0 0 0 #9089fc;
-          animation: dotTyping 1.5s infinite linear;
-        }
-
-        @keyframes dotTyping {
-          0% {
-            box-shadow: 9984px 0 0 0 #9089fc, 9999px 0 0 0 #9089fc, 10014px 0 0 0 #9089fc;
-          }
-          16.667% {
-            box-shadow: 9984px -10px 0 0 #9089fc, 9999px 0 0 0 #9089fc, 10014px 0 0 0 #9089fc;
-          }
-          33.333% {
-            box-shadow: 9984px 0 0 0 #9089fc, 9999px 0 0 0 #9089fc, 10014px 0 0 0 #9089fc;
-          }
-          50% {
-            box-shadow: 9984px 0 0 0 #9089fc, 9999px -10px 0 0 #9089fc, 10014px 0 0 0 #9089fc;
-          }
-          66.667% {
-            box-shadow: 9984px 0 0 0 #9089fc, 9999px 0 0 0 #9089fc, 10014px 0 0 0 #9089fc;
-          }
-          83.333% {
-            box-shadow: 9984px 0 0 0 #9089fc, 9999px 0 0 0 #9089fc, 10014px -10px 0 0 #9089fc;
-          }
-          100% {
-            box-shadow: 9984px 0 0 0 #9089fc, 9999px 0 0 0 #9089fc, 10014px 0 0 0 #9089fc;
-          }
-        }
-        `}
-      </style>
     </>
   );
 };
