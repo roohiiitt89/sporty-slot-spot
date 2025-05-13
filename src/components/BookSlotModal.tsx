@@ -957,7 +957,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       No sports available for this venue
     </p>
   ) : (
-    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-2">
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
       {venueSports.map((sport) => (
         <motion.div
           key={sport.id}
@@ -978,19 +978,19 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
           />
           <label
             htmlFor={`sport-${sport.id}`}
-            className={`flex items-center gap-2 w-full p-3 rounded-lg border transition-all cursor-pointer ${
+            className={`flex items-center justify-center gap-1 w-full p-2 rounded-lg border text-sm transition-all cursor-pointer ${
               selectedSport === sport.id
-                ? 'bg-emerald-600 text-white border-emerald-700 shadow-lg shadow-emerald-800/30'
-                : 'bg-gray-800 border-gray-700 hover:border-emerald-500 hover:bg-gray-750 text-gray-200'
+                ? 'bg-emerald-600 text-white border-emerald-700 shadow-md shadow-emerald-800/20'
+                : 'bg-gray-800 border-gray-600 hover:border-emerald-500 hover:bg-gray-750 text-gray-200'
             }`}
           >
-            <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${
+            <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
               selectedSport === sport.id 
                 ? 'border-white bg-white' 
                 : 'border-gray-400'
             }`}>
               {selectedSport === sport.id && (
-                <div className="w-2 h-2 rounded-full bg-emerald-600"></div>
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-600"></div>
               )}
             </div>
             {selectedVenue ? (
@@ -1038,6 +1038,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     </motion.div>
   )}
 </motion.div>
+
             
             <motion.div variants={fadeIn} className="space-y-2">
   <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
@@ -1064,7 +1065,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       No courts available for this venue and sport combination.
     </p>
   ) : (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
       {courts.map((court) => (
         <motion.div
           key={court.id}
@@ -1086,26 +1087,26 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
           />
           <label
             htmlFor={`court-${court.id}`}
-            className={`flex items-center gap-2 w-full p-3 rounded-lg border transition-all cursor-pointer ${
+            className={`flex items-center justify-center gap-1 w-full p-2 rounded-lg border text-sm transition-all cursor-pointer ${
               selectedCourt === court.id
-                ? 'bg-emerald-600 text-white border-emerald-700 shadow-lg shadow-emerald-800/30'
-                : 'bg-gray-800 border-gray-700 hover:border-emerald-500 hover:bg-gray-750 text-gray-200'
+                ? 'bg-emerald-600 text-white border-emerald-700 shadow-md shadow-emerald-800/20'
+                : 'bg-gray-800 border-gray-600 hover:border-emerald-500 hover:bg-gray-750 text-gray-200'
             }`}
           >
-            <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${
+            <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
               selectedCourt === court.id 
                 ? 'border-white bg-white' 
                 : 'border-gray-400'
             }`}>
               {selectedCourt === court.id && (
-                <div className="w-2 h-2 rounded-full bg-emerald-600"></div>
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-600"></div>
               )}
             </div>
-            <div>
-              <div>{court.name}</div>
-              <div className="text-xs text-gray-300 mt-1">
-                ₹{court.hourly_rate}/hour
-              </div>
+            <div className="flex items-center gap-1">
+              <span>{court.name}</span>
+              {court.court_group_id && (
+                <span className="text-xs">🏟️</span>
+              )}
             </div>
           </label>
         </motion.div>
