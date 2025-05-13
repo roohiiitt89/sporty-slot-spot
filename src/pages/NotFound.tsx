@@ -1,39 +1,102 @@
-import { Button } from "@/components/ui/button";
+import { useLocation, Link } from "react-router-dom";
+import { useEffect } from "react";
+import { motion } from "framer-motion";
+import { Soccer, Tennis, Basketball } from "lucide-react";
 
-export function NotFoundPage() {
+const NotFound = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    console.error(
+      "404 Error: User attempted to access non-existent route:",
+      location.pathname
+    );
+  }, [location.pathname]);
+
+  // Sports balls animation variants
+  const ballVariants = {
+    bounce: {
+      y: [0, -30, 0],
+      transition: {
+        duration: 1.5,
+        repeat: Infinity,
+        ease: "easeOut"
+      }
+    }
+  };
+
   return (
-    <section className="bg-white font-serif min-h-screen flex items-center justify-center">
-      <div className="container mx-auto">
-        <div className="flex justify-center">
-          <div className="w-full sm:w-10/12 md:w-8/12 text-center">
-            <div
-              className="bg-[url(https://cdn.dribbble.com/users/285475/screenshots/2083086/dribbble_1.gif)] h-[250px] sm:h-[350px] md:h-[400px] bg-center bg-no-repeat bg-contain"
-              aria-hidden="true"
-            >
-              <h1 className="text-center text-black text-6xl sm:text-7xl md:text-8xl pt-6 sm:pt-8">
-                404
-              </h1>
-            </div>
-
-            <div className="mt-[-50px]">
-              <h3 className="text-2xl text-black sm:text-3xl font-bold mb-4">
-                Look like you're lost
-              </h3>
-              <p className="mb-6 text-black sm:mb-5">
-                The page you are looking for is not available!
-              </p>
-
-              <Button
-                variant="default"
-                onClick={() => router.push("/")}
-                className="my-5 bg-green-600 hover:bg-green-700 "
-              >
-                Go to Home
-              </Button>
-            </div>
-          </div>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50">
+      <motion.div 
+        className="text-center p-8 max-w-md"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        {/* Animated sports balls */}
+        <div className="flex justify-center space-x-8 mb-8">
+          <motion.div
+            variants={ballVariants}
+            animate="bounce"
+            className="text-orange-500"
+          >
+            <Basketball size={48} />
+          </motion.div>
+          <motion.div
+            variants={ballVariants}
+            animate="bounce"
+            transition={{ delay: 0.2 }}
+            className="text-green-600"
+          >
+            <Soccer size={48} />
+          </motion.div>
+          <motion.div
+            variants={ballVariants}
+            animate="bounce"
+            transition={{ delay: 0.4 }}
+            className="text-yellow-500"
+          >
+            <Tennis size={48} />
+          </motion.div>
         </div>
-      </div>
-    </section>
+
+        <h1 className="text-6xl font-bold mb-4 text-gray-800">404</h1>
+        <motion.p 
+          className="text-2xl text-gray-600 mb-6"
+          animate={{
+            scale: [1, 1.05, 1],
+          }}
+          transition={{
+            duration: 2,
+            repeat: Infinity,
+          }}
+        >
+          Oops! Page not found
+        </motion.p>
+        <p className="text-gray-500 mb-8">
+          The page <span className="font-mono bg-gray-200 px-2 py-1 rounded">{location.pathname}</span> doesn't exist.
+        </p>
+        
+        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+          <Link 
+            to="/" 
+            className="inline-block bg-gradient-to-r from-green-500 to-blue-500 text-white font-semibold px-6 py-3 rounded-full shadow-lg hover:shadow-xl transition-all"
+          >
+            Return to Home
+          </Link>
+        </motion.div>
+
+        <motion.p 
+          className="mt-8 text-gray-400 text-sm"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+        >
+          Keep playing, keep scoring!
+        </motion.p>
+      </motion.div>
+    </div>
   );
-}
+};
+
+export default NotFound;
