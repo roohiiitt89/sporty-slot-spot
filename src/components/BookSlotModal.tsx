@@ -193,11 +193,11 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
   }, [selectedVenue, selectedSport]);
 
   useEffect(() => {
-    if (selectedCourt && selectedDate) {
+    if (selectedCourt) {
       fetchAvailability();
       fetchCourtDetails(selectedCourt);
     }
-  }, [selectedCourt, selectedDate, refreshKey]);
+  }, [selectedCourt, refreshKey]);
 
   useEffect(() => {
     if (user) {
