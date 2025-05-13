@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, Clock, MapPin, Calendar, User, CreditCard, Loader, ChevronRight, Check, ChevronLeft, Activity, RefreshCw, Info, AlertCircle } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
@@ -1407,7 +1408,8 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
         </div>
       </motion.div>
 
-      <style jsx>{`
+      <style>
+        {`
         .animate-spin-once {
           animation: spinOnce 0.5s ease-out;
         }
@@ -1415,11 +1417,10 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
         }
-      `}</style>
+        `}
+      </style>
     </motion.div>
   );
 };
 
 export default BookSlotModal;
-
-</edits_to_apply>
