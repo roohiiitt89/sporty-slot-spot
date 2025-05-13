@@ -1245,22 +1245,22 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
                 )}
                 
                 <motion.div 
-                  variants={fadeIn}
-                  className="mt-8 flex flex-wrap items-center gap-4 text-sm"
-                >
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-emerald-600 rounded-full mr-2"></div>
-                    <span className="text-gray-300">Selected</span>
-                  </div>
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-gray-800 border border-gray-600 rounded-full mr-2"></div>
-                    <span className="text-gray-300">Available</span>
-                  </div>
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-gray-800 rounded-full mr-2"></div>
-                    <span className="text-gray-500">Unavailable</span>
-                  </div>
-                </motion.div>
+  variants={fadeIn}
+  className="mt-6 flex flex-wrap items-center gap-3 text-xs"
+>
+  <div className="flex items-center">
+    <div className="w-3 h-3 bg-emerald-600 rounded-full mr-2"></div>
+    <span className="text-gray-300">Selected</span>
+  </div>
+  <div className="flex items-center">
+    <div className="w-3 h-3 bg-gray-800 border border-gray-600 rounded-full mr-2"></div>
+    <span className="text-gray-300">Available</span>
+  </div>
+  <div className="flex items-center">
+    <div className="w-3 h-3 bg-red-900/60 rounded-full mr-2"></div>
+    <span className="text-gray-300">Booked</span>
+  </div>
+</motion.div>
                 
                 {selectedSlots.length > 0 && (
                   <motion.div 
