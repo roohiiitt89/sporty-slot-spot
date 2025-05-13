@@ -199,66 +199,6 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     }
   }, [selectedCourt, selectedDate, refreshKey]);
 
- // Replace the initial useEffect with:
-useEffect(() => {
-  if (!user) {
-    toast({
-      title: "Authentication Required",
-      description: "Please log in to book a slot",
-      variant: "destructive",
-    });
-    onClose();
-    navigate('/login');
-    return;
-  }
-  
-  fetchVenues();
-  fetchSports();
-  
-  // Only set default date if no date is selected
-  if (!selectedDate) {
-    const today = new Date();
-    setSelectedDate(today.toISOString().split('T')[0]);
-  }
-
-  if (venueId) {
-    setSelectedVenue(venueId);
-    fetchVenueDetails(venueId);
-  }
-  
-  const bookingChannel = supabase
-    .channel('booking-updates')
-    .on('postgres_changes', {
-      event: '*',
-      schema: 'public',
-      table: 'bookings'
-    }, (payload) => {
-      console.log('Booking change detected:', payload);
-      if (selectedCourt && selectedDate) {
-        setRefreshKey(prev => prev + 1);
-      }
-    })
-    .subscribe();
-    
-  return () => {
-    supabase.removeChannel(bookingChannel);
-  };
-}, [venueId, user, navigate, onClose]);
-
-// Update the refresh useEffect to:
-useEffect(() => {
-  if (currentStep === 2 && selectedCourt && selectedDate) {
-    const fetchData = () => {
-      // Only refresh if the date hasn't changed
-      if (selectedDate) {
-        setRefreshKey(prev => prev + 1);
-      }
-    };
-    
-    const intervalId = setInterval(fetchData, 60000);
-    return () => clearInterval(intervalId);
-  }
-}, [currentStep, selectedCourt, selectedDate]);
   useEffect(() => {
     if (user) {
       const fetchUserProfile = async () => {
