@@ -71,6 +71,44 @@ serve(async (req) => {
 
 
 
+  const { messages, userId } = await req.json();
+const latestMsg = messages[messages.length - 1].content.toLowerCase();
+
+if (latestMsg.includes("my upcoming bookings")) {
+  // Fetch bookings for this user
+  const { data: bookings } = await supabase
+    .from('bookings')
+    .select('*')
+    .eq('user_id', userId)
+    .gte('booking_date', today);
+
+  if (!bookings || bookings.length === 0) {
+    return respond("You have no upcoming bookings.");
+  }
+  // Format and return bookings
+  return respond(`Here are your upcoming bookings:\n${formatBookings(bookings)}`);
+}
+
+if (latestMsg.includes("sports available")) {
+  // Fetch sports from your sports/venues table
+  const { data: sports } = await supabase
+    .from('sports')
+    .select('name');
+
+  if (!sports || sports.length === 0) {
+    return respond("No sports are currently available.");
+  }
+  return respond(`Sports available: ${sports.map(s => s.name).join(', ')}`);
+}
+
+// Fallback: Use OpenAI for general queries
+const openaiResponse = await callOpenAI(messages);
+return respond(openaiResponse);
+
+
+
+
+
 
 
 
