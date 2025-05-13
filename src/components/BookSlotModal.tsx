@@ -311,7 +311,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     try {
       const { data, error } = await supabase
         .from('sports')
-        .select('id, name, icon_name')
+        .select('id, name')
         .eq('is_active', true)
         .order('name', { ascending: true });
         
@@ -334,7 +334,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     try {
       const { data, error } = await supabase
         .from('courts')
-        .select(`sport_id, sports:sport_id (id, name, icon_name)`)
+        .select(`sport_id, sports:sport_id (id, name)`)
         .eq('venue_id', venueId)
         .eq('is_active', true);
         
@@ -344,7 +344,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
         const uniqueSportsMap = new Map<string, Sport>();
         data.forEach(item => {
           if (item.sports && !uniqueSportsMap.has(item.sports.id)) {
-            uniqueSportsMap.set(item.sports.id, item.sports);
+            uniqueSportsMap.set(item.sports.id, item.sports as Sport);
           }
         });
         
@@ -376,7 +376,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     try {
       const { data, error } = await supabase
         .from('courts')
-        .select('id, name, venue_id, sport_id, court_group_id, hourly_rate, description')
+        .select('id, name, venue_id, sport_id, court_group_id, hourly_rate')
         .eq('venue_id', selectedVenue)
         .eq('sport_id', selectedSport)
         .eq('is_active', true)
@@ -1217,7 +1217,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
                         </motion.span>
                       ))}
                     </div>
-                    <div className="mt-3 pt-3 border-t border-emerald-800/30 flex justify-between items-center">
+                    <div className="mt-3 pt-3 border-t border-emerald-800/30 flex justify-between">
                       <span className="font-medium text-emerald-300">Total:</span>
                       <span className="text-lg font-bold text-emerald-400">₹{calculateTotalPrice().toFixed(2)}</span>
                     </div>
@@ -1421,3 +1421,5 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
 };
 
 export default BookSlotModal;
+
+</edits_to_apply>

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 
 interface TypewriterProps {
@@ -47,3 +48,5 @@ export const Typewriter: React.FC<TypewriterProps> = ({ texts, delay = 100 }) =>
     </span>
   );
 };
+
+export default Typewriter;

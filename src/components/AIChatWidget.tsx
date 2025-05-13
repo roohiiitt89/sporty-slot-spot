@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Send, MessageSquare, Loader2, ChevronDown, Bot } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -531,7 +530,8 @@ const AIChatWidget = () => {
       </div>
       
       {/* Dot Typing Animation CSS */}
-      <style jsx>{`
+      <style>
+        {`
         .dot-typing {
           position: relative;
           left: -9999px;
@@ -567,7 +567,8 @@ const AIChatWidget = () => {
             box-shadow: 9984px 0 0 0 #9089fc, 9999px 0 0 0 #9089fc, 10014px 0 0 0 #9089fc;
           }
         }
-      `}</style>
+        `}
+      </style>
     </>
   );
 };

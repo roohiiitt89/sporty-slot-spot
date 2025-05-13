@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import Typewriter from './Typewriter';
+import { Typewriter } from './Typewriter';
 
 interface RotatingTypewriterProps {
   text: string[];
@@ -22,7 +23,7 @@ const RotatingTypewriter: React.FC<RotatingTypewriterProps> = ({
     return () => clearInterval(interval);
   }, [text.length, phraseDelay]);
 
-  return <Typewriter text={text[currentPhraseIndex]} delay={delay} />;
+  return <Typewriter texts={[text[currentPhraseIndex]]} delay={delay} />;
 };
 
 export default RotatingTypewriter;
