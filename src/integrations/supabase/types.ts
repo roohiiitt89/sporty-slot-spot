@@ -204,7 +204,7 @@ export type Database = {
         Row: {
           court_group_id: string | null
           created_at: string
-          hourly_rate: number
+          hourly_rate: number | null
           id: string
           is_active: boolean
           name: string
@@ -216,7 +216,7 @@ export type Database = {
         Insert: {
           court_group_id?: string | null
           created_at?: string
-          hourly_rate?: number
+          hourly_rate?: number | null
           id?: string
           is_active?: boolean
           name: string
@@ -228,7 +228,7 @@ export type Database = {
         Update: {
           court_group_id?: string | null
           created_at?: string
-          hourly_rate?: number
+          hourly_rate?: number | null
           id?: string
           is_active?: boolean
           name?: string

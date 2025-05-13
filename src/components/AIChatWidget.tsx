@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Send, MessageSquare, Loader2, ChevronDown, Bot } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -42,11 +43,11 @@ const AIChatWidget = () => {
   const isMobile = useIsMobile();
 
   // Welcome message and examples
-  const welcomeMessage = `👋 Hello! I'm your Grid2Play sports assistant. How can I help you today?`;
+  const welcomeMessage = `👋 Hello${user?.email ? ` ${user.email.split('@')[0]}` : ''}! I'm your Grid2Play sports assistant. How can I help you today?`;
   
   const examples = [
+    "Show me my upcoming bookings",
     "Are there any badminton courts available tomorrow?",
-    "What are my upcoming bookings?",
     "Recommend tennis courts near me",
     "Show me courts available this weekend"
   ];
@@ -63,7 +64,7 @@ const AIChatWidget = () => {
         }
       ]);
     }
-  }, [showWelcome, messages.length]);
+  }, [showWelcome, messages.length, user, welcomeMessage]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -223,7 +224,7 @@ const AIChatWidget = () => {
       const { data, error } = await supabase.functions.invoke('ai-assistant', {
         body: {
           messages: messageHistory,
-          userId: user.id,
+          userId: user.id, // Always send user ID
           role: userRole
         }
       });
@@ -321,6 +322,24 @@ const AIChatWidget = () => {
       </React.Fragment>
     ));
   };
+
+  // If no user is logged in, show a reduced button that prompts to login
+  if (!user) {
+    return (
+      <button
+        onClick={() => {
+          toast({
+            title: "Sign in required",
+            description: "Please sign in to use the AI assistant",
+          });
+        }}
+        className={`fixed z-50 ${isMobile ? 'bottom-20 right-4' : 'bottom-6 right-6'} w-14 h-14 rounded-full bg-gradient-to-r from-indigo/60 to-indigo-dark/60 text-white flex items-center justify-center shadow-lg transition-all duration-300 hover:from-indigo hover:to-indigo-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-light`}
+        aria-label="AI assistant (login required)"
+      >
+        <Bot className="h-6 w-6" />
+      </button>
+    );
+  }
 
   return (
     <>

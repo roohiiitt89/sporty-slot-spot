@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
@@ -26,6 +25,9 @@ Keep responses concise, focusing on helping users:
 6. Navigate payment options
 
 You can use functions to access real data from our database when needed.
+
+IMPORTANT: You already know who the user is. DO NOT ask users for their user ID, email, or any identifying information.
+Instead, use the authenticated user information already provided to this function.
 `;
 
 serve(async (req) => {
@@ -63,6 +65,14 @@ serve(async (req) => {
       ...messages
     ];
     
+    // Add user authentication context to the system message
+    if (userId) {
+      completeMessages.unshift({
+        role: "system", 
+        content: `The current user has user_id: ${userId}. Use this to fetch their data without asking them for it.`
+      });
+    }
+    
     // Define available functions
     const functions = [
       {
@@ -84,10 +94,9 @@ serve(async (req) => {
         parameters: {
           type: "object",
           properties: {
-            user_id: { type: "string", description: "UUID of the user" },
             limit: { type: "number", description: "Number of bookings to return" }
           },
-          required: ["user_id"]
+          required: []
         }
       },
       {
@@ -119,10 +128,9 @@ serve(async (req) => {
         parameters: {
           type: "object",
           properties: {
-            user_id: { type: "string", description: "UUID of the user" },
             sport_id: { type: "string", description: "UUID of the sport (optional)" }
           },
-          required: ["user_id"]
+          required: []
         }
       },
       {
@@ -131,13 +139,12 @@ serve(async (req) => {
         parameters: {
           type: "object",
           properties: {
-            user_id: { type: "string", description: "UUID of the user" },
             court_id: { type: "string", description: "UUID of the court" },
             date: { type: "string", description: "Date in YYYY-MM-DD format" },
             start_time: { type: "string", description: "Start time in HH:MM format" },
             end_time: { type: "string", description: "End time in HH:MM format" }
           },
-          required: ["user_id", "court_id", "date", "start_time", "end_time"]
+          required: ["court_id", "date", "start_time", "end_time"]
         }
       }
     ];
@@ -288,322 +295,127 @@ async function handleFunctionCall(functionCall: any) {
     case "get_available_slots":
       return await getAvailableSlots(supabase, args.venue_id, args.court_id, args.date);
     case "get_user_bookings":
-      return await getUserBookings(supabase, args.user_id || userId, args.limit || 10);
+      // Important change: Use the userId from the auth context instead of requiring it as an argument
+      return await getUserBookings(supabase, userId, args.limit || 10);
     case "admin_summary":
       return await getAdminSummary(supabase, args.venue_id);
     case "get_court_availability":
       return await getCourtAvailability(supabase, args.court_id, args.date);
     case "recommend_courts":
-      return await recommendCourts(supabase, args.user_id || userId, args.sport_id);
+      return await recommendCourts(supabase, userId, args.sport_id);
     case "get_venue_admins":
       return await getVenueAdmins(supabase, args.venue_id);
     case "get_bookings_by_date_range":
       return await getBookingsByDateRange(supabase, args.start_date, args.end_date, args.venue_id);
     case "book_court":
-      return await bookCourt(supabase, args.user_id || userId, args.court_id, args.date, args.start_time, args.end_time);
+      return await bookCourt(supabase, userId, args.court_id, args.date, args.start_time, args.end_time);
     default:
       throw new Error(`Unknown function: ${name}`);
   }
 }
 
-// New function to handle booking a court through AI
-async function bookCourt(supabase: any, userId: string, courtId: string, date: string, startTime: string, endTime: string) {
+async function getUserBookings(supabase: any, user_id: string, limit: number = 10) {
+  if (!user_id) {
+    return { 
+      success: false, 
+      message: "User is not authenticated. Please log in to view your bookings." 
+    };
+  }
+
   try {
-    // Check if the slot is available
-    const { data: availabilityData, error: availabilityError } = await supabase
-      .rpc('get_available_slots', {
-        p_court_id: courtId,
-        p_date: date
-      });
+    console.log("Fetching bookings for user:", user_id);
     
-    if (availabilityError) throw availabilityError;
+    // First, retrieve user information to personalize the response
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('full_name, email')
+      .eq('id', user_id)
+      .limit(1);
     
-    // Find the requested slot in available slots
-    const requestedSlot = availabilityData?.find((slot: any) => 
-      slot.start_time === startTime && 
-      slot.end_time === endTime
-    );
-    
-    if (!requestedSlot || !requestedSlot.is_available) {
-      return {
-        success: false,
-        message: "The requested time slot is not available. Please choose another time."
-      };
+    if (profileError) {
+      console.error("Error fetching user profile:", profileError);
     }
     
-    // Get court details for pricing
-    const { data: court, error: courtError } = await supabase
-      .from('courts')
-      .select('id, name, hourly_rate, venue:venues(id, name)')
-      .eq('id', courtId)
-      .single();
+    const userName = profileData && profileData.length > 0 ? profileData[0].full_name : "User";
     
-    if (courtError) throw courtError;
+    // Get upcoming bookings
+    const { data: upcomingBookings, error: upcomingError } = await supabase
+      .from('bookings')
+      .select(`
+        id,
+        booking_date,
+        start_time,
+        end_time,
+        status,
+        total_price,
+        payment_status,
+        court:courts (
+          id,
+          name,
+          venue:venues (
+            id,
+            name
+          ),
+          sport:sports (
+            id,
+            name
+          )
+        )
+      `)
+      .eq('user_id', user_id)
+      .in('status', ['confirmed', 'pending'])
+      .gte('booking_date', new Date().toISOString().split('T')[0])
+      .order('booking_date', { ascending: true })
+      .limit(limit);
     
-    // Calculate price based on time difference
-    const startParts = startTime.split(':').map(Number);
-    const endParts = endTime.split(':').map(Number);
-    const startMinutes = startParts[0] * 60 + startParts[1];
-    const endMinutes = endParts[0] * 60 + endParts[1];
-    const hours = (endMinutes - startMinutes) / 60;
-    const totalPrice = hours * court.hourly_rate;
+    if (upcomingError) throw upcomingError;
     
-    // Create booking using the database function
-    const { data: bookingId, error: bookingError } = await supabase
-      .rpc('create_booking_with_lock', {
-        p_court_id: courtId,
-        p_user_id: userId,
-        p_booking_date: date,
-        p_start_time: startTime,
-        p_end_time: endTime,
-        p_total_price: totalPrice
-      });
+    // Get past bookings
+    const { data: pastBookings, error: pastError } = await supabase
+      .from('bookings')
+      .select(`
+        id,
+        booking_date,
+        start_time,
+        end_time,
+        status,
+        total_price,
+        payment_status,
+        court:courts (
+          id,
+          name,
+          venue:venues (
+            id,
+            name
+          ),
+          sport:sports (
+            id,
+            name
+          )
+        )
+      `)
+      .eq('user_id', user_id)
+      .or('status.eq.completed,status.eq.cancelled')
+      .lt('booking_date', new Date().toISOString().split('T')[0])
+      .order('booking_date', { ascending: false })
+      .limit(limit);
     
-    if (bookingError) throw bookingError;
+    if (pastError) throw pastError;
     
     return {
       success: true,
-      booking_id: bookingId,
-      court_name: court.name,
-      venue_name: court.venue?.name,
-      date: date,
-      start_time: startTime,
-      end_time: endTime,
-      total_price: totalPrice
+      user_name: userName,
+      upcoming: upcomingBookings || [],
+      past: pastBookings || []
     };
   } catch (error) {
-    console.error("Error in bookCourt:", error);
+    console.error("Error in getUserBookings:", error);
     return { 
       success: false, 
-      message: "Failed to book the court. " + (error.message || "Please try again later.")
+      message: "Failed to fetch user bookings", 
+      error: error.message 
     };
   }
-}
-
-// Create a Supabase client (basic implementation)
-function createClient(supabaseUrl: string, supabaseKey: string) {
-  return {
-    from: (table: string) => ({
-      select: (columns: string = '*') => ({
-        eq: (column: string, value: any) => ({
-          order: (column: string, { ascending = true }: { ascending: boolean } = { ascending: true }) => ({
-            limit: (limit: number) => ({
-              single: async () => {
-                try {
-                  const response = await fetch(`${supabaseUrl}/rest/v1/${table}?select=${columns}&${column}=eq.${value}&order=${column}.${ascending ? 'asc' : 'desc'}&limit=${limit}&head=true`, {
-                    headers: {
-                      'apikey': supabaseKey,
-                      'Authorization': `Bearer ${supabaseKey}`
-                    }
-                  });
-                  
-                  if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                  }
-                  
-                  const data = await response.json();
-                  return { data: data.length > 0 ? data[0] : null, error: null };
-                } catch (error) {
-                  return { data: null, error };
-                }
-              },
-              async execute() {
-                try {
-                  const response = await fetch(`${supabaseUrl}/rest/v1/${table}?select=${columns}&${column}=eq.${value}&order=${column}.${ascending ? 'asc' : 'desc'}&limit=${limit}`, {
-                    headers: {
-                      'apikey': supabaseKey,
-                      'Authorization': `Bearer ${supabaseKey}`
-                    }
-                  });
-                  
-                  if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                  }
-                  
-                  const data = await response.json();
-                  return { data, error: null };
-                } catch (error) {
-                  return { data: null, error };
-                }
-              }
-            })
-          }),
-          async execute() {
-            try {
-              const response = await fetch(`${supabaseUrl}/rest/v1/${table}?select=${columns}&${column}=eq.${value}`, {
-                headers: {
-                  'apikey': supabaseKey,
-                  'Authorization': `Bearer ${supabaseKey}`
-                }
-              });
-              
-              if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-              }
-              
-              const data = await response.json();
-              return { data, error: null };
-            } catch (error) {
-              return { data: null, error };
-            }
-          },
-          single: async () => {
-            try {
-              const response = await fetch(`${supabaseUrl}/rest/v1/${table}?select=${columns}&${column}=eq.${value}&limit=1`, {
-                headers: {
-                  'apikey': supabaseKey,
-                  'Authorization': `Bearer ${supabaseKey}`
-                }
-              });
-              
-              if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-              }
-              
-              const data = await response.json();
-              return { data: data.length > 0 ? data[0] : null, error: null };
-            } catch (error) {
-              return { data: null, error };
-            }
-          }
-        }),
-        in: (column: string, values: any[]) => ({
-          order: (column: string, { ascending }: { ascending: boolean }) => ({
-            limit: async (limit: number) => {
-              try {
-                const valuesStr = values.join(',');
-                const response = await fetch(`${supabaseUrl}/rest/v1/${table}?select=${columns}&${column}=in.(${valuesStr})&order=${column}.${ascending ? 'asc' : 'desc'}&limit=${limit}`, {
-                  headers: {
-                    'apikey': supabaseKey,
-                    'Authorization': `Bearer ${supabaseKey}`
-                  }
-                });
-                
-                if (!response.ok) {
-                  throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const data = await response.json();
-                return { data, error: null };
-              } catch (error) {
-                return { data: null, error };
-              }
-            }
-          }),
-          async execute() {
-            try {
-              const valuesStr = values.join(',');
-              const response = await fetch(`${supabaseUrl}/rest/v1/${table}?select=${columns}&${column}=in.(${valuesStr})`, {
-                headers: {
-                  'apikey': supabaseKey,
-                  'Authorization': `Bearer ${supabaseKey}`
-                }
-              });
-              
-              if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-              }
-              
-              const data = await response.json();
-              return { data, error: null };
-            } catch (error) {
-              return { data: null, error };
-            }
-          }
-        }),
-        async execute() {
-          try {
-            const response = await fetch(`${supabaseUrl}/rest/v1/${table}?select=${columns}`, {
-              headers: {
-                'apikey': supabaseKey,
-                'Authorization': `Bearer ${supabaseKey}`
-              }
-            });
-            
-            if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            return { data, error: null };
-          } catch (error) {
-            return { data: null, error };
-          }
-        }
-      }),
-      insert: async (values: any) => {
-        try {
-          const response = await fetch(`${supabaseUrl}/rest/v1/${table}`, {
-            method: 'POST',
-            headers: {
-              'apikey': supabaseKey,
-              'Authorization': `Bearer ${supabaseKey}`,
-              'Content-Type': 'application/json',
-              'Prefer': 'return=representation'
-            },
-            body: JSON.stringify(values)
-          });
-          
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-          
-          const data = await response.json();
-          return { data, error: null };
-        } catch (error) {
-          return { data: null, error };
-        }
-      },
-      update: (values: any) => ({
-        eq: async (column: string, value: any) => {
-          try {
-            const response = await fetch(`${supabaseUrl}/rest/v1/${table}?${column}=eq.${value}`, {
-              method: 'PATCH',
-              headers: {
-                'apikey': supabaseKey,
-                'Authorization': `Bearer ${supabaseKey}`,
-                'Content-Type': 'application/json',
-                'Prefer': 'return=representation'
-              },
-              body: JSON.stringify(values)
-            });
-            
-            if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            return { data, error: null };
-          } catch (error) {
-            return { data: null, error };
-          }
-        }
-      })
-    }),
-    rpc: async (functionName: string, params: any) => {
-      try {
-        const response = await fetch(`${supabaseUrl}/rest/v1/rpc/${functionName}`, {
-          method: 'POST',
-          headers: {
-            'apikey': supabaseKey,
-            'Authorization': `Bearer ${supabaseKey}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(params)
-        });
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`RPC error! status: ${response.status}, message: ${errorText}`);
-        }
-        
-        const data = await response.json();
-        return { data, error: null };
-      } catch (error) {
-        return { data: null, error };
-      }
-    }
-  };
 }
 
 // Function implementations
@@ -715,83 +527,6 @@ async function getAvailableSlots(supabase: any, venue_id: string, court_id: stri
   } catch (error) {
     console.error("Error in getAvailableSlots:", error);
     return { success: false, message: "Failed to fetch available slots", error: error.message };
-  }
-}
-
-async function getUserBookings(supabase: any, user_id: string, limit: number = 10) {
-  try {
-    // Get upcoming bookings
-    const { data: upcomingBookings, error: upcomingError } = await supabase
-      .from('bookings')
-      .select(`
-        id,
-        booking_date,
-        start_time,
-        end_time,
-        status,
-        total_price,
-        payment_status,
-        court:courts (
-          id,
-          name,
-          venue:venues (
-            id,
-            name
-          ),
-          sport:sports (
-            id,
-            name
-          )
-        )
-      `)
-      .eq('user_id', user_id)
-      .in('status', ['confirmed', 'pending'])
-      .gte('booking_date', new Date().toISOString().split('T')[0])
-      .order('booking_date', { ascending: true })
-      .limit(limit);
-    
-    if (upcomingError) throw upcomingError;
-    
-    // Get past bookings
-    const { data: pastBookings, error: pastError } = await supabase
-      .from('bookings')
-      .select(`
-        id,
-        booking_date,
-        start_time,
-        end_time,
-        status,
-        total_price,
-        payment_status,
-        court:courts (
-          id,
-          name,
-          venue:venues (
-            id,
-            name
-          ),
-          sport:sports (
-            id,
-            name
-          )
-        )
-      `)
-      .eq('user_id', user_id)
-      .or('status.eq.completed,status.eq.cancelled')
-      .lt('booking_date', new Date().toISOString().split('T')[0])
-      .order('booking_date', { ascending: false })
-      .limit(limit);
-    
-    if (pastError) throw pastError;
-    
-    return {
-      success: true,
-      upcoming: upcomingBookings || [],
-      past: pastBookings || []
-    };
-  } catch (error) {
-    console.error("Error in getUserBookings:", error);
-    return { success: false, message: "Failed to fetch user bookings", error: error.message };
   }
 }
 
@@ -1174,3 +909,85 @@ async function getBookingsByDateRange(supabase: any, start_date: string, end_dat
     return { success: false, message: "Failed to fetch bookings by date range", error: error.message };
   }
 }
+
+// New function to handle booking a court through AI
+async function bookCourt(supabase: any, userId: string, courtId: string, date: string, startTime: string, endTime: string) {
+  try {
+    // Check if the slot is available
+    const { data: availabilityData, error: availabilityError } = await supabase
+      .rpc('get_available_slots', {
+        p_court_id: courtId,
+        p_date: date
+      });
+    
+    if (availabilityError) throw availabilityError;
+    
+    // Find the requested slot in available slots
+    const requestedSlot = availabilityData?.find((slot: any) => 
+      slot.start_time === startTime && 
+      slot.end_time === endTime
+    );
+    
+    if (!requestedSlot || !requestedSlot.is_available) {
+      return {
+        success: false,
+        message: "The requested time slot is not available. Please choose another time."
+      };
+    }
+    
+    // Get court details for pricing
+    const { data: court, error: courtError } = await supabase
+      .from('courts')
+      .select('id, name, hourly_rate, venue:venues(id, name)')
+      .eq('id', courtId)
+      .single();
+    
+    if (courtError) throw courtError;
+    
+    // Calculate price based on time difference
+    const startParts = startTime.split(':').map(Number);
+    const endParts = endTime.split(':').map(Number);
+    const startMinutes = startParts[0] * 60 + startParts[1];
+    const endMinutes = endParts[0] * 60 + endParts[1];
+    const hours = (endMinutes - startMinutes) / 60;
+    const totalPrice = hours * court.hourly_rate;
+    
+    // Create booking using the database function
+    const { data: bookingId, error: bookingError } = await supabase
+      .rpc('create_booking_with_lock', {
+        p_court_id: courtId,
+        p_user_id: userId,
+        p_booking_date: date,
+        p_start_time: startTime,
+        p_end_time: endTime,
+        p_total_price: totalPrice
+      });
+    
+    if (bookingError) throw bookingError;
+    
+    return {
+      success: true,
+      booking_id: bookingId,
+      court_name: court.name,
+      venue_name: court.venue?.name,
+      date: date,
+      start_time: startTime,
+      end_time: endTime,
+      total_price: totalPrice
+    };
+  } catch (error) {
+    console.error("Error in bookCourt:", error);
+    return { 
+      success: false, 
+      message: "Failed to book the court. " + (error.message || "Please try again later.")
+    };
+  }
+}
+
+// Create a Supabase client (basic implementation)
+function createClient(supabaseUrl: string, supabaseKey: string) {
+  return {
+    from: (table: string) => ({
+      select: (columns: string = '*') => ({
+        eq: (column: string, value: any) => ({
+          order: (column: string, { ascending = true }: { ascending: boolean } = { ascending: true }) => ({
