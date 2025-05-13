@@ -941,145 +941,208 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
             </motion.div>
             
             <motion.div variants={fadeIn} className="space-y-2">
-              <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
-                <Activity size={16} className="text-emerald-400" />
-                Select Sport
-              </label>
-              <select
-                value={selectedSport}
-                onChange={e => {
-                  setSelectedSport(e.target.value);
-                  fetchSportDetails(e.target.value);
-                }}
-                className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-white placeholder-gray-400 transition-all"
-                disabled={!selectedVenue || venueSports.length === 0}
-              >
-                <option value="" className="bg-gray-800">Select a sport</option>
-                {venueSports.map(sport => (
-                  <option key={sport.id} value={sport.id} className="bg-gray-800">
-                    {selectedVenue ? (
-                      <SportDisplayName
-                        venueId={selectedVenue}
-                        sportId={sport.id}
-                        defaultName={sport.name}
-                      />
-                    ) : (
-                      sport.name
-                    )}
-                  </option>
-                ))}
-              </select>
-              {!selectedVenue && (
-                <p className="mt-1 text-xs text-gray-500 flex items-center gap-1">
-                  <Info size={14} />
-                  Please select a venue first
-                </p>
+  <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
+    <Activity size={16} className="text-emerald-400" />
+    Select Sport
+  </label>
+  
+  {!selectedVenue ? (
+    <p className="mt-1 text-xs text-gray-500 flex items-center gap-1">
+      <Info size={14} />
+      Please select a venue first
+    </p>
+  ) : venueSports.length === 0 ? (
+    <p className="mt-1 text-xs text-red-400 flex items-center gap-1">
+      <AlertCircle size={14} />
+      No sports available for this venue
+    </p>
+  ) : (
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-2">
+      {venueSports.map((sport) => (
+        <motion.div
+          key={sport.id}
+          whileHover={{ scale: 1.03 }}
+          className="flex items-center"
+        >
+          <input
+            type="radio"
+            id={`sport-${sport.id}`}
+            name="sport"
+            value={sport.id}
+            checked={selectedSport === sport.id}
+            onChange={() => {
+              setSelectedSport(sport.id);
+              fetchSportDetails(sport.id);
+            }}
+            className="hidden"
+          />
+          <label
+            htmlFor={`sport-${sport.id}`}
+            className={`flex items-center gap-2 w-full p-3 rounded-lg border transition-all cursor-pointer ${
+              selectedSport === sport.id
+                ? 'bg-emerald-600 text-white border-emerald-700 shadow-lg shadow-emerald-800/30'
+                : 'bg-gray-800 border-gray-700 hover:border-emerald-500 hover:bg-gray-750 text-gray-200'
+            }`}
+          >
+            <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${
+              selectedSport === sport.id 
+                ? 'border-white bg-white' 
+                : 'border-gray-400'
+            }`}>
+              {selectedSport === sport.id && (
+                <div className="w-2 h-2 rounded-full bg-emerald-600"></div>
               )}
-              {selectedVenue && venueSports.length === 0 && (
-                <p className="mt-1 text-xs text-red-400 flex items-center gap-1">
-                  <AlertCircle size={14} />
-                  No sports available for this venue
-                </p>
-              )}
-              {sportDetails && (
-                <motion.div 
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  className="mt-2 p-3 bg-gray-800/50 rounded-lg border border-emerald-800/20"
-                >
-                  <div className="flex items-center gap-3">
-                    {sportDetails.icon_name && (
-                      <div className="w-10 h-10 rounded-full bg-emerald-900/50 flex items-center justify-center">
-                        <span className="text-emerald-400">{sportDetails.icon_name}</span>
-                      </div>
-                    )}
-                    <div>
-                      <h4 className="font-medium text-emerald-400">
-                        {selectedVenue ? (
-                          <SportDisplayName
-                            venueId={selectedVenue}
-                            sportId={sportDetails.id}
-                            defaultName={sportDetails.name}
-                          />
-                        ) : (
-                          sportDetails.name
-                        )}
-                      </h4>
-                      <p className="text-xs text-gray-400 mt-1">Select a court for this sport</p>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </motion.div>
+            </div>
+            {selectedVenue ? (
+              <SportDisplayName
+                venueId={selectedVenue}
+                sportId={sport.id}
+                defaultName={sport.name}
+              />
+            ) : (
+              sport.name
+            )}
+          </label>
+        </motion.div>
+      ))}
+    </div>
+  )}
+  
+  {sportDetails && (
+    <motion.div 
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: 'auto' }}
+      className="mt-2 p-3 bg-gray-800/50 rounded-lg border border-emerald-800/20"
+    >
+      <div className="flex items-center gap-3">
+        {sportDetails.icon_name && (
+          <div className="w-10 h-10 rounded-full bg-emerald-900/50 flex items-center justify-center">
+            <span className="text-emerald-400">{sportDetails.icon_name}</span>
+          </div>
+        )}
+        <div>
+          <h4 className="font-medium text-emerald-400">
+            {selectedVenue ? (
+              <SportDisplayName
+                venueId={selectedVenue}
+                sportId={sportDetails.id}
+                defaultName={sportDetails.name}
+              />
+            ) : (
+              sportDetails.name
+            )}
+          </h4>
+          <p className="text-xs text-gray-400 mt-1">Select a court for this sport</p>
+        </div>
+      </div>
+    </motion.div>
+  )}
+</motion.div>
             
             <motion.div variants={fadeIn} className="space-y-2">
-              <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
-                <MapPin size={16} className="text-emerald-400" />
-                Select Court
-              </label>
-              <select
-                value={selectedCourt}
-                onChange={e => {
-                  setSelectedCourt(e.target.value);
-                  const court = courts.find(c => c.id === e.target.value);
-                  if (court) {
-                    setCourtRate(court.hourly_rate);
-                    fetchCourtDetails(e.target.value);
-                  }
-                }}
-                className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-white placeholder-gray-400 transition-all"
-                disabled={loading.courts || !selectedVenue || !selectedSport}
-              >
-                <option value="" className="bg-gray-800">Select a court</option>
-                {courts.map(court => (
-                  <option key={court.id} value={court.id} className="bg-gray-800">{court.name}</option>
-                ))}
-              </select>
-              {loading.courts && (
-                <motion.p 
-                  animate={pulse}
-                  className="mt-1 text-xs text-gray-500 flex items-center gap-1"
-                >
-                  <Loader size={14} className="animate-spin" />
-                  Loading courts...
-                </motion.p>
+  <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
+    <MapPin size={16} className="text-emerald-400" />
+    Select Court
+  </label>
+  
+  {loading.courts ? (
+    <motion.p 
+      animate={pulse}
+      className="mt-1 text-xs text-gray-500 flex items-center gap-1"
+    >
+      <Loader size={14} className="animate-spin" />
+      Loading courts...
+    </motion.p>
+  ) : !selectedVenue || !selectedSport ? (
+    <p className="mt-1 text-xs text-gray-500 flex items-center gap-1">
+      <Info size={14} />
+      Please select a venue and sport first
+    </p>
+  ) : courts.length === 0 ? (
+    <p className="mt-1 text-xs text-red-400 flex items-center gap-1">
+      <AlertCircle size={14} />
+      No courts available for this venue and sport combination.
+    </p>
+  ) : (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+      {courts.map((court) => (
+        <motion.div
+          key={court.id}
+          whileHover={{ scale: 1.03 }}
+          className="flex items-center"
+        >
+          <input
+            type="radio"
+            id={`court-${court.id}`}
+            name="court"
+            value={court.id}
+            checked={selectedCourt === court.id}
+            onChange={() => {
+              setSelectedCourt(court.id);
+              setCourtRate(court.hourly_rate);
+              fetchCourtDetails(court.id);
+            }}
+            className="hidden"
+          />
+          <label
+            htmlFor={`court-${court.id}`}
+            className={`flex items-center gap-2 w-full p-3 rounded-lg border transition-all cursor-pointer ${
+              selectedCourt === court.id
+                ? 'bg-emerald-600 text-white border-emerald-700 shadow-lg shadow-emerald-800/30'
+                : 'bg-gray-800 border-gray-700 hover:border-emerald-500 hover:bg-gray-750 text-gray-200'
+            }`}
+          >
+            <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${
+              selectedCourt === court.id 
+                ? 'border-white bg-white' 
+                : 'border-gray-400'
+            }`}>
+              {selectedCourt === court.id && (
+                <div className="w-2 h-2 rounded-full bg-emerald-600"></div>
               )}
-              {!loading.courts && courts.length === 0 && selectedVenue && selectedSport && (
-                <p className="mt-1 text-xs text-red-400 flex items-center gap-1">
-                  <AlertCircle size={14} />
-                  No courts available for this venue and sport combination.
-                </p>
-              )}
-              {selectedCourt && courtDetails && (
-                <motion.div 
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  className="mt-2 p-3 bg-gray-800/50 rounded-lg border border-emerald-800/20"
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-full bg-emerald-900/50 flex items-center justify-center">
-                      <span className="text-emerald-400">🏟️</span>
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-emerald-400">{courtDetails.name}</h4>
-                      {courtDetails.description && (
-                        <p className="text-xs text-gray-400 mt-1">{courtDetails.description}</p>
-                      )}
-                      <div className="mt-2 flex items-center gap-2">
-                        <span className="text-xs px-2 py-1 bg-emerald-900/30 text-emerald-300 rounded-full">
-                          ₹{courtDetails.hourly_rate}/hour
-                        </span>
-                        {courtDetails.court_group_id && (
-                          <span className="text-xs px-2 py-1 bg-blue-900/30 text-blue-300 rounded-full">
-                            Shared Space
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </motion.div>
+            </div>
+            <div>
+              <div>{court.name}</div>
+              <div className="text-xs text-gray-300 mt-1">
+                ₹{court.hourly_rate}/hour
+              </div>
+            </div>
+          </label>
+        </motion.div>
+      ))}
+    </div>
+  )}
+  
+  {selectedCourt && courtDetails && (
+    <motion.div 
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: 'auto' }}
+      className="mt-2 p-3 bg-gray-800/50 rounded-lg border border-emerald-800/20"
+    >
+      <div className="flex items-start gap-3">
+        <div className="w-10 h-10 rounded-full bg-emerald-900/50 flex items-center justify-center">
+          <span className="text-emerald-400">🏟️</span>
+        </div>
+        <div>
+          <h4 className="font-medium text-emerald-400">{courtDetails.name}</h4>
+          {courtDetails.description && (
+            <p className="text-xs text-gray-400 mt-1">{courtDetails.description}</p>
+          )}
+          <div className="mt-2 flex items-center gap-2">
+            <span className="text-xs px-2 py-1 bg-emerald-900/30 text-emerald-300 rounded-full">
+              ₹{courtDetails.hourly_rate}/hour
+            </span>
+            {courtDetails.court_group_id && (
+              <span className="text-xs px-2 py-1 bg-blue-900/30 text-blue-300 rounded-full">
+                Shared Space
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  )}
+</motion.div>
             
             <motion.div variants={fadeIn} className="space-y-2">
               <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
