@@ -1131,7 +1131,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
           )}
           <div className="mt-2 flex items-center gap-2">
             <span className="text-xs px-2 py-1 bg-emerald-900/30 text-emerald-300 rounded-full">
-              ₹{courtDetails.hourly_rate}/hour
+              
             </span>
             {courtDetails.court_group_id && (
               <span className="text-xs px-2 py-1 bg-blue-900/30 text-blue-300 rounded-full">
