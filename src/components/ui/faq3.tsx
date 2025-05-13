@@ -102,3 +102,6 @@ export const Faq3 = ({
     </section>
   );
 };
+
+export default Faq3;
+
