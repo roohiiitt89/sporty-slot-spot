@@ -77,7 +77,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
   });
   const [courtRate, setCourtRate] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  /*const [refreshKey, setRefreshKey] = useState(0);*/
+
   const [bookingInProgress, setBookingInProgress] = useState(false);
   const [razorpayOrderId, setRazorpayOrderId] = useState('');
   const [venueDetails, setVenueDetails] = useState<Venue | null>(null);
@@ -132,26 +132,6 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       setSelectedVenue(venueId);
       fetchVenueDetails(venueId);
     }
-    
-
-/*
-    const bookingChannel = supabase
-      .channel('booking-updates')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'bookings'
-      }, (payload) => {
-        console.log('Booking change detected:', payload);
-        if (selectedCourt && selectedDate) {
-          setRefreshKey(prev => prev + 1);
-        }
-      })
-      .subscribe();
-      
-    return () => {
-      supabase.removeChannel(bookingChannel);
-    };*/
   }, [venueId, user, navigate, onClose]);
 
   useEffect(() => {
@@ -194,22 +174,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     }
   }, [selectedVenue, selectedSport]);
 
-  useEffect(() => {
-    if (selectedCourt && selectedDate) {
-      fetchAvailability();
-      fetchCourtDetails(selectedCourt);
-    }
-  }, [selectedCourt, selectedDate]);
-
-  /* useEffect(() => {
-    if (currentStep === 2 && selectedCourt && selectedDate) {
-      const intervalId = setInterval(() => {
-        setRefreshKey(prev => prev + 1);
-      }, 60000);
-      
-      return () => clearInterval(intervalId);
-    }
-  }, [currentStep, selectedCourt, selectedDate]); */
+  
 
   useEffect(() => {
     if (user) {
