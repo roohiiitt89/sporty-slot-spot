@@ -14,7 +14,7 @@ import HomepageAvailabilityWidget from '@/components/HomepageAvailabilityWidget'
 import AIChatWidget from '@/components/AIChatWidget';
 import RotatingTypewriter from '@/components/RotatingTypewriter';
 import { Typewriter } from '@/components/Typewriter';
-import Link from 'next/link';
+
 
 
 interface Venue {
@@ -494,59 +494,58 @@ const Index: React.FC = () => {
 </section>
 
       <footer className="bg-navy-dark text-white py-12">
-      <div className="container mx-auto px-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          <div>
-            <h3 className="text-xl font-bold mb-4">Grid2Play</h3>
-            <p className="text-gray-300 mb-4">Book your sports slots easily and quickly. Multiple sports, venues, and flexible time slots all in one place.</p>
-            <div className="flex space-x-4">
-              {/* Social media icons would go here */}
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div>
+              <h3 className="text-xl font-bold mb-4">SportySlot</h3>
+              <p className="text-gray-300 mb-4">Book your sports venues easily and quickly. Multiple sports, venues, and flexible time slots all in one place.</p>
+              <div className="flex space-x-4">
+                {/* Social media icons would go here */}
+              </div>
+            </div>
+            
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Quick Links</h3>
+              <ul className="space-y-2">
+                <li><Link to="/" className="hover:text-indigo-light transition-colors">Home</Link></li>
+                <li><Link to="/venues" className="hover:text-indigo-light transition-colors">Venues</Link></li>
+                <li><Link to="/sports" className="hover:text-indigo-light transition-colors">Sports</Link></li>
+                <li><Link to="/bookings" className="hover:text-indigo-light transition-colors">My Bookings</Link></li>
+              </ul>
+            </div>
+            
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Support</h3>
+              <ul className="space-y-2">
+                <li><a href="#" className="hover:text-indigo-light transition-colors">Help Center</a></li>
+                <li><a href="#" className="hover:text-indigo-light transition-colors">FAQs</a></li>
+                <li><a href="#" className="hover:text-indigo-light transition-colors">Contact Us</a></li>
+                <li><a href="#" className="hover:text-indigo-light transition-colors">Privacy Policy</a></li>
+              </ul>
+            </div>
+            
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Newsletter</h3>
+              <p className="text-gray-300 mb-4">Subscribe to get updates on new venues and special offers.</p>
+              <form className="flex">
+                <input type="email" placeholder="Your email" className="px-4 py-2 rounded-l-md w-full focus:outline-none text-navy-dark" />
+                <button className="bg-indigo px-4 py-2 rounded-r-md hover:bg-indigo-dark transition-colors">
+                  Subscribe
+                </button>
+              </form>
             </div>
           </div>
           
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Quick Links</h3>
-            <ul className="space-y-2">
-              <li><a href="/" className="hover:text-indigo-light transition-colors">Home</a></li>
-              <li><a href="/venues" className="hover:text-indigo-light transition-colors">Venues</a></li>
-              <li><a href="/sports" className="hover:text-indigo-light transition-colors">Sports</a></li>
-              <li><a href="/bookings" className="hover:text-indigo-light transition-colors">My Bookings</a></li>
-            </ul>
-          </div>
-          
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Support</h3>
-            <ul className="space-y-2">
-              <li><a href="#" className="hover:text-indigo-light transition-colors">Help Center</a></li>
-              <li><a href="/faq3demo" className="hover:text-indigo-light transition-colors">FAQs</a></li>
-              <li><a href="/contact" className="hover:text-indigo-light transition-colors">Contact Us</a></li>
-              <li><a href="/privacy" className="hover:text-indigo-light transition-colors">Privacy Policy</a></li>
-            </ul>
-          </div>
-          
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Newsletter</h3>
-            <p className="text-gray-300 mb-4">Subscribe to get updates on new venues and special offers.</p>
-            <form className="flex">
-              <input type="email" placeholder="Your email" className="px-4 py-2 rounded-l-md w-full focus:outline-none text-navy-dark" />
-              <button className="bg-indigo px-4 py-2 rounded-r-md hover:bg-indigo-dark transition-colors">
-                Subscribe
-              </button>
-            </form>
+          <div className="mt-8 pt-8 border-t border-navy text-center text-gray-400">
+            <p>&copy; 2025 SportySlot. All rights reserved.</p>
           </div>
         </div>
-        
-        <div className="mt-8 pt-8 border-t border-navy text-center text-gray-400">
-          <p>&copy; 2025 Grid2Play. All rights reserved.</p>
-        </div>
-      </div>
-    </footer>
+      </footer>
 
-    {isBookModalOpen && <BookSlotModal onClose={() => setIsBookModalOpen(false)} />}
-    
-    <AIChatWidget />
-  </div>
-  );
+      {isBookModalOpen && <BookSlotModal onClose={() => setIsBookModalOpen(false)} />}
+      
+      {/* Add AI Chat Widget */}
+      <AIChatWidget />
+    </div>;
 };
-
 export default Index;
