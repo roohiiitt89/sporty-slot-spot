@@ -1208,31 +1208,31 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
                   className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3"
                 >
                   {availableTimeSlots.map((slot) => {
-                    const slotDisplay = `${formatTime(slot.start_time)} - ${formatTime(slot.end_time)}`;
-                    const isSelected = selectedSlots.includes(slotDisplay);
-                    return (
-                      <motion.button
-                        key={`${slot.start_time}-${slot.end_time}`}
-                        variants={slideUp}
-                        whileHover={{ scale: 1.03 }}
-                        whileTap={{ scale: 0.98 }}
-                        disabled={!slot.is_available}
-                        onClick={() => handleSlotClick(slot)}
-                        className={`
-                          p-3 rounded-lg border transition-all text-center transform hover:scale-[1.02] 
-                          ${slot.is_available 
-                            ? isSelected
-                              ? 'bg-emerald-600 text-white border-emerald-700 shadow-lg shadow-emerald-800/30'
-                              : 'bg-gray-800 border-gray-700 hover:border-emerald-500 hover:bg-gray-750 text-gray-200'
-                            : 'bg-gray-800 border-gray-700 text-gray-500 cursor-not-allowed'}
-                          ${isSelected ? 'ring-2 ring-emerald-400' : ''}
-                        `}
-                      >
-                        <div className="font-medium">{slotDisplay}</div>
-                        <div className="text-sm mt-1">₹{parseFloat(slot.price).toFixed(2)}</div>
-                      </motion.button>
-                    );
-                  })}
+  const slotDisplay = `${formatTime(slot.start_time)} - ${formatTime(slot.end_time)}`;
+  const isSelected = selectedSlots.includes(slotDisplay);
+  return (
+    <motion.button
+      key={`${slot.start_time}-${slot.end_time}`}
+      variants={slideUp}
+      whileHover={{ scale: slot.is_available ? 1.03 : 1 }}
+      whileTap={{ scale: slot.is_available ? 0.98 : 1 }}
+      disabled={!slot.is_available}
+      onClick={() => handleSlotClick(slot)}
+      className={`
+        p-2 rounded-lg border transition-all text-center text-sm transform
+        ${slot.is_available 
+          ? isSelected
+            ? 'bg-emerald-600 text-white border-emerald-700 shadow-lg shadow-emerald-800/30'
+            : 'bg-gray-800 border-gray-600 hover:border-emerald-500 hover:bg-gray-750 text-gray-200'
+          : 'bg-red-900/60 border-red-800 text-red-200 cursor-not-allowed'}
+        ${isSelected ? 'ring-2 ring-emerald-400' : ''}
+      `}
+    >
+      <div className="font-medium">{slotDisplay}</div>
+      <div className="text-xs mt-1">₹{parseFloat(slot.price).toFixed(2)}</div>
+    </motion.button>
+  );
+})}
                 </motion.div>
                 
                 {availableTimeSlots.length === 0 && (
