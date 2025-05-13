@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, Clock, MapPin, Calendar, User, CreditCard, Loader, ChevronRight, Check, ChevronLeft, Activity, RefreshCw, Info, AlertCircle } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
@@ -570,12 +569,13 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
   const createRazorpayOrder = async () => {
     setLoading(prev => ({ ...prev, payment: true }));
     try {
-      const totalAmount = calculateTotalPrice() * 100; // Convert to paise
+      // Fix: Convert to paise without additional multiplication as createRazorpayOrder now handles it
+      const totalAmountInPaise = Math.round(calculateTotalPrice() * 100); // Convert rupees to paise
       const receipt = `booking_${Date.now()}`;
       
       const response = await supabase.functions.invoke('create-razorpay-order', {
         body: {
-          amount: totalAmount,
+          amount: totalAmountInPaise, // Send amount already in paise
           receipt: receipt,
           notes: {
             court_id: selectedCourt,
