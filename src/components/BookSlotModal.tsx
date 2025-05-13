@@ -77,7 +77,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
   });
   const [courtRate, setCourtRate] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
+  /*const [refreshKey, setRefreshKey] = useState(0);*/
   const [bookingInProgress, setBookingInProgress] = useState(false);
   const [razorpayOrderId, setRazorpayOrderId] = useState('');
   const [venueDetails, setVenueDetails] = useState<Venue | null>(null);
