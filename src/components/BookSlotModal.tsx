@@ -133,6 +133,9 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       fetchVenueDetails(venueId);
     }
     
+   useEffect(() => {
+   if (!user) return;
+
      // Only subscribe to changes for the CURRENTLY SELECTED court and date
   const bookingChannel = supabase
     .channel('booking-updates')
