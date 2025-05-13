@@ -201,7 +201,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     }
   }, [selectedCourt, selectedDate, refreshKey]);
 
-  useEffect(() => {
+  /* useEffect(() => {
     if (currentStep === 2 && selectedCourt && selectedDate) {
       const intervalId = setInterval(() => {
         setRefreshKey(prev => prev + 1);
@@ -209,7 +209,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       
       return () => clearInterval(intervalId);
     }
-  }, [currentStep, selectedCourt, selectedDate]);
+  }, [currentStep, selectedCourt, selectedDate]); */
 
   useEffect(() => {
     if (user) {
