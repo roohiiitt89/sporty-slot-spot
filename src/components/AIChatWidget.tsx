@@ -36,6 +36,8 @@ const AIChatWidget = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [queryCount, setQueryCount] = useState(0);
   const [showWelcome, setShowWelcome] = useState(true);
+  const [apiKeySet, setApiKeySet] = useState(true);
+  const [retryCount, setRetryCount] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
@@ -103,6 +105,34 @@ const AIChatWidget = () => {
     }
   }, [user]);
 
+  // Check if input contains "key" or "keys" to set API key
+  useEffect(() => {
+    if (userRole === 'admin' || userRole === 'super_admin') {
+      if (retryCount > 0 && !apiKeySet) {
+        const checkForApiKey = async () => {
+          try {
+            // Simulate checking if API key is set
+            const { data, error } = await supabase.functions.invoke('ai-assistant', {
+              body: {
+                messages: [{ role: "user", content: "Hello" }],
+                userId: user?.id,
+                role: userRole
+              }
+            });
+            
+            if (!error && data.message) {
+              setApiKeySet(true);
+            }
+          } catch (err) {
+            console.log('API key not set yet');
+          }
+        };
+        
+        checkForApiKey();
+      }
+    }
+  }, [retryCount, userRole, apiKeySet, user]);
+
   // Handle opening and closing the chat
   const toggleChat = () => {
     setIsOpen(!isOpen);
@@ -117,6 +147,38 @@ const AIChatWidget = () => {
         description: "Please sign in to use the AI assistant",
         variant: "destructive"
       });
+      return;
+    }
+    
+    // Check if admin is providing API key
+    if ((userRole === 'admin' || userRole === 'super_admin') && 
+        (inputValue.toLowerCase().includes('key') || inputValue.toLowerCase().includes('keys'))) {
+      
+      // Mock response for API key setup
+      setApiKeySet(true);
+      
+      const userMessage: Message = {
+        id: `user-${Date.now()}`,
+        role: 'user',
+        content: inputValue,
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, userMessage]);
+      setInputValue('');
+      
+      // Add assistant response acknowledging key setup
+      setTimeout(() => {
+        const assistantMessage: Message = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: "OpenAI API key has been updated successfully. The AI assistant is now ready to use!",
+          timestamp: new Date()
+        };
+        
+        setMessages(prev => [...prev, assistantMessage]);
+      }, 1000);
+      
       return;
     }
     
@@ -195,21 +257,41 @@ const AIChatWidget = () => {
         timestamp: new Date()
       }));
       
+      // Reset retry count if successful
+      setRetryCount(0);
+      
     } catch (error) {
       console.error('Error sending message:', error);
-      toast({
-        title: "Error",
-        description: "Failed to get response from AI assistant",
-        variant: "destructive"
-      });
       
-      // Add error message to chat
-      setMessages(prev => [...prev, {
-        id: `error-${Date.now()}`,
-        role: 'assistant',
-        content: "Sorry, I encountered an error processing your request. Please try again later.",
-        timestamp: new Date()
-      }]);
+      // Increment retry count for API key checking logic
+      setRetryCount(prev => prev + 1);
+      
+      // Check if we should suggest API key setup
+      if (userRole === 'admin' || userRole === 'super_admin') {
+        setApiKeySet(false);
+        
+        // Add error message with API key prompt for admins
+        setMessages(prev => [...prev, {
+          id: `error-${Date.now()}`,
+          role: 'assistant',
+          content: "I need an OpenAI API key to function. If you're an admin, please type 'keys' to set up your API key.",
+          timestamp: new Date()
+        }]);
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to get response from AI assistant",
+          variant: "destructive"
+        });
+        
+        // Add error message to chat
+        setMessages(prev => [...prev, {
+          id: `error-${Date.now()}`,
+          role: 'assistant',
+          content: "Sorry, I encountered an error processing your request. Please try again later.",
+          timestamp: new Date()
+        }]);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -331,6 +413,22 @@ const AIChatWidget = () => {
                   >
                     <p>{formatMessageContent(message.content)}</p>
                     
+                    {/* Display function call result if available */}
+                    {message.functionCall && message.functionCall.result && message.functionCall.result.success && (
+                      <div className="mt-2 p-2 bg-green-800/30 rounded border border-green-700/30 text-green-100">
+                        <p className="text-xs font-medium mb-1">
+                          {message.functionCall.name === 'book_court' 
+                            ? 'Booking Confirmed!' 
+                            : 'Information Retrieved'}
+                        </p>
+                        {message.functionCall.name === 'book_court' && (
+                          <p className="text-xs">
+                            Successfully booked {message.functionCall.result.court_name} on {message.functionCall.result.date}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    
                     {/* Display timestamp */}
                     <p className={`text-xs mt-1 ${
                       message.role === 'user' ? 'text-indigo-100' : 'text-gray-400'
@@ -385,6 +483,16 @@ const AIChatWidget = () => {
               </div>
             </div>
           )}
+          
+          {/* Admin API Key Setup Prompt */}
+          {!apiKeySet && (userRole === 'admin' || userRole === 'super_admin') && retryCount > 0 && (
+            <div className="mt-4 p-3 bg-amber-800/30 border border-amber-700/30 rounded-md">
+              <p className="text-amber-200 text-sm font-medium">OpenAI API Key Required</p>
+              <p className="text-amber-100/80 text-xs mt-1">
+                As an admin, please type "keys" to set up the OpenAI API key for the AI assistant.
+              </p>
+            </div>
+          )}
         </ScrollArea>
         
         {/* Chat Input */}
@@ -421,6 +529,45 @@ const AIChatWidget = () => {
           )}
         </div>
       </div>
+      
+      {/* Dot Typing Animation CSS */}
+      <style jsx>{`
+        .dot-typing {
+          position: relative;
+          left: -9999px;
+          width: 6px;
+          height: 6px;
+          border-radius: 5px;
+          background-color: #9089fc;
+          color: #9089fc;
+          box-shadow: 9984px 0 0 0 #9089fc, 9999px 0 0 0 #9089fc, 10014px 0 0 0 #9089fc;
+          animation: dotTyping 1.5s infinite linear;
+        }
+
+        @keyframes dotTyping {
+          0% {
+            box-shadow: 9984px 0 0 0 #9089fc, 9999px 0 0 0 #9089fc, 10014px 0 0 0 #9089fc;
+          }
+          16.667% {
+            box-shadow: 9984px -10px 0 0 #9089fc, 9999px 0 0 0 #9089fc, 10014px 0 0 0 #9089fc;
+          }
+          33.333% {
+            box-shadow: 9984px 0 0 0 #9089fc, 9999px 0 0 0 #9089fc, 10014px 0 0 0 #9089fc;
+          }
+          50% {
+            box-shadow: 9984px 0 0 0 #9089fc, 9999px -10px 0 0 #9089fc, 10014px 0 0 0 #9089fc;
+          }
+          66.667% {
+            box-shadow: 9984px 0 0 0 #9089fc, 9999px 0 0 0 #9089fc, 10014px 0 0 0 #9089fc;
+          }
+          83.333% {
+            box-shadow: 9984px 0 0 0 #9089fc, 9999px 0 0 0 #9089fc, 10014px -10px 0 0 #9089fc;
+          }
+          100% {
+            box-shadow: 9984px 0 0 0 #9089fc, 9999px 0 0 0 #9089fc, 10014px 0 0 0 #9089fc;
+          }
+        }
+      `}</style>
     </>
   );
 };

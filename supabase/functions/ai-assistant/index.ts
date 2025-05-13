@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 // Extract OpenAI API key from environment variables
-const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY') || '';
 
 // System prompt to restrict the scope of the assistant
 const SYSTEM_PROMPT = `
@@ -36,7 +36,15 @@ serve(async (req) => {
 
   try {
     if (!OPENAI_API_KEY) {
-      throw new Error('Missing OpenAI API key');
+      return new Response(
+        JSON.stringify({ 
+          message: { 
+            role: "assistant", 
+            content: "I'm currently unavailable. Please contact the administrator to set up my integration." 
+          }
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
     
     const { messages, userId, role, functionCall } = await req.json();
@@ -116,6 +124,21 @@ serve(async (req) => {
           },
           required: ["user_id"]
         }
+      },
+      {
+        name: "book_court",
+        description: "Book a court for a specific date and time slot",
+        parameters: {
+          type: "object",
+          properties: {
+            user_id: { type: "string", description: "UUID of the user" },
+            court_id: { type: "string", description: "UUID of the court" },
+            date: { type: "string", description: "Date in YYYY-MM-DD format" },
+            start_time: { type: "string", description: "Start time in HH:MM format" },
+            end_time: { type: "string", description: "End time in HH:MM format" }
+          },
+          required: ["user_id", "court_id", "date", "start_time", "end_time"]
+        }
       }
     ];
     
@@ -148,44 +171,9 @@ serve(async (req) => {
       });
     }
 
-    // Call OpenAI API
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: completeMessages,
-        temperature: 0.7,
-        tools: functions.map(fn => ({ type: "function", function: fn })),
-        tool_choice: "auto",
-      }),
-    });
-
-    const data = await response.json();
-    console.log("OpenAI API response:", JSON.stringify(data));
-    
-    // Check if the response contains a function call
-    const responseMessage = data.choices[0].message;
-    let result = { message: responseMessage };
-    
-    // If the model wants to call a function
-    if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
-      const toolCall = responseMessage.tool_calls[0];
-      const functionName = toolCall.function.name;
-      const functionArgs = JSON.parse(toolCall.function.arguments);
-      
-      // Execute the function
-      const functionResult = await handleFunctionCall({
-        name: functionName,
-        arguments: functionArgs,
-        userId: userId
-      });
-      
-      // Make a second call to OpenAI with the function result
-      const secondResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    try {
+      // Call OpenAI API
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${OPENAI_API_KEY}`,
@@ -193,37 +181,93 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           model: "gpt-4o-mini",
-          messages: [
-            ...completeMessages,
-            responseMessage,
-            {
-              role: "function",
-              name: functionName,
-              content: JSON.stringify(functionResult)
-            }
-          ],
-          temperature: 0.7
+          messages: completeMessages,
+          temperature: 0.7,
+          tools: functions.map(fn => ({ type: "function", function: fn })),
+          tool_choice: "auto",
         }),
       });
+
+      const data = await response.json();
+      console.log("OpenAI API response:", JSON.stringify(data));
       
-      const secondData = await secondResponse.json();
-      result = { 
-        message: secondData.choices[0].message, 
-        functionCall: {
+      // Check if the response contains a function call
+      const responseMessage = data.choices[0].message;
+      let result = { message: responseMessage };
+      
+      // If the model wants to call a function
+      if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
+        const toolCall = responseMessage.tool_calls[0];
+        const functionName = toolCall.function.name;
+        const functionArgs = JSON.parse(toolCall.function.arguments);
+        
+        // Execute the function
+        const functionResult = await handleFunctionCall({
           name: functionName,
           arguments: functionArgs,
-          result: functionResult
-        }
-      };
-    }
+          userId: userId
+        });
+        
+        // Make a second call to OpenAI with the function result
+        const secondResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${OPENAI_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "gpt-4o-mini",
+            messages: [
+              ...completeMessages,
+              responseMessage,
+              {
+                role: "function",
+                name: functionName,
+                content: JSON.stringify(functionResult)
+              }
+            ],
+            temperature: 0.7
+          }),
+        });
+        
+        const secondData = await secondResponse.json();
+        result = { 
+          message: secondData.choices[0].message, 
+          functionCall: {
+            name: functionName,
+            arguments: functionArgs,
+            result: functionResult
+          }
+        };
+      }
 
-    return new Response(JSON.stringify(result), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+      return new Response(JSON.stringify(result), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    } catch (error) {
+      console.error("Error calling OpenAI API:", error);
+      return new Response(
+        JSON.stringify({ 
+          message: { 
+            role: "assistant", 
+            content: "I'm having trouble connecting to my brain right now. Please try again in a moment." 
+          }
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200  // Return 200 even on API error to handle gracefully
+        }
+      );
+    }
   } catch (error) {
-    console.error("Error:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
+    console.error("General error:", error);
+    return new Response(JSON.stringify({ 
+      message: { 
+        role: "assistant", 
+        content: "Sorry, I encountered an error processing your request. Please try again later." 
+      }
+    }), {
+      status: 200,  // Return 200 for graceful handling
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
@@ -255,8 +299,84 @@ async function handleFunctionCall(functionCall: any) {
       return await getVenueAdmins(supabase, args.venue_id);
     case "get_bookings_by_date_range":
       return await getBookingsByDateRange(supabase, args.start_date, args.end_date, args.venue_id);
+    case "book_court":
+      return await bookCourt(supabase, args.user_id || userId, args.court_id, args.date, args.start_time, args.end_time);
     default:
       throw new Error(`Unknown function: ${name}`);
+  }
+}
+
+// New function to handle booking a court through AI
+async function bookCourt(supabase: any, userId: string, courtId: string, date: string, startTime: string, endTime: string) {
+  try {
+    // Check if the slot is available
+    const { data: availabilityData, error: availabilityError } = await supabase
+      .rpc('get_available_slots', {
+        p_court_id: courtId,
+        p_date: date
+      });
+    
+    if (availabilityError) throw availabilityError;
+    
+    // Find the requested slot in available slots
+    const requestedSlot = availabilityData?.find((slot: any) => 
+      slot.start_time === startTime && 
+      slot.end_time === endTime
+    );
+    
+    if (!requestedSlot || !requestedSlot.is_available) {
+      return {
+        success: false,
+        message: "The requested time slot is not available. Please choose another time."
+      };
+    }
+    
+    // Get court details for pricing
+    const { data: court, error: courtError } = await supabase
+      .from('courts')
+      .select('id, name, hourly_rate, venue:venues(id, name)')
+      .eq('id', courtId)
+      .single();
+    
+    if (courtError) throw courtError;
+    
+    // Calculate price based on time difference
+    const startParts = startTime.split(':').map(Number);
+    const endParts = endTime.split(':').map(Number);
+    const startMinutes = startParts[0] * 60 + startParts[1];
+    const endMinutes = endParts[0] * 60 + endParts[1];
+    const hours = (endMinutes - startMinutes) / 60;
+    const totalPrice = hours * court.hourly_rate;
+    
+    // Create booking using the database function
+    const { data: bookingId, error: bookingError } = await supabase
+      .rpc('create_booking_with_lock', {
+        p_court_id: courtId,
+        p_user_id: userId,
+        p_booking_date: date,
+        p_start_time: startTime,
+        p_end_time: endTime,
+        p_total_price: totalPrice
+      });
+    
+    if (bookingError) throw bookingError;
+    
+    return {
+      success: true,
+      booking_id: bookingId,
+      court_name: court.name,
+      venue_name: court.venue?.name,
+      date: date,
+      start_time: startTime,
+      end_time: endTime,
+      total_price: totalPrice
+    };
+  } catch (error) {
+    console.error("Error in bookCourt:", error);
+    return { 
+      success: false, 
+      message: "Failed to book the court. " + (error.message || "Please try again later.")
+    };
   }
 }
 
@@ -264,34 +384,225 @@ async function handleFunctionCall(functionCall: any) {
 function createClient(supabaseUrl: string, supabaseKey: string) {
   return {
     from: (table: string) => ({
-      select: (columns: string) => ({
+      select: (columns: string = '*') => ({
         eq: (column: string, value: any) => ({
-          order: (column: string, { ascending }: { ascending: boolean }) => ({
-            limit: async (limit: number) => {
-              // This is a simplified mock - in a real implementation,
-              // you would use the actual Supabase client to make the query
-              console.log(`Query: SELECT ${columns} FROM ${table} WHERE ${column} = ${value} ORDER BY ${column} ${ascending ? 'ASC' : 'DESC'} LIMIT ${limit}`);
+          order: (column: string, { ascending = true }: { ascending: boolean } = { ascending: true }) => ({
+            limit: (limit: number) => ({
+              single: async () => {
+                try {
+                  const response = await fetch(`${supabaseUrl}/rest/v1/${table}?select=${columns}&${column}=eq.${value}&order=${column}.${ascending ? 'asc' : 'desc'}&limit=${limit}&head=true`, {
+                    headers: {
+                      'apikey': supabaseKey,
+                      'Authorization': `Bearer ${supabaseKey}`
+                    }
+                  });
+                  
+                  if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                  }
+                  
+                  const data = await response.json();
+                  return { data: data.length > 0 ? data[0] : null, error: null };
+                } catch (error) {
+                  return { data: null, error };
+                }
+              },
+              async execute() {
+                try {
+                  const response = await fetch(`${supabaseUrl}/rest/v1/${table}?select=${columns}&${column}=eq.${value}&order=${column}.${ascending ? 'asc' : 'desc'}&limit=${limit}`, {
+                    headers: {
+                      'apikey': supabaseKey,
+                      'Authorization': `Bearer ${supabaseKey}`
+                    }
+                  });
+                  
+                  if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                  }
+                  
+                  const data = await response.json();
+                  return { data, error: null };
+                } catch (error) {
+                  return { data: null, error };
+                }
+              }
+            })
+          }),
+          async execute() {
+            try {
+              const response = await fetch(`${supabaseUrl}/rest/v1/${table}?select=${columns}&${column}=eq.${value}`, {
+                headers: {
+                  'apikey': supabaseKey,
+                  'Authorization': `Bearer ${supabaseKey}`
+                }
+              });
               
-              // For now, return mock data based on the function and params
-              // In a production environment, you would perform actual database queries
-              return { data: [], error: null };
+              if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+              }
+              
+              const data = await response.json();
+              return { data, error: null };
+            } catch (error) {
+              return { data: null, error };
             }
-          })
+          },
+          single: async () => {
+            try {
+              const response = await fetch(`${supabaseUrl}/rest/v1/${table}?select=${columns}&${column}=eq.${value}&limit=1`, {
+                headers: {
+                  'apikey': supabaseKey,
+                  'Authorization': `Bearer ${supabaseKey}`
+                }
+              });
+              
+              if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+              }
+              
+              const data = await response.json();
+              return { data: data.length > 0 ? data[0] : null, error: null };
+            } catch (error) {
+              return { data: null, error };
+            }
+          }
         }),
         in: (column: string, values: any[]) => ({
           order: (column: string, { ascending }: { ascending: boolean }) => ({
             limit: async (limit: number) => {
-              console.log(`Query: SELECT ${columns} FROM ${table} WHERE ${column} IN (${values.join(', ')}) ORDER BY ${column} ${ascending ? 'ASC' : 'DESC'} LIMIT ${limit}`);
-              return { data: [], error: null };
+              try {
+                const valuesStr = values.join(',');
+                const response = await fetch(`${supabaseUrl}/rest/v1/${table}?select=${columns}&${column}=in.(${valuesStr})&order=${column}.${ascending ? 'asc' : 'desc'}&limit=${limit}`, {
+                  headers: {
+                    'apikey': supabaseKey,
+                    'Authorization': `Bearer ${supabaseKey}`
+                  }
+                });
+                
+                if (!response.ok) {
+                  throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                return { data, error: null };
+              } catch (error) {
+                return { data: null, error };
+              }
             }
-          })
-        })
+          }),
+          async execute() {
+            try {
+              const valuesStr = values.join(',');
+              const response = await fetch(`${supabaseUrl}/rest/v1/${table}?select=${columns}&${column}=in.(${valuesStr})`, {
+                headers: {
+                  'apikey': supabaseKey,
+                  'Authorization': `Bearer ${supabaseKey}`
+                }
+              });
+              
+              if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+              }
+              
+              const data = await response.json();
+              return { data, error: null };
+            } catch (error) {
+              return { data: null, error };
+            }
+          }
+        }),
+        async execute() {
+          try {
+            const response = await fetch(`${supabaseUrl}/rest/v1/${table}?select=${columns}`, {
+              headers: {
+                'apikey': supabaseKey,
+                'Authorization': `Bearer ${supabaseKey}`
+              }
+            });
+            
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            return { data, error: null };
+          } catch (error) {
+            return { data: null, error };
+          }
+        }
       }),
-      rpc: async (functionName: string, params: any) => {
-        console.log(`RPC call: ${functionName} with params:`, params);
-        return { data: [], error: null };
+      insert: async (values: any) => {
+        try {
+          const response = await fetch(`${supabaseUrl}/rest/v1/${table}`, {
+            method: 'POST',
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=representation'
+            },
+            body: JSON.stringify(values)
+          });
+          
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          
+          const data = await response.json();
+          return { data, error: null };
+        } catch (error) {
+          return { data: null, error };
+        }
+      },
+      update: (values: any) => ({
+        eq: async (column: string, value: any) => {
+          try {
+            const response = await fetch(`${supabaseUrl}/rest/v1/${table}?${column}=eq.${value}`, {
+              method: 'PATCH',
+              headers: {
+                'apikey': supabaseKey,
+                'Authorization': `Bearer ${supabaseKey}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=representation'
+              },
+              body: JSON.stringify(values)
+            });
+            
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            return { data, error: null };
+          } catch (error) {
+            return { data: null, error };
+          }
+        }
+      })
+    }),
+    rpc: async (functionName: string, params: any) => {
+      try {
+        const response = await fetch(`${supabaseUrl}/rest/v1/rpc/${functionName}`, {
+          method: 'POST',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(params)
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`RPC error! status: ${response.status}, message: ${errorText}`);
+        }
+        
+        const data = await response.json();
+        return { data, error: null };
+      } catch (error) {
+        return { data: null, error };
       }
-    })
+    }
   };
 }
 
