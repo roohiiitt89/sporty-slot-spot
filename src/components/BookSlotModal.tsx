@@ -203,7 +203,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     if (currentStep === 2 && selectedCourt && selectedDate) {
       const intervalId = setInterval(() => {
         setRefreshKey(prev => prev + 1);
-      }, 15000);
+      }, 60000);
       
       return () => clearInterval(intervalId);
     }
