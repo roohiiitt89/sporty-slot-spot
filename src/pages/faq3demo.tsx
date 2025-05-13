@@ -1,4 +1,5 @@
-import { Faq3 } from "@/components/ui/faq3";
+import Faq3 from "@/components/ui/faq3"; // Remove curly braces
+
 
 const demoData = {
   heading: "Grid2Play Help Center",
@@ -29,3 +30,6 @@ const demoData = {
 export default function Faq3Demo() {
   return <Faq3 {...demoData} />;
 }
+
+export default Faq3; 
+
