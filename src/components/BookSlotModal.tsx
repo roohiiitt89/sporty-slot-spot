@@ -133,6 +133,8 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       fetchVenueDetails(venueId);
     }
     
+
+/*
     const bookingChannel = supabase
       .channel('booking-updates')
       .on('postgres_changes', {
@@ -149,7 +151,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       
     return () => {
       supabase.removeChannel(bookingChannel);
-    };
+    };*/
   }, [venueId, user, navigate, onClose]);
 
   useEffect(() => {
