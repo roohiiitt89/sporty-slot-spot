@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -82,7 +81,30 @@ serve(async (req) => {
     // Detect language - check if the latest user message might be in Hinglish
     let selectedSystemPrompt = SYSTEM_PROMPT;
     if (messages && messages.length > 0) {
-      const latestUserMsg = messages[messages.length - 1].content || '';
+      const latestUserMsg = messages[messages.length - 1].content?.toLowerCase() || '';
+      
+      // Keywords for English and Hinglish
+      const challengeKeywords = [
+        "challenge mode",
+        "challenge feature",
+        "challenge wala",
+        "challenge ka",
+        "challenge kya hai",
+        "challenge kya hota hai",
+        "challenge section"
+      ];
+
+      if (challengeKeywords.some(keyword => latestUserMsg.includes(keyword))) {
+        return new Response(
+          JSON.stringify({
+            message: {
+              role: "assistant",
+              content: "Challenge mode is under development and will be coming soon! Stay tuned for updates."
+            }
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
       
       // Very basic Hinglish detection (presence of common Hindi words/patterns)
       const hindiPatterns = ['kya', 'hai', 'main', 'mujhe', 'aap', 'kaise', 'nahi', 'karo', 'kar', 'mein'];
@@ -114,10 +136,6 @@ serve(async (req) => {
       });
     }
 
-
-
-
-    
     // Define available functions
     const functions = [
       {
@@ -363,8 +381,6 @@ async function handleFunctionCall(functionCall: any, supabase: any) {
      case "get_venue_contact":
         return await getVenueContact(supabase, args.venue_name);
 
-
-
     case "book_court":
       return await bookCourt(supabase, userId, args.court_id, args.date, args.start_time, args.end_time);
     default:
@@ -428,46 +444,35 @@ async function getUserBookings(supabase: any, user_id: string, limit: number = 1
     
     if (upcomingError) throw upcomingError;
 
-
-
- 
-
-
     if (functionCall.name === "get_venue_contact") {
-  const { venue_name } = functionCall.arguments;
-  const { data: venue, error } = await supabase
-    .from("venues")
-    .select("name, location, contact_number, opening_hours")
-    .ilike("name", `%${venue_name}%`)
-    .limit(1)
-    .maybeSingle();
+      const { venue_name } = functionCall.arguments;
+      const { data: venue, error } = await supabase
+        .from("venues")
+        .select("name, location, contact_number, opening_hours")
+        .ilike("name", `%${venue_name}%`)
+        .limit(1)
+        .maybeSingle();
 
-  if (error || !venue) {
-    return {
-      content: `Sorry, I couldn't find contact details for "${venue_name}".`
-    };
-  }
+      if (error || !venue) {
+        return {
+          content: `Sorry, I couldn't find contact details for "${venue_name}".`
+        };
+      }
 
-  let reply = `You can chat with the "${venue.name}" venue owner directly within the site using the "Chat with Venue" feature.`;
-  if (venue.contact_number) {
-    reply += ` Or call the venue owner at ${venue.contact_number}.`;
-  }
-  if (venue.location) {
-    reply += `\nLocation: ${venue.location}`;
-  }
-  if (venue.opening_hours) {
-    reply += `\nOpening Hours: ${venue.opening_hours}`;
-  }
+      let reply = `You can chat with the "${venue.name}" venue owner directly within the site using the "Chat with Venue" feature.`;
+      if (venue.contact_number) {
+        reply += ` Or call the venue owner at ${venue.contact_number}.`;
+      }
+      if (venue.location) {
+        reply += `\nLocation: ${venue.location}`;
+      }
+      if (venue.opening_hours) {
+        reply += `\nOpening Hours: ${venue.opening_hours}`;
+      }
 
-  return { content: reply };
-}
+      return { content: reply };
+    }
 
-
-
-
-
-
-    
     // Get past bookings
     const { data: pastBookings, error: pastError } = await supabase
       .from('bookings')
