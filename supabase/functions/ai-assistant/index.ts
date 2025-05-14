@@ -83,18 +83,9 @@ serve(async (req) => {
     if (messages && messages.length > 0) {
       const latestUserMsg = messages[messages.length - 1].content?.toLowerCase() || '';
       
-      // Keywords for English and Hinglish
-      const challengeKeywords = [
-        "challenge mode",
-        "challenge feature",
-        "challenge wala",
-        "challenge ka",
-        "challenge kya hai",
-        "challenge kya hota hai",
-        "challenge section"
-      ];
+      const challengeRegex = /\bchallenge( mode| feature| wala| ka| kya hai| kya hota hai| section)?\b/i;
 
-      if (challengeKeywords.some(keyword => latestUserMsg.includes(keyword))) {
+      if (challengeRegex.test(latestUserMsg)) {
         return new Response(
           JSON.stringify({
             message: {
