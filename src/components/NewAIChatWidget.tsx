@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { MessageCircle, X, Send, Mic, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { MessageCircle, X, Send, Mic, ThumbsUp, ThumbsDown, User, Bot } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
@@ -26,15 +26,62 @@ const NewAIChatWidget = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isFirstInteraction, setIsFirstInteraction] = useState(true);
   const [isListening, setIsListening] = useState(false);
-  const { user, userRole } = useAuth();
+  const { user, userRole, isSessionExpired, logout } = useAuth();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<any>(null);
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
+  const [consentGiven, setConsentGiven] = useState<boolean | null>(null);
 
-  // Load conversation history from localStorage
+  // Check notification permission
+  useEffect(() => {
+    if ('Notification' in window) {
+      setNotificationPermission(Notification.permission);
+    }
+  }, []);
+
+  // Request notification permission if needed
+  const requestNotificationPermission = async () => {
+    if ('Notification' in window && notificationPermission !== 'granted') {
+      const permission = await Notification.requestPermission();
+      setNotificationPermission(permission);
+      return permission === 'granted';
+    }
+    return notificationPermission === 'granted';
+  };
+
+  // Show notification when new message arrives and tab is not active
+  const showNotification = (message: string) => {
+    if (document.hidden && notificationPermission === 'granted') {
+      new Notification('Grid2Play Assistant', {
+        body: message,
+        icon: '/favicon.ico'
+      });
+    }
+  };
+
+  // Check for session expiration
+  useEffect(() => {
+    if (isSessionExpired && isOpen) {
+      setMessages(prev => [...prev, {
+        id: 'session-expired-' + Date.now(),
+        role: 'assistant',
+        content: "Your session has expired. Please log in again to continue chatting.",
+        timestamp: new Date()
+      }]);
+    }
+  }, [isSessionExpired, isOpen]);
+
+  // Load conversation history from localStorage and check for analytics consent
   useEffect(() => {
     if (user) {
       const savedChat = localStorage.getItem(`ai_chat_history_${user.id}`);
+      const savedConsent = localStorage.getItem(`ai_chat_consent_${user.id}`);
+      
+      if (savedConsent !== null) {
+        setConsentGiven(savedConsent === 'true');
+      }
+
       if (savedChat) {
         try {
           const parsedChat = JSON.parse(savedChat);
@@ -59,8 +106,35 @@ const NewAIChatWidget = () => {
           timestamp: msg.timestamp.toISOString()
         })))
       );
+
+      // Send anonymized logs to backend if consent given
+      if (consentGiven) {
+        sendAnonymizedLogs();
+      }
     }
-  }, [messages, user]);
+  }, [messages, user, consentGiven]);
+
+  // Send anonymized chat logs to backend
+  const sendAnonymizedLogs = async () => {
+    try {
+      const logs = messages.map(msg => ({
+        role: msg.role,
+        content: msg.content,
+        timestamp: msg.timestamp.toISOString(),
+        reactions: msg.reactions
+      }));
+
+      await supabase.functions.invoke('log-chat-analytics', {
+        body: {
+          userId: user?.id, // Still tracked but anonymized in backend processing
+          messages: logs,
+          userAgent: navigator.userAgent
+        }
+      });
+    } catch (error) {
+      console.error("Failed to send analytics", error);
+    }
+  };
 
   // Initialize voice recognition
   useEffect(() => {
@@ -110,8 +184,20 @@ const NewAIChatWidget = () => {
       };
       setMessages([welcomeMessage]);
       setIsFirstInteraction(false);
+
+      // Show analytics consent prompt if not already set
+      if (user && consentGiven === null) {
+        setTimeout(() => {
+          setMessages(prev => [...prev, {
+            id: 'consent-prompt-' + Date.now(),
+            role: 'assistant',
+            content: "To help improve our service, may we use anonymized chat data for quality improvement? This won't include personal information.",
+            timestamp: new Date()
+          }]);
+        }, 1500);
+      }
     }
-  }, [isOpen, isFirstInteraction, user, messages.length]);
+  }, [isOpen, isFirstInteraction, user, messages.length, consentGiven]);
 
   // Scroll to bottom of chat
   useEffect(() => {
@@ -125,8 +211,40 @@ const NewAIChatWidget = () => {
     }
   }, [isOpen]);
 
+  // Handle tab visibility changes for notifications
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && messages.length > 0) {
+        document.title = "Grid2Play Assistant";
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [messages]);
+
   const handleSendMessage = async () => {
-    if (!inputMessage.trim() || !user) return;
+    if (!inputMessage.trim()) return;
+    
+    if (isSessionExpired) {
+      toast({
+        title: "Session Expired",
+        description: "Please log in again to continue chatting",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!user) {
+      toast({
+        title: "Not Signed In",
+        description: "Please sign in to use the chat assistant",
+        variant: "destructive"
+      });
+      return;
+    }
     
     const userMessage: ChatMessage = {
       id: 'user-' + Date.now(),
@@ -149,7 +267,11 @@ const NewAIChatWidget = () => {
       const { data, error } = await supabase.functions.invoke('chat-assistant', {
         body: { 
           messages: messageHistory,
-          userId: user.id
+          userId: user.id,
+          context: {
+            userRole,
+            previousMessages: messages.slice(-10) // Send last 10 messages for context
+          }
         }
       });
       
@@ -164,6 +286,16 @@ const NewAIChatWidget = () => {
         };
         
         setMessages(prev => [...prev, assistantMessage]);
+        
+        // Show notification if tab is not active
+        if (document.hidden) {
+          const canNotify = await requestNotificationPermission();
+          if (canNotify) {
+            showNotification(data.message.content.substring(0, 100));
+          } else {
+            document.title = "New message! - Grid2Play Assistant";
+          }
+        }
       } else {
         throw new Error("Invalid response format");
       }
@@ -227,15 +359,37 @@ const NewAIChatWidget = () => {
       return msg;
     }));
 
-    // In a real app, you'd send this feedback to your backend
-    console.log(`User ${reaction} message ${messageId}`);
+    // Send feedback to backend
+    supabase.functions.invoke('chat-feedback', {
+      body: {
+        messageId,
+        reaction,
+        userId: user?.id
+      }
+    }).catch(console.error);
+  };
+
+  const handleConsent = (given: boolean) => {
+    setConsentGiven(given);
+    if (user) {
+      localStorage.setItem(`ai_chat_consent_${user.id}`, String(given));
+    }
+    setMessages(prev => [...prev, {
+      id: 'consent-response-' + Date.now(),
+      role: 'user',
+      content: given ? "Yes, I agree" : "No, I don't agree",
+      timestamp: new Date()
+    }]);
   };
 
   const formatMessageContent = (content: string) => {
-    // Improved formatting for lists, links, and sports-related terms
+    // Enhanced formatting with markdown support
     const formatted = content
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
       .replace(/\*(.*?)\*/g, '<em>$1</em>') // Italics
+      .replace(/```([^`]+)```/g, '<pre class="bg-gray-800/50 p-2 rounded my-1 overflow-x-auto"><code>$1</code></pre>') // Code blocks
+      .replace(/`([^`]+)`/g, '<code class="bg-gray-800/50 px-1 rounded">$1</code>') // Inline code
+      .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-emerald-400 hover:underline">$1</a>') // Links
       .replace(/\b(tennis|football|basketball|badminton)\b/gi, '<span class="text-emerald-300">$1</span>')
       .replace(/\n/g, '<br />');
 
@@ -267,6 +421,25 @@ const NewAIChatWidget = () => {
             </button>
           ))}
         </div>
+      </div>
+    );
+  };
+
+  const renderConsentButtons = () => {
+    return (
+      <div className="flex gap-2 mt-2">
+        <button
+          onClick={() => handleConsent(true)}
+          className="text-xs bg-emerald-800/50 text-emerald-100 px-3 py-1 rounded hover:bg-emerald-700/80 transition-colors border border-emerald-700/30"
+        >
+          Yes, I agree
+        </button>
+        <button
+          onClick={() => handleConsent(false)}
+          className="text-xs bg-gray-800/50 text-gray-100 px-3 py-1 rounded hover:bg-gray-700/80 transition-colors border border-gray-700/30"
+        >
+          No, thanks
+        </button>
       </div>
     );
   };
@@ -337,53 +510,66 @@ const NewAIChatWidget = () => {
                     : "self-start mr-auto"
                 )}
               >
-                <div
-                  className={cn(
-                    "rounded-lg p-3 shadow-sm relative group",
-                    "transition-all duration-200",
-                    message.role === "user" 
-                      ? "bg-emerald-800/90 text-white border border-emerald-700/50" 
-                      : "bg-gray-800/90 text-gray-100 border border-gray-700/50"
-                  )}
-                >
-                  <div 
-                    className="whitespace-pre-wrap [&>strong]:font-bold [&>em]:italic [&>span]:font-medium"
-                    dangerouslySetInnerHTML={formatMessageContent(message.content)}
-                  />
-                  
-                  {message.timestamp && (
-                    <div className={cn(
-                      "text-xs mt-1 text-right",
-                      message.role === "user" ? "text-emerald-200/70" : "text-gray-400"
-                    )}>
-                      {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                <div className="flex items-start gap-2">
+                  {message.role === "user" ? (
+                    <div className="flex-shrink-0 mt-1 p-1 rounded-full bg-emerald-800/50 border border-emerald-700/50">
+                      <User className="h-3 w-3 text-emerald-300" />
+                    </div>
+                  ) : (
+                    <div className="flex-shrink-0 mt-1 p-1 rounded-full bg-gray-800/50 border border-gray-700/50">
+                      <Bot className="h-3 w-3 text-gray-300" />
                     </div>
                   )}
+                  <div
+                    className={cn(
+                      "rounded-lg p-3 shadow-sm relative group",
+                      "transition-all duration-200",
+                      message.role === "user" 
+                        ? "bg-emerald-800/90 text-white border border-emerald-700/50" 
+                        : "bg-gray-800/90 text-gray-100 border border-gray-700/50"
+                    )}
+                  >
+                    <div 
+                      className="whitespace-pre-wrap [&>strong]:font-bold [&>em]:italic [&>span]:font-medium [&>a]:underline [&>pre]:overflow-x-auto"
+                      dangerouslySetInnerHTML={formatMessageContent(message.content)}
+                    />
+                    
+                    {message.timestamp && (
+                      <div className={cn(
+                        "text-xs mt-1 text-right",
+                        message.role === "user" ? "text-emerald-200/70" : "text-gray-400"
+                      )}>
+                        {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    )}
 
-                  {message.role === 'assistant' && (
-                    <div className="absolute -bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => handleReaction(message.id, 'thumbsUp')}
-                        className={cn(
-                          "p-1 rounded-full bg-gray-800/80 border border-gray-700/50",
-                          "hover:bg-emerald-800/50 hover:border-emerald-700/50",
-                          message.reactions?.thumbsUp ? "text-emerald-400" : "text-gray-400"
-                        )}
-                      >
-                        <ThumbsUp className="h-3 w-3" />
-                      </button>
-                      <button
-                        onClick={() => handleReaction(message.id, 'thumbsDown')}
-                        className={cn(
-                          "p-1 rounded-full bg-gray-800/80 border border-gray-700/50",
-                          "hover:bg-red-800/50 hover:border-red-700/50",
-                          message.reactions?.thumbsDown ? "text-red-400" : "text-gray-400"
-                        )}
-                      >
-                        <ThumbsDown className="h-3 w-3" />
-                      </button>
-                    </div>
-                  )}
+                    {message.role === 'assistant' && (
+                      <div className="absolute -bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => handleReaction(message.id, 'thumbsUp')}
+                          className={cn(
+                            "p-1 rounded-full bg-gray-800/80 border border-gray-700/50",
+                            "hover:bg-emerald-800/50 hover:border-emerald-700/50",
+                            message.reactions?.thumbsUp ? "text-emerald-400" : "text-gray-400"
+                          )}
+                        >
+                          <ThumbsUp className="h-3 w-3" />
+                        </button>
+                        <button
+                          onClick={() => handleReaction(message.id, 'thumbsDown')}
+                          className={cn(
+                            "p-1 rounded-full bg-gray-800/80 border border-gray-700/50",
+                            "hover:bg-red-800/50 hover:border-red-700/50",
+                            message.reactions?.thumbsDown ? "text-red-400" : "text-gray-400"
+                          )}
+                        >
+                          <ThumbsDown className="h-3 w-3" />
+                        </button>
+                      </div>
+                    )}
+
+                    {message.id.includes('consent-prompt') && renderConsentButtons()}
+                  </div>
                 </div>
               </div>
             ))
@@ -428,12 +614,12 @@ const NewAIChatWidget = () => {
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyDown={handleKeyPress}
-              disabled={isLoading || !user}
+              disabled={isLoading || !user || isSessionExpired}
               rows={1}
             />
             <button
               onClick={handleSendMessage}
-              disabled={!inputMessage.trim() || isLoading || !user}
+              disabled={!inputMessage.trim() || isLoading || !user || isSessionExpired}
               className={cn(
                 "h-[44px] w-[44px] rounded-lg flex items-center justify-center transition-all",
                 "bg-emerald-800/90 text-emerald-100 border border-emerald-700/50",
@@ -444,6 +630,16 @@ const NewAIChatWidget = () => {
               <Send className="h-5 w-5" />
             </button>
           </div>
+          {isSessionExpired && (
+            <div className="mt-2 text-center">
+              <button 
+                onClick={() => window.location.reload()}
+                className="text-xs text-emerald-400 hover:underline"
+              >
+                Session expired. Click here to refresh and log in again.
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </>
