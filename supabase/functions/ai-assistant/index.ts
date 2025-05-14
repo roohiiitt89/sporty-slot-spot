@@ -206,6 +206,28 @@ if (messages && messages.length > 0) {
           required: []
         }
       },
+
+
+
+
+{
+        name: "get_venue_contact",
+        description: "Get contact details for a specific venue",
+        parameters: {
+          type: "object",
+          properties: {
+            venue_name: { type: "string", description: "Name of the venue" }
+          },
+          required: ["venue_name"]
+        }
+      },
+
+
+
+
+
+
+
       {
         name: "book_court",
         description: "Book a court for a specific date and time slot",
@@ -388,10 +410,72 @@ async function handleFunctionCall(functionCall: any, supabase: any) {
       return await getBookingsByDateRange(supabase, args.start_date, args.end_date, args.venue_id);
     case "book_court":
       return await bookCourt(supabase, userId, args.court_id, args.date, args.start_time, args.end_time);
+    
+    case "get_venue_contact":
+      return await getVenueContact(supabase, args.venue_name);
+
+
     default:
       throw new Error(`Unknown function: ${name}`);
   }
 }
+
+
+
+async function getVenueContact(supabase: any, venue_name: string) {
+  try {
+    const { data: venue, error } = await supabase
+      .from("venues")
+      .select("name, location, contact_number, opening_hours")
+      .ilike("name", `%${venue_name}%`)
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Error fetching venue contact:", error);
+      return { 
+        success: false, 
+        message: "Sorry, I couldn't fetch venue details right now." 
+      };
+    }
+
+    if (!venue) {
+      return { 
+        success: false, 
+        message: `Sorry, I couldn't find a venue named "${venue_name}".` 
+      };
+    }
+
+    let reply = `You can chat with the "${venue.name}" venue owner directly within the site using the "Chat with Venue" feature.`;
+    if (venue.contact_number) {
+      reply += ` Or call the venue owner at ${venue.contact_number}.`;
+    }
+    if (venue.location) {
+      reply += `\nLocation: ${venue.location}`;
+    }
+    if (venue.opening_hours) {
+      reply += `\nOpening Hours: ${venue.opening_hours}`;
+    }
+
+    return {
+      success: true,
+      venue_name: venue.name,
+      contact_info: reply
+    };
+  } catch (error) {
+    console.error("Error in getVenueContact:", error);
+    return {
+      success: false,
+      message: "Failed to fetch venue contact information"
+    };
+  }
+}
+
+
+
+
+
+
 
 async function getUserBookings(supabase: any, user_id: string, limit: number = 10) {
   if (!user_id) {
