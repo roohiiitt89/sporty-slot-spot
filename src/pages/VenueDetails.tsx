@@ -508,60 +508,60 @@ const VenueDetails: React.FC = () => {
     <div className="min-h-screen bg-navy-dark">
       <Header />
       
-      {/* Back Button */}
-      <div className="container mx-auto px-4 py-4">
-        <button
-          onClick={() => navigate('/venues')}
-          className="flex items-center text-gray-400 hover:text-white transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Venues
-        </button>
-      </div>
-
       {/* Hero Section with Image Carousel */}
-      <div className="relative w-full h-[40vh] md:h-[50vh] lg:h-[60vh] mb-8 overflow-hidden">
+      <div className="relative w-full h-[60vh] md:h-[50vh] lg:h-[60vh] mb-4 md:mb-8">
         <Carousel className="w-full h-full">
           <CarouselContent>
             {venueImages.map((image, index) => (
               <CarouselItem key={index} className="w-full h-full">
-                <div className="relative w-full h-full">
+                <div className="relative w-full h-full bg-navy-dark">
                   <img
                     src={image}
                     alt={`${venue?.name} - View ${index + 1}`}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover object-center brightness-90"
                     loading={index === 0 ? 'eager' : 'lazy'}
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-navy-dark via-navy-dark/70 to-transparent" />
+                  {/* Mobile-optimized gradient overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/30" />
                 </div>
               </CarouselItem>
             ))}
           </CarouselContent>
-          <div className="absolute bottom-20 md:bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2 z-20">
-            <CarouselPrevious className="h-8 w-8 rounded-full bg-black/50 hover:bg-black/70 text-white border-white/20" />
-            <CarouselNext className="h-8 w-8 rounded-full bg-black/50 hover:bg-black/70 text-white border-white/20" />
+          {/* Move carousel controls up for better visibility */}
+          <div className="absolute top-1/2 left-0 right-0 transform -translate-y-1/2 flex justify-between px-2 md:px-4 z-20">
+            <CarouselPrevious className="h-8 w-8 rounded-full bg-black/50 hover:bg-black/70 text-white border border-white/20" />
+            <CarouselNext className="h-8 w-8 rounded-full bg-black/50 hover:bg-black/70 text-white border border-white/20" />
           </div>
         </Carousel>
         
         {/* Venue Title Overlay - Improved mobile visibility */}
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-navy-dark via-navy-dark/90 to-transparent">
-          <div className="container mx-auto p-4 md:p-6">
-            <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold text-white mb-2 drop-shadow-lg">
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/80 to-transparent pt-12">
+          <div className="container mx-auto px-4 pb-4 md:pb-6">
+            {/* Back button moved inside the gradient overlay for better visibility */}
+            <button
+              onClick={() => navigate('/venues')}
+              className="flex items-center text-gray-300 hover:text-white transition-colors mb-3 text-sm"
+            >
+              <ArrowLeft className="w-4 h-4 mr-1" />
+              Back to Venues
+            </button>
+            
+            <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold text-white mb-3 drop-shadow-lg">
               {venue?.name}
             </h1>
-            <div className="flex flex-col md:flex-row md:items-center text-gray-200 md:space-x-4 space-y-2 md:space-y-0">
+            <div className="flex flex-col md:flex-row gap-2 md:gap-4 text-gray-200">
               <div className="flex items-center">
-                <MapPin className="w-4 h-4 mr-1 drop-shadow" />
-                <span className="text-sm md:text-base drop-shadow-lg">{venue?.location}</span>
+                <MapPin className="w-4 h-4 mr-1.5 text-[#2def80]" />
+                <span className="text-sm md:text-base">{venue?.location}</span>
               </div>
               <div className="flex items-center">
-                <Star className="w-4 h-4 mr-1 text-[#2def80] drop-shadow" />
-                <span className="text-sm md:text-base drop-shadow-lg">{venue?.rating?.toFixed(1) || '4.5'}</span>
+                <Star className="w-4 h-4 mr-1.5 text-[#2def80]" />
+                <span className="text-sm md:text-base">{venue?.rating?.toFixed(1) || '4.5'}/5.0</span>
               </div>
               {distance !== null && (
                 <div className="flex items-center">
-                  <Navigation className="w-4 h-4 mr-1 text-[#2def80] drop-shadow" />
-                  <span className="text-sm md:text-base drop-shadow-lg">
+                  <Navigation className="w-4 h-4 mr-1.5 text-[#2def80]" />
+                  <span className="text-sm md:text-base">
                     {distance < 1 
                       ? `${(distance * 1000).toFixed(0)}m away` 
                       : `${distance.toFixed(1)}km away`}
