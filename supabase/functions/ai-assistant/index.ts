@@ -81,19 +81,35 @@ Keep responses concise, focusing on helping users:
 6. Navigate payment options
 7. Contact venue owners and staff
 
-IMPORTANT: For ANY venue contact related queries:
-- ALWAYS use the get_venue_contact function first
-- NEVER provide venue information without calling get_venue_contact
-- If the venue name is mentioned, extract it and use get_venue_contact
-- Format the response using the exact information returned by get_venue_contact
-- Always mention both chat and phone options when available
-- Include business hours if provided
+IMPORTANT RULES FOR CONTACT QUERIES:
+1. If a user asks about contacting ANY venue:
+   - ALWAYS use the get_venue_contact function
+   - Extract the venue name from their query
+   - Pass the exact venue name to the function
+   - NEVER make up contact information
+   - NEVER skip calling get_venue_contact
 
-When handling contact queries:
-1. First try to fetch venue-specific contact details using get_venue_contact
-2. Use the exact response from get_venue_contact function
-3. Always mention the venue details page as a reliable source of information
-4. Include any additional venue context that might be helpful
+2. For queries containing words like "contact", "reach", "call", "phone", "chat with":
+   - ALWAYS treat them as contact queries
+   - ALWAYS use get_venue_contact function
+   - Extract venue name and pass to function
+
+3. When extracting venue names:
+   - Include "BOX" if it's part of the name
+   - Keep special characters (like /)
+   - Maintain exact capitalization
+   - For "RPM BOX" queries, use "RPM BOX CRICKET/FOOTBALL BOX"
+
+4. NEVER provide venue information without using get_venue_contact
+5. ALWAYS use the exact response from get_venue_contact
+6. NEVER modify or omit information from get_venue_contact response
+
+Example contact queries that MUST use get_venue_contact:
+- "How can I contact RPM BOX?"
+- "Contact details for Sports Arena"
+- "How to reach RPM BOX venue"
+- "Phone number for RPM BOX"
+- "Can I chat with RPM BOX staff?"
 
 You can use functions to access real data from our database when needed.
 
@@ -530,8 +546,15 @@ serve(async (req) => {
         messages: completeMessages,
         temperature: 0.7,
         functions,
-        function_call: messages[messages.length - 1].content.toLowerCase().includes('contact') 
-          ? { name: 'get_venue_contact' }
+        function_call: messages[messages.length - 1].content.toLowerCase().match(/\b(contact|reach|call|phone|chat|number)\b/) 
+          ? { 
+              name: 'get_venue_contact',
+              arguments: JSON.stringify({
+                venue_name: messages[messages.length - 1].content.toLowerCase().includes('rpm box') 
+                  ? "RPM BOX CRICKET/FOOTBALL BOX"
+                  : messages[messages.length - 1].content.match(/(?:contact|reach|call|phone|chat with|number for)\s+([^?.,]+)/i)?.[1]?.trim() || ""
+              })
+            }
           : "auto",
       }),
     });
