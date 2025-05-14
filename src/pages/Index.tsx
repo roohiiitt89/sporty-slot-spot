@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, Calendar, MapPin, Clock, User, ChevronRight, Activity, Star, Search } from 'lucide-react';
+import { ArrowRight, Calendar, MapPin, Clock, User, ChevronRight, Activity, Star } from 'lucide-react';
 import Header from '../components/Header';
 import BookSlotModal from '../components/BookSlotModal';
 import { EnterChallengeButton } from '@/components/challenge/EnterChallengeButton';
@@ -10,11 +10,12 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { StreakBar } from '@/components/StreakBar';
 import { LocationPermissionRequest } from '@/components/LocationPermissionRequest';
 import { NearbyVenues } from '@/components/NearbyVenues';
-import { useInView } from 'react-intersection-observer';
+import HomepageAvailabilityWidget from '@/components/HomepageAvailabilityWidget';
+import AIChatWidget from '@/components/AIChatWidget';
+import RotatingTypewriter from '@/components/RotatingTypewriter';
+import { Typewriter } from '@/components/Typewriter';
 
-// Lazy load components that are not immediately visible
-const HomepageAvailabilityWidget = lazy(() => import('@/components/HomepageAvailabilityWidget'));
-const AIChatWidget = lazy(() => import('@/components/AIChatWidget'));
+
 
 interface Venue {
   id: string;
@@ -22,8 +23,6 @@ interface Venue {
   location: string;
   image_url: string;
   rating: number;
-  total_bookings?: number;
-  review_count?: number;
 }
 interface Sport {
   id: string;
@@ -49,60 +48,6 @@ const athletesBenefits = [{
   description: "Access personalized training plans to develop your skills and reach your full potential",
   image: "https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?q=80&w=1000&auto=format&fit=crop"
 }];
-
-const VenueSkeleton = () => (
-  <div className="venue-card animate-pulse rounded-xl overflow-hidden">
-    <div className="h-56 bg-navy-light"></div>
-    <div className="p-4 bg-navy-light">
-      <div className="h-6 w-3/4 bg-navy rounded mb-2"></div>
-      <div className="h-4 w-1/2 bg-navy rounded"></div>
-      <div className="mt-3 flex items-center justify-between">
-        <div className="h-4 w-16 bg-navy rounded"></div>
-        <div className="h-4 w-24 bg-navy rounded"></div>
-      </div>
-    </div>
-  </div>
-);
-
-const SportSkeleton = () => (
-  <div className="sport-card animate-pulse rounded-xl overflow-hidden">
-    <div className="h-40 bg-navy-light"></div>
-    <div className="p-3 bg-navy-light">
-      <div className="h-5 w-2/3 bg-navy rounded mb-2"></div>
-      <div className="h-4 w-full bg-navy rounded"></div>
-    </div>
-  </div>
-);
-
-// Progressive Image component
-const ProgressiveImage: React.FC<{
-  src: string;
-  alt: string;
-  className?: string;
-  placeholderSrc?: string;
-}> = ({ src, alt, className, placeholderSrc }) => {
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [currentSrc, setCurrentSrc] = useState(placeholderSrc || `data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiB2aWV3Qm94PSIwIDAgMSAxIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJub25lIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMjAyMDIwIi8+PC9zdmc+`);
-
-  useEffect(() => {
-    const img = new Image();
-    img.src = src;
-    img.onload = () => {
-      setCurrentSrc(src);
-      setIsLoaded(true);
-    };
-  }, [src]);
-
-  return (
-    <img
-      src={currentSrc}
-      alt={alt}
-      className={`${className} transition-all duration-500 ${isLoaded ? 'blur-0' : 'blur-sm'}`}
-      loading="lazy"
-    />
-  );
-};
-
 const Index: React.FC = () => {
   const navigate = useNavigate();
   const {
@@ -124,37 +69,21 @@ const Index: React.FC = () => {
     sports: true
   });
   const [locationPermissionHandled, setLocationPermissionHandled] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [recentlyViewed, setRecentlyViewed] = useState<Venue[]>([]);
-  const [visibleVenueCount, setVisibleVenueCount] = useState(4);
   
   const venuesRef = useRef<HTMLDivElement>(null);
   const sportsRef = useRef<HTMLDivElement>(null);
   const athletesRef = useRef<HTMLDivElement>(null);
   const forYouRef = useRef<HTMLDivElement>(null);
   const quotesRef = useRef<HTMLDivElement>(null);
-  const { ref: loadMoreRef, inView } = useInView({
-    threshold: 0.5,
-    triggerOnce: true,
-  });
-
   useEffect(() => {
     // Fetch real data from Supabase
     fetchVenues();
     fetchSports();
-    fetchRecentlyViewed();
     const quoteInterval = setInterval(() => {
       setActiveQuoteIndex(prev => (prev + 1) % sportsQuotes.length);
     }, 5000);
     return () => clearInterval(quoteInterval);
   }, []);
-
-  useEffect(() => {
-    if (inView) {
-      setVisibleVenueCount(prev => Math.min(prev + 4, venues.length));
-    }
-  }, [inView, venues.length]);
-
   const fetchVenues = async () => {
     try {
       const {
@@ -195,24 +124,6 @@ const Index: React.FC = () => {
       }));
     }
   };
-  const fetchRecentlyViewed = async () => {
-    try {
-      // In a real app, this would be fetched from user's history in the database
-      const { data, error } = await supabase
-        .from('user_venue_history')
-        .select('venue_id, venues(*)')
-        .eq('user_id', user?.id)
-        .order('viewed_at', { ascending: false })
-        .limit(4);
-
-      if (error) throw error;
-      if (data) {
-        setRecentlyViewed(data.map(item => item.venues));
-      }
-    } catch (error) {
-      console.error('Error fetching recently viewed venues:', error);
-    }
-  };
   useEffect(() => {
     const observerOptions = {
       threshold: 0.2
@@ -249,27 +160,12 @@ const Index: React.FC = () => {
     console.log("Location permission denied");
   };
   
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    navigate(`/venues?search=${encodeURIComponent(searchQuery)}`);
-  };
-
   return <div className="min-h-screen bg-navy-dark text-card-foreground">
       <Header />
       
 <section className="hero-section">
-  <video 
-    autoPlay 
-    muted 
-    loop 
-    playsInline 
-    className="hero-video"
-    poster="https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/vedios/poster.jpg"
-  >
-    <source 
-      src="https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/vedios//mixkit-one-on-one-in-a-soccer-game-43483-full-hd%20(1).mp4" 
-      type="video/mp4" 
-    />
+  <video autoPlay muted loop playsInline className="hero-video">
+    <source src="https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/vedios//mixkit-one-on-one-in-a-soccer-game-43483-full-hd%20(1).mp4" type="video/mp4" />
     Your browser does not support the video tag.
   </video>
   <div className="hero-overlay dark-gradient-overlay"></div>
@@ -286,23 +182,6 @@ const Index: React.FC = () => {
     }}>
       Find and book your favorite sports venues easily. Multiple sports, venues, and flexible time slots all in one place.
     </p>
-    
-    {/* New Search Bar */}
-    <form onSubmit={handleSearch} className="max-w-2xl mx-auto mb-8 animate-fade-in" style={{ animationDelay: '0.3s' }}>
-      <div className="relative flex items-center">
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search for venues, sports, or locations..."
-          className="w-full px-6 py-4 rounded-full bg-white/10 backdrop-blur-md text-white placeholder-white/70 border border-white/20 focus:border-indigo-light focus:ring-2 focus:ring-indigo-light/50 outline-none transition-all"
-        />
-        <button type="submit" className="absolute right-2 p-3 text-white hover:text-indigo-light transition-colors">
-          <Search className="w-6 h-6" />
-        </button>
-      </div>
-    </form>
-
     <div className="flex flex-col md:flex-row justify-center gap-4 animate-fade-in" style={{
       animationDelay: '0.4s'
     }}>
@@ -333,58 +212,6 @@ const Index: React.FC = () => {
         <NearbyVenues />
       </div>
 
-      {/* Recently Viewed Section */}
-      {user && recentlyViewed.length > 0 && (
-        <section className="py-16 bg-gradient-to-b from-navy-dark to-black/90">
-          <div className="container mx-auto px-4">
-            <div className="flex justify-between items-center mb-10">
-              <h2 className="section-title text-white relative">
-                Recently Viewed
-                <span className="absolute -bottom-2 left-0 w-20 h-1 bg-indigo-light"></span>
-              </h2>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {recentlyViewed.map((venue) => (
-                <div
-                  key={venue.id}
-                  className="venue-card group cursor-pointer overflow-hidden rounded-xl bg-navy-light hover:bg-indigo transition-all duration-300"
-                  onClick={() => navigate(`/venues/${venue.id}`)}
-                >
-                  <div className="relative h-48">
-                    <img
-                      src={venue.image_url || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000'}
-                      alt={venue.name}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-60"></div>
-                  </div>
-                  
-                  <div className="p-4">
-                    <h3 className="text-xl font-bold text-white mb-2">{venue.name}</h3>
-                    <p className="text-gray-300 text-sm mb-3">{venue.location}</p>
-                    
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center">
-                        <Star className="w-4 h-4 text-yellow-400 mr-1" />
-                        <span className="text-white">{venue.rating.toFixed(1)}</span>
-                        {venue.review_count && (
-                          <span className="text-gray-400 ml-1">({venue.review_count})</span>
-                        )}
-                      </div>
-                      {venue.total_bookings && (
-                        <span className="text-gray-400">{venue.total_bookings} bookings</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
       <section id="venues" ref={venuesRef} className="py-16 bg-gradient-to-b from-black/90 to-navy-dark">
         <div className="container mx-auto px-4">
           <div className={`flex justify-between items-center mb-10 ${visibleSections.venues ? 'animate-reveal' : 'opacity-0'}`}>
@@ -398,40 +225,16 @@ const Index: React.FC = () => {
           </div>
           
           <div className={`${visibleSections.venues ? 'animate-reveal' : 'opacity-0'}`}>
-            {loading.venues ? (
-              <Carousel className="w-full">
+            {loading.venues ? <div className="flex justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo"></div>
+              </div> : venues.length > 0 ? <Carousel className="w-full">
                 <CarouselContent className="-ml-2 md:-ml-4">
-                  {[1, 2, 3, 4].map((_, index) => (
-                    <CarouselItem key={index} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/4">
-                      <VenueSkeleton />
-                    </CarouselItem>
-                  ))}
-                </CarouselContent>
-              </Carousel>
-            ) : venues.length > 0 ? (
-              <Carousel className="w-full">
-                <CarouselContent className="-ml-2 md:-ml-4">
-                  {venues.slice(0, visibleVenueCount).map((venue, index) => (
-                    <CarouselItem key={venue.id} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/4">
-                      <div 
-                        className="venue-card group cursor-pointer overflow-hidden rounded-xl" 
-                        style={{animationDelay: `${0.1 * (index + 1)}s`}} 
-                        onClick={() => navigate(`/venues/${venue.id}`)}
-                        role="button"
-                        tabIndex={0}
-                        aria-label={`Book ${venue.name} - Rating: ${venue.rating.toFixed(1)}, Location: ${venue.location}`}
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            navigate(`/venues/${venue.id}`);
-                          }
-                        }}
-                      >
+                  {venues.map((venue, index) => <CarouselItem key={venue.id} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/4">
+                      <div className="venue-card group cursor-pointer overflow-hidden rounded-xl" style={{
+                  animationDelay: `${0.1 * (index + 1)}s`
+                }} onClick={() => navigate(`/venues/${venue.id}`)}>
                         <div className="h-56 overflow-hidden relative">
-                          <ProgressiveImage
-                            src={venue.image_url || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000'}
-                            alt={venue.name}
-                            className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-110"
-                          />
+                          <img src={venue.image_url || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000'} alt={venue.name} className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-110" />
                           <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-30 group-hover:opacity-70 transition-opacity"></div>
                           
                           <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
@@ -448,44 +251,20 @@ const Index: React.FC = () => {
                           </h3>
                           <p className="text-gray-300 mt-2 line-clamp-2">{venue.location || 'Find a venue near you'}</p>
                           
-                          {/* Add social proof elements */}
-                          <div className="mt-3 flex items-center justify-between text-sm">
-                            <div className="flex items-center">
-                              <Star className="w-4 h-4 text-yellow-400 mr-1" />
-                              <span className="text-white">{venue.rating.toFixed(1)}</span>
-                              {venue.review_count && (
-                                <span className="text-gray-400 ml-1">({venue.review_count})</span>
-                              )}
-                            </div>
-                            {venue.total_bookings && (
-                              <span className="text-gray-400">{venue.total_bookings} bookings</span>
-                            )}
-                          </div>
-                          
                           <div className="absolute bottom-0 left-0 w-full h-1 bg-indigo transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-500"></div>
                           
                           <div className="absolute -bottom-12 -right-12 w-24 h-24 bg-indigo-light rounded-full opacity-0 group-hover:opacity-20 transform translate-x-full translate-y-full group-hover:translate-x-0 group-hover:translate-y-0 transition-all duration-700"></div>
                         </div>
                       </div>
-                    </CarouselItem>
-                  ))}
+                    </CarouselItem>)}
                 </CarouselContent>
                 <div className="flex justify-end mt-6 gap-2">
-                  <CarouselPrevious 
-                    className="relative inset-0 translate-y-0 bg-navy-light hover:bg-indigo hover:text-white text-white"
-                    aria-label="View previous venues"
-                  />
-                  <CarouselNext 
-                    className="relative inset-0 translate-y-0 bg-navy-light hover:bg-indigo hover:text-white text-white"
-                    aria-label="View next venues"
-                  />
+                  <CarouselPrevious className="relative inset-0 translate-y-0 bg-navy-light hover:bg-indigo hover:text-white text-white" />
+                  <CarouselNext className="relative inset-0 translate-y-0 bg-navy-light hover:bg-indigo hover:text-white text-white" />
                 </div>
-              </Carousel>
-            ) : (
-              <div className="text-center py-12">
+              </Carousel> : <div className="text-center py-12">
                 <p className="text-white text-lg">No venues available at the moment. Please check back later.</p>
-              </div>
-            )}
+              </div>}
           </div>
         </div>
       </section>
@@ -503,55 +282,47 @@ const Index: React.FC = () => {
     </div>
     
     <div className={`${visibleSections.sports ? 'animate-reveal' : 'opacity-0'}`}>
-      {loading.sports ? (
-        <Carousel className="w-full">
+      {loading.sports ? <div className="flex justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo"></div>
+        </div> : sports.length > 0 ? <Carousel className="w-full">
           <CarouselContent className="-ml-2 md:-ml-4">
-            {[1, 2, 3, 4].map((_, index) => (
-              <CarouselItem key={index} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/4">
-                <SportSkeleton />
-              </CarouselItem>
-            ))}
-          </CarouselContent>
-        </Carousel>
-      ) : sports.length > 0 ? <Carousel className="w-full">
-        <CarouselContent className="-ml-2 md:-ml-4">
-          {sports.map((sport, index) => <CarouselItem key={sport.id} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/4">
-              <div className="sport-card group cursor-pointer overflow-hidden rounded-xl" style={{
-          animationDelay: `${0.1 * (index + 1)}s`
-        }} onClick={() => handleSportCardClick(sport.id)}>
-                <div className="h-40 overflow-hidden relative"> {/* Changed from h-56 to h-40 */}
-                  <img src={sport.image_url || 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?q=80&w=1000'} alt={sport.name} className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-110" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-30 group-hover:opacity-70 transition-opacity"></div>
-                  
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
-                    <div className="bg-indigo/80 backdrop-blur-sm p-3 rounded-full transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"> {/* Reduced icon size */}
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
+            {sports.map((sport, index) => <CarouselItem key={sport.id} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/4">
+                <div className="sport-card group cursor-pointer overflow-hidden rounded-xl" style={{
+            animationDelay: `${0.1 * (index + 1)}s`
+          }} onClick={() => handleSportCardClick(sport.id)}>
+                  <div className="h-40 overflow-hidden relative"> {/* Changed from h-56 to h-40 */}
+                    <img src={sport.image_url || 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?q=80&w=1000'} alt={sport.name} className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-110" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-30 group-hover:opacity-70 transition-opacity"></div>
+                    
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
+                      <div className="bg-indigo/80 backdrop-blur-sm p-3 rounded-full transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"> {/* Reduced icon size */}
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
                     </div>
                   </div>
+                  <div className="p-3 bg-navy-light text-white relative overflow-hidden group-hover:bg-indigo transition-colors duration-500"> {/* Reduced padding */}
+                    <h3 className="text-lg font-bold group-hover:text-white transition-colors"> {/* Reduced text size */}
+                      {sport.name}
+                    </h3>
+                    <p className="text-gray-300 mt-1 text-sm line-clamp-2">{sport.description || 'Find venues for this sport'}</p> {/* Reduced text size and margin */}
+                    
+                    <div className="absolute bottom-0 left-0 w-full h-1 bg-indigo transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-500"></div>
+                    
+                    <div className="absolute -bottom-12 -right-12 w-24 h-24 bg-indigo-light rounded-full opacity-0 group-hover:opacity-20 transform translate-x-full translate-y-full group-hover:translate-x-0 group-hover:translate-y-0 transition-all duration-700"></div>
+                  </div>
                 </div>
-                <div className="p-3 bg-navy-light text-white relative overflow-hidden group-hover:bg-indigo transition-colors duration-500"> {/* Reduced padding */}
-                  <h3 className="text-lg font-bold group-hover:text-white transition-colors"> {/* Reduced text size */}
-                    {sport.name}
-                  </h3>
-                  <p className="text-gray-300 mt-1 text-sm line-clamp-2">{sport.description || 'Find venues for this sport'}</p> {/* Reduced text size and margin */}
-                  
-                  <div className="absolute bottom-0 left-0 w-full h-1 bg-indigo transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-500"></div>
-                  
-                  <div className="absolute -bottom-12 -right-12 w-24 h-24 bg-indigo-light rounded-full opacity-0 group-hover:opacity-20 transform translate-x-full translate-y-full group-hover:translate-x-0 group-hover:translate-y-0 transition-all duration-700"></div>
-                </div>
-              </div>
-            </CarouselItem>)}
-        </CarouselContent>
-        <div className="flex justify-end mt-6 gap-2">
-          <CarouselPrevious className="relative inset-0 translate-y-0 bg-navy-light hover:bg-indigo hover:text-white text-white" />
-          <CarouselNext className="relative inset-0 translate-y-0 bg-navy-light hover:bg-indigo hover:text-white text-white" />
-        </div>
-      </Carousel> : <div className="text-center py-12">
-        <p className="text-white text-lg">No sports available at the moment. Please check back later.</p>
-      </div>}
+              </CarouselItem>)}
+          </CarouselContent>
+          <div className="flex justify-end mt-6 gap-2">
+            <CarouselPrevious className="relative inset-0 translate-y-0 bg-navy-light hover:bg-indigo hover:text-white text-white" />
+            <CarouselNext className="relative inset-0 translate-y-0 bg-navy-light hover:bg-indigo hover:text-white text-white" />
+          </div>
+        </Carousel> : <div className="text-center py-12">
+          <p className="text-white text-lg">No sports available at the moment. Please check back later.</p>
+        </div>}
     </div>
   </div>
 </section>
@@ -632,9 +403,7 @@ const Index: React.FC = () => {
                 
                 {/* Add Real-Time Availability Widget Here */}
                 <div className="my-8">
-                  <Suspense fallback={<div className="h-[200px] bg-navy-light animate-pulse rounded-lg"></div>}>
-                    <HomepageAvailabilityWidget />
-                  </Suspense>
+                  <HomepageAvailabilityWidget />
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -775,15 +544,7 @@ const Index: React.FC = () => {
 
       {isBookModalOpen && <BookSlotModal onClose={() => setIsBookModalOpen(false)} />}
       
-      {/* Lazy load components that are not immediately visible */}
-      <Suspense fallback={null}>
-        <AIChatWidget />
-      </Suspense>
-
-      {/* Add infinite scroll trigger */}
-      {venues.length > visibleVenueCount && (
-        <div ref={loadMoreRef} className="h-10" />
-      )}
+      {/* Remove old AIChatWidget reference */}
     </div>;
 };
 export default Index;
