@@ -532,32 +532,42 @@ const VenueDetails: React.FC = () => {
                     className="w-full h-full object-cover"
                     loading={index === 0 ? 'eager' : 'lazy'}
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-navy-dark via-transparent to-transparent opacity-90" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-navy-dark via-navy-dark/70 to-transparent" />
                 </div>
               </CarouselItem>
             ))}
           </CarouselContent>
-          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
-            <CarouselPrevious className="h-8 w-8 rounded-full bg-black/50 hover:bg-black/70 text-white" />
-            <CarouselNext className="h-8 w-8 rounded-full bg-black/50 hover:bg-black/70 text-white" />
+          <div className="absolute bottom-20 md:bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2 z-20">
+            <CarouselPrevious className="h-8 w-8 rounded-full bg-black/50 hover:bg-black/70 text-white border-white/20" />
+            <CarouselNext className="h-8 w-8 rounded-full bg-black/50 hover:bg-black/70 text-white border-white/20" />
           </div>
         </Carousel>
         
-        {/* Venue Title Overlay */}
-        <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-navy-dark to-transparent">
-          <div className="container mx-auto">
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-2">
+        {/* Venue Title Overlay - Improved mobile visibility */}
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-navy-dark via-navy-dark/90 to-transparent">
+          <div className="container mx-auto p-4 md:p-6">
+            <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold text-white mb-2 drop-shadow-lg">
               {venue?.name}
             </h1>
-            <div className="flex items-center text-gray-300 space-x-4">
+            <div className="flex flex-col md:flex-row md:items-center text-gray-200 md:space-x-4 space-y-2 md:space-y-0">
               <div className="flex items-center">
-                <MapPin className="w-4 h-4 mr-1" />
-                <span>{venue?.location}</span>
+                <MapPin className="w-4 h-4 mr-1 drop-shadow" />
+                <span className="text-sm md:text-base drop-shadow-lg">{venue?.location}</span>
               </div>
               <div className="flex items-center">
-                <Star className="w-4 h-4 mr-1 text-[#2def80]" />
-                <span>{venue?.rating?.toFixed(1) || '4.5'}</span>
+                <Star className="w-4 h-4 mr-1 text-[#2def80] drop-shadow" />
+                <span className="text-sm md:text-base drop-shadow-lg">{venue?.rating?.toFixed(1) || '4.5'}</span>
               </div>
+              {distance !== null && (
+                <div className="flex items-center">
+                  <Navigation className="w-4 h-4 mr-1 text-[#2def80] drop-shadow" />
+                  <span className="text-sm md:text-base drop-shadow-lg">
+                    {distance < 1 
+                      ? `${(distance * 1000).toFixed(0)}m away` 
+                      : `${distance.toFixed(1)}km away`}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -595,3 +605,4 @@ const VenueDetails: React.FC = () => {
 };
 
 export default VenueDetails;
+
