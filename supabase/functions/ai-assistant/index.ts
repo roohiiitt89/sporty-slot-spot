@@ -38,6 +38,27 @@ interface VenueContactResponse {
   };
 }
 
+// Additional Types
+interface Booking {
+  id: string;
+  venue_id: string;
+  user_id: string;
+  slot_date: string;
+  slot_time: string;
+  sport_id: string;
+  status: string;
+  venue?: Venue;
+  sport?: {
+    name: string;
+  };
+}
+
+interface Sport {
+  id: string;
+  name: string;
+  icon?: string;
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -168,6 +189,150 @@ async function getVenueContact(supabase: SupabaseClient, venue_name: string): Pr
   }
 }
 
+// Function to get user's booking history
+async function getUserBookings(supabase: SupabaseClient, userId: string): Promise<any> {
+  try {
+    const { data: bookings, error } = await supabase
+      .from('bookings')
+      .select(`
+        *,
+        venue:venues(*),
+        sport:sports(*)
+      `)
+      .eq('user_id', userId)
+      .order('slot_date', { ascending: false });
+
+    if (error) throw error;
+
+    return {
+      success: true,
+      bookings: bookings || [],
+      message: bookings && bookings.length > 0
+        ? `Found ${bookings.length} bookings`
+        : "No bookings found"
+    };
+  } catch (error) {
+    console.error('Error fetching bookings:', error);
+    return {
+      success: false,
+      message: "Failed to fetch booking history"
+    };
+  }
+}
+
+// Function to get venue information
+async function getVenueInfo(supabase: SupabaseClient, venue_name: string): Promise<any> {
+  try {
+    const { data: venues, error } = await supabase
+      .from('venues')
+      .select(`
+        *,
+        sports:venue_sports(
+          sport:sports(*)
+        )
+      `)
+      .ilike('name', `%${venue_name}%`);
+
+    if (error) throw error;
+
+    return {
+      success: true,
+      venues: venues || [],
+      message: venues && venues.length > 0
+        ? `Found ${venues.length} matching venues`
+        : "No venues found"
+    };
+  } catch (error) {
+    console.error('Error fetching venue info:', error);
+    return {
+      success: false,
+      message: "Failed to fetch venue information"
+    };
+  }
+}
+
+// Function to get available slots
+async function getAvailableSlots(supabase: SupabaseClient, venue_id: string, date: string): Promise<any> {
+  try {
+    const { data: slots, error } = await supabase
+      .from('slots')
+      .select('*')
+      .eq('venue_id', venue_id)
+      .eq('date', date)
+      .eq('is_available', true);
+
+    if (error) throw error;
+
+    return {
+      success: true,
+      slots: slots || [],
+      message: slots && slots.length > 0
+        ? `Found ${slots.length} available slots`
+        : "No available slots found for this date"
+    };
+  } catch (error) {
+    console.error('Error fetching slots:', error);
+    return {
+      success: false,
+      message: "Failed to fetch available slots"
+    };
+  }
+}
+
+// Function to get sports information
+async function getSportsInfo(supabase: SupabaseClient): Promise<any> {
+  try {
+    const { data: sports, error } = await supabase
+      .from('sports')
+      .select('*');
+
+    if (error) throw error;
+
+    return {
+      success: true,
+      sports: sports || [],
+      message: sports && sports.length > 0
+        ? `Found ${sports.length} sports`
+        : "No sports found"
+    };
+  } catch (error) {
+    console.error('Error fetching sports:', error);
+    return {
+      success: false,
+      message: "Failed to fetch sports information"
+    };
+  }
+}
+
+// Function to get nearby venues
+async function getNearbyVenues(supabase: SupabaseClient, latitude: number, longitude: number, radius: number = 5): Promise<any> {
+  try {
+    // Using PostGIS to calculate distance and find nearby venues
+    const { data: venues, error } = await supabase
+      .rpc('get_venues_within_radius', {
+        lat: latitude,
+        lng: longitude,
+        radius_km: radius
+      });
+
+    if (error) throw error;
+
+    return {
+      success: true,
+      venues: venues || [],
+      message: venues && venues.length > 0
+        ? `Found ${venues.length} venues within ${radius}km`
+        : "No venues found in this area"
+    };
+  } catch (error) {
+    console.error('Error fetching nearby venues:', error);
+    return {
+      success: false,
+      message: "Failed to fetch nearby venues"
+    };
+  }
+}
+
 // Main serve function
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -241,6 +406,82 @@ serve(async (req) => {
           },
           required: ["venue_name"]
         }
+      },
+      {
+        name: "get_user_bookings",
+        description: "Get booking history for the current user",
+        parameters: {
+          type: "object",
+          properties: {
+            user_id: {
+              type: "string",
+              description: "User ID to fetch bookings for"
+            }
+          },
+          required: ["user_id"]
+        }
+      },
+      {
+        name: "get_venue_info",
+        description: "Get detailed information about a venue",
+        parameters: {
+          type: "object",
+          properties: {
+            venue_name: {
+              type: "string",
+              description: "Name of the venue to search for"
+            }
+          },
+          required: ["venue_name"]
+        }
+      },
+      {
+        name: "get_available_slots",
+        description: "Get available slots for a venue on a specific date",
+        parameters: {
+          type: "object",
+          properties: {
+            venue_id: {
+              type: "string",
+              description: "ID of the venue"
+            },
+            date: {
+              type: "string",
+              description: "Date to check availability for (YYYY-MM-DD)"
+            }
+          },
+          required: ["venue_id", "date"]
+        }
+      },
+      {
+        name: "get_sports_info",
+        description: "Get information about available sports",
+        parameters: {
+          type: "object",
+          properties: {}
+        }
+      },
+      {
+        name: "get_nearby_venues",
+        description: "Find venues near a specific location",
+        parameters: {
+          type: "object",
+          properties: {
+            latitude: {
+              type: "number",
+              description: "Latitude of the location"
+            },
+            longitude: {
+              type: "number",
+              description: "Longitude of the location"
+            },
+            radius: {
+              type: "number",
+              description: "Search radius in kilometers (default: 5)"
+            }
+          },
+          required: ["latitude", "longitude"]
+        }
       }
     ];
 
@@ -275,8 +516,30 @@ serve(async (req) => {
       const functionArgs = JSON.parse(responseMessage.function_call.arguments);
 
       let functionResult;
-      if (functionName === 'get_venue_contact') {
-        functionResult = await getVenueContact(supabase, functionArgs.venue_name);
+      switch (functionName) {
+        case 'get_venue_contact':
+          functionResult = await getVenueContact(supabase, functionArgs.venue_name);
+          break;
+        case 'get_user_bookings':
+          functionResult = await getUserBookings(supabase, functionArgs.user_id);
+          break;
+        case 'get_venue_info':
+          functionResult = await getVenueInfo(supabase, functionArgs.venue_name);
+          break;
+        case 'get_available_slots':
+          functionResult = await getAvailableSlots(supabase, functionArgs.venue_id, functionArgs.date);
+          break;
+        case 'get_sports_info':
+          functionResult = await getSportsInfo(supabase);
+          break;
+        case 'get_nearby_venues':
+          functionResult = await getNearbyVenues(
+            supabase,
+            functionArgs.latitude,
+            functionArgs.longitude,
+            functionArgs.radius
+          );
+          break;
       }
 
       // Second call to OpenAI with function result
