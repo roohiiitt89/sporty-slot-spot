@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -25,6 +24,12 @@ Keep responses concise, focusing on helping users:
 4. Get recommendations based on their preferences
 5. Understand venue policies and amenities
 6. Navigate payment options
+7. Contact venue owners and staff
+
+For venue contact queries:
+- Direct users to the chat option below the "Book Now" button on venue details page
+- Inform them about the contact number available on the venue details page
+- Mention that both options are available on the venue details page
 
 You can use functions to access real data from our database when needed.
 
@@ -114,10 +119,6 @@ serve(async (req) => {
       });
     }
 
-
-
-
-    
     // Define available functions
     const functions = [
       {
@@ -181,18 +182,20 @@ serve(async (req) => {
           required: ["court_id", "date", "start_time", "end_time"]
         }
       },
-       {
-         name: "get_venue_contact",
-         description: "Get contact details (phone, location, etc.) for a specific venue by name.",
-         parameters: {
-           type: "object",
-           properties: {
-      venue_name: { type: "string", description: "Name of the venue" }
-    },
-    required: ["venue_name"]
-  }
-}
-
+      {
+        name: "get_venue_contact",
+        description: "Get contact details and communication options for a specific venue",
+        parameters: {
+          type: "object",
+          properties: {
+            venue_name: { 
+              type: "string", 
+              description: "Name of the venue" 
+            }
+          },
+          required: ["venue_name"]
+        }
+      }
     ];
     
     // Only include admin functions if the user has admin role
@@ -360,10 +363,8 @@ async function handleFunctionCall(functionCall: any, supabase: any) {
     case "get_bookings_by_date_range":
       return await getBookingsByDateRange(supabase, args.start_date, args.end_date, args.venue_id);
     
-     case "get_venue_contact":
-        return await getVenueContact(supabase, args.venue_name);
-
-
+    case "get_venue_contact":
+      return await getVenueContact(supabase, args.venue_name);
 
     case "book_court":
       return await bookCourt(supabase, userId, args.court_id, args.date, args.start_time, args.end_time);
@@ -428,46 +429,35 @@ async function getUserBookings(supabase: any, user_id: string, limit: number = 1
     
     if (upcomingError) throw upcomingError;
 
-
-
- 
-
-
     if (functionCall.name === "get_venue_contact") {
-  const { venue_name } = functionCall.arguments;
-  const { data: venue, error } = await supabase
-    .from("venues")
-    .select("name, location, contact_number, opening_hours")
-    .ilike("name", `%${venue_name}%`)
-    .limit(1)
-    .maybeSingle();
+      const { venue_name } = functionCall.arguments;
+      const { data: venue, error } = await supabase
+        .from("venues")
+        .select("name, location, contact_number, opening_hours")
+        .ilike("name", `%${venue_name}%`)
+        .limit(1)
+        .maybeSingle();
 
-  if (error || !venue) {
-    return {
-      content: `Sorry, I couldn't find contact details for "${venue_name}".`
-    };
-  }
+      if (error || !venue) {
+        return {
+          content: `Sorry, I couldn't find contact details for "${venue_name}".`
+        };
+      }
 
-  let reply = `You can chat with the "${venue.name}" venue owner directly within the site using the "Chat with Venue" feature.`;
-  if (venue.contact_number) {
-    reply += ` Or call the venue owner at ${venue.contact_number}.`;
-  }
-  if (venue.location) {
-    reply += `\nLocation: ${venue.location}`;
-  }
-  if (venue.opening_hours) {
-    reply += `\nOpening Hours: ${venue.opening_hours}`;
-  }
+      let reply = `You can chat with the "${venue.name}" venue owner directly within the site using the "Chat with Venue" feature.`;
+      if (venue.contact_number) {
+        reply += ` Or call the venue owner at ${venue.contact_number}.`;
+      }
+      if (venue.location) {
+        reply += `\nLocation: ${venue.location}`;
+      }
+      if (venue.opening_hours) {
+        reply += `\nOpening Hours: ${venue.opening_hours}`;
+      }
 
-  return { content: reply };
-}
+      return { content: reply };
+    }
 
-
-
-
-
-
-    
     // Get past bookings
     const { data: pastBookings, error: pastError } = await supabase
       .from('bookings')
@@ -1078,6 +1068,50 @@ async function bookCourt(supabase: any, userId: string, courtId: string, date: s
     return { 
       success: false, 
       message: "Failed to book the court. " + (error.message || "Please try again later.")
+    };
+  }
+}
+
+async function getVenueContact(supabase: any, venue_name: string) {
+  try {
+    const { data: venue, error } = await supabase
+      .from('venues')
+      .select(`
+        id,
+        name,
+        contact_number,
+        has_chat_support,
+        business_hours,
+        address
+      `)
+      .ilike('name', `%${venue_name}%`)
+      .single();
+
+    if (error) throw error;
+
+    if (!venue) {
+      return {
+        message: "Venue not found. Please check the venue name and try again."
+      };
+    }
+
+    return {
+      message: `You can contact ${venue.name} in two ways:\n\n` +
+        "1. Use the chat option available below the 'Book Now' button on the venue details page\n" +
+        `2. Call them at ${venue.contact_number} during business hours: ${venue.business_hours}\n\n` +
+        "The venue details page has all contact information and the quickest way to reach the venue staff.",
+      venue_details: {
+        name: venue.name,
+        contact_number: venue.contact_number,
+        has_chat_support: venue.has_chat_support,
+        business_hours: venue.business_hours,
+        address: venue.address
+      }
+    };
+  } catch (error) {
+    console.error('Error fetching venue contact:', error);
+    return {
+      message: "Sorry, I couldn't fetch the venue contact information. Please try again or check the venue details page directly."
     };
   }
 }
