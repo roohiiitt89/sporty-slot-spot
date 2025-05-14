@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Calendar, MapPin, Clock, User, ChevronRight, Activity, Star } from 'lucide-react';
 import Header from '../components/Header';
@@ -14,8 +14,7 @@ import HomepageAvailabilityWidget from '@/components/HomepageAvailabilityWidget'
 import AIChatWidget from '@/components/AIChatWidget';
 import RotatingTypewriter from '@/components/RotatingTypewriter';
 import { Typewriter } from '@/components/Typewriter';
-
-
+import ProgressiveImage from '@/components/ProgressiveImage';
 
 interface Venue {
   id: string;
@@ -23,6 +22,8 @@ interface Venue {
   location: string;
   image_url: string;
   rating: number;
+  review_count?: number;
+  total_bookings?: number;
 }
 interface Sport {
   id: string;
@@ -160,6 +161,21 @@ const Index: React.FC = () => {
     console.log("Location permission denied");
   };
   
+  // Update VenueSkeleton component
+  const VenueSkeleton = () => (
+    <div className="venue-card animate-pulse rounded-lg overflow-hidden">
+      <div className="h-44 bg-emerald-800/20"></div>
+      <div className="p-3 bg-emerald-800/10">
+        <div className="h-5 w-3/4 bg-emerald-800/20 rounded mb-2"></div>
+        <div className="h-4 w-1/2 bg-emerald-800/20 rounded"></div>
+        <div className="mt-2 flex items-center justify-between">
+          <div className="h-4 w-16 bg-emerald-800/20 rounded"></div>
+          <div className="h-4 w-24 bg-emerald-800/20 rounded"></div>
+        </div>
+      </div>
+    </div>
+  );
+  
   return <div className="min-h-screen bg-navy-dark text-card-foreground">
       <Header />
       
@@ -214,57 +230,100 @@ const Index: React.FC = () => {
 
       <section id="venues" ref={venuesRef} className="py-16 bg-gradient-to-b from-black/90 to-navy-dark">
         <div className="container mx-auto px-4">
-          <div className={`flex justify-between items-center mb-10 ${visibleSections.venues ? 'animate-reveal' : 'opacity-0'}`}>
+          <div className={`flex justify-between items-center mb-8 ${visibleSections.venues ? 'animate-reveal' : 'opacity-0'}`}>
             <h2 className="section-title text-white relative">
               Featured Venues
-              <span className="absolute -bottom-2 left-0 w-20 h-1 bg-indigo-light"></span>
+              <span className="absolute -bottom-2 left-0 w-20 h-1 bg-emerald-800"></span>
             </h2>
-            <Link to="/venues" className="text-indigo-light font-semibold flex items-center group hover:text-indigo-dark transition-colors">
+            <Link to="/venues" className="text-emerald-600 font-semibold flex items-center group hover:text-emerald-400 transition-colors">
               View All <ChevronRight className="ml-1 w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Link>
           </div>
           
           <div className={`${visibleSections.venues ? 'animate-reveal' : 'opacity-0'}`}>
-            {loading.venues ? <div className="flex justify-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo"></div>
-              </div> : venues.length > 0 ? <Carousel className="w-full">
+            {loading.venues ? (
+              <Carousel className="w-full">
                 <CarouselContent className="-ml-2 md:-ml-4">
-                  {venues.map((venue, index) => <CarouselItem key={venue.id} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/4">
-                      <div className="venue-card group cursor-pointer overflow-hidden rounded-xl" style={{
-                  animationDelay: `${0.1 * (index + 1)}s`
-                }} onClick={() => navigate(`/venues/${venue.id}`)}>
-                        <div className="h-56 overflow-hidden relative">
-                          <img src={venue.image_url || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000'} alt={venue.name} className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-110" />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-30 group-hover:opacity-70 transition-opacity"></div>
+                  {[1, 2, 3, 4].map((_, index) => (
+                    <CarouselItem key={index} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/4">
+                      <VenueSkeleton />
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+              </Carousel>
+            ) : venues.length > 0 ? (
+              <Carousel className="w-full">
+                <CarouselContent className="-ml-2 md:-ml-4">
+                  {venues.slice(0, visibleVenueCount).map((venue, index) => (
+                    <CarouselItem key={venue.id} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/4">
+                      <div 
+                        className="venue-card group cursor-pointer overflow-hidden rounded-lg bg-gradient-to-br from-emerald-800/10 to-black/40 backdrop-blur-sm border border-emerald-800/20 hover:border-emerald-600/50 transition-all duration-300" 
+                        style={{animationDelay: `${0.1 * (index + 1)}s`}} 
+                        onClick={() => navigate(`/venues/${venue.id}`)}
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`Book ${venue.name} - Rating: ${venue.rating.toFixed(1)}, Location: ${venue.location}`}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            navigate(`/venues/${venue.id}`);
+                          }
+                        }}
+                      >
+                        <div className="h-44 overflow-hidden relative">
+                          <ProgressiveImage
+                            src={venue.image_url || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000'}
+                            alt={venue.name}
+                            className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-110"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-60"></div>
                           
                           <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
-                            <div className="bg-indigo/80 backdrop-blur-sm p-3 rounded-full transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">
-                              <Link to={`/venues/${venue.id}`} className="text-white font-semibold">
-                                Details
-                              </Link>
+                            <div className="bg-emerald-800/80 backdrop-blur-sm px-4 py-2 rounded-full transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">
+                              <span className="text-white text-sm font-medium">View Details</span>
                             </div>
                           </div>
                         </div>
-                        <div className="p-4 bg-navy-light text-white relative overflow-hidden group-hover:bg-indigo transition-colors duration-500">
-                          <h3 className="text-xl font-bold group-hover:text-white transition-colors">
+                        <div className="p-3 relative">
+                          <h3 className="text-base font-semibold text-white mb-1 group-hover:text-emerald-400 transition-colors">
                             {venue.name}
                           </h3>
-                          <p className="text-gray-300 mt-2 line-clamp-2">{venue.location || 'Find a venue near you'}</p>
+                          <p className="text-gray-400 text-sm mb-2 line-clamp-1">{venue.location || 'Find a venue near you'}</p>
                           
-                          <div className="absolute bottom-0 left-0 w-full h-1 bg-indigo transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-500"></div>
+                          <div className="flex items-center justify-between text-xs">
+                            <div className="flex items-center space-x-1">
+                              <Star className="w-4 h-4 text-emerald-500" />
+                              <span className="text-white">{venue.rating.toFixed(1)}</span>
+                              {venue.review_count && (
+                                <span className="text-gray-400">({venue.review_count})</span>
+                              )}
+                            </div>
+                            {venue.total_bookings && (
+                              <span className="text-emerald-400/80">{venue.total_bookings} bookings</span>
+                            )}
+                          </div>
                           
-                          <div className="absolute -bottom-12 -right-12 w-24 h-24 bg-indigo-light rounded-full opacity-0 group-hover:opacity-20 transform translate-x-full translate-y-full group-hover:translate-x-0 group-hover:translate-y-0 transition-all duration-700"></div>
+                          <div className="absolute bottom-0 left-0 w-full h-0.5 bg-emerald-600 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-500"></div>
                         </div>
                       </div>
-                    </CarouselItem>)}
+                    </CarouselItem>
+                  ))}
                 </CarouselContent>
-                <div className="flex justify-end mt-6 gap-2">
-                  <CarouselPrevious className="relative inset-0 translate-y-0 bg-navy-light hover:bg-indigo hover:text-white text-white" />
-                  <CarouselNext className="relative inset-0 translate-y-0 bg-navy-light hover:bg-indigo hover:text-white text-white" />
+                <div className="flex justify-end mt-4 gap-2">
+                  <CarouselPrevious 
+                    className="relative inset-0 translate-y-0 bg-emerald-800/20 hover:bg-emerald-700 text-white hover:text-white border-emerald-600/50"
+                    aria-label="View previous venues"
+                  />
+                  <CarouselNext 
+                    className="relative inset-0 translate-y-0 bg-emerald-800/20 hover:bg-emerald-700 text-white hover:text-white border-emerald-600/50"
+                    aria-label="View next venues"
+                  />
                 </div>
-              </Carousel> : <div className="text-center py-12">
+              </Carousel>
+            ) : (
+              <div className="text-center py-12">
                 <p className="text-white text-lg">No venues available at the moment. Please check back later.</p>
-              </div>}
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -384,52 +443,55 @@ const Index: React.FC = () => {
         </div>
       </section>
 
-      <section id="forYou" ref={forYouRef} className="py-16 bg-gradient-to-r from-navy-light to-navy-dark">
+      <section id="forYou" ref={forYouRef} className="py-16 bg-gradient-to-r from-emerald-900/20 to-black/60">
         <div className="container mx-auto px-4">
-          <h2 className={`section-title text-center text-white ${visibleSections.forYou ? 'animate-reveal' : 'opacity-0'}`}>For You</h2>
+          <h2 className={`section-title text-center text-white mb-8 ${visibleSections.forYou ? 'animate-reveal' : 'opacity-0'}`}>
+            For You
+            <span className="block w-20 h-1 bg-emerald-800 mx-auto mt-2"></span>
+          </h2>
           
           <div className={`max-w-4xl mx-auto ${visibleSections.forYou ? 'animate-reveal' : 'opacity-0'}`} style={{
-          animationDelay: '0.2s'
-        }}>
-            <div className="glass-card shadow-2xl overflow-hidden">
-              <div className="p-8">
+            animationDelay: '0.2s'
+          }}>
+            <div className="glass-card shadow-2xl overflow-hidden bg-gradient-to-br from-emerald-800/10 to-black/40 backdrop-blur-sm border border-emerald-800/20">
+              <div className="p-6">
                 <div className="mb-6 flex items-center">
-                  <Activity className="w-8 h-8 text-indigo-light mr-3" />
-                  <h3 className="text-2xl font-bold text-white">Recommended For You</h3>
+                  <Activity className="w-6 h-6 text-emerald-500 mr-3" />
+                  <h3 className="text-xl font-bold text-white">Recommended For You</h3>
                 </div>
                 
-                {/* Added StreakBar component here */}
                 <StreakBar />
                 
-                {/* Add Real-Time Availability Widget Here */}
-                <div className="my-8">
-                  <HomepageAvailabilityWidget />
+                <div className="my-6">
+                  <Suspense fallback={<div className="h-[200px] bg-emerald-800/20 animate-pulse rounded-lg"></div>}>
+                    <HomepageAvailabilityWidget />
+                  </Suspense>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="flex flex-col items-center text-center p-4 rounded-lg border border-indigo-light hover:bg-indigo hover:text-white transition-all">
-                    <Calendar className="w-10 h-10 mb-3" />
-                    <h4 className="text-lg font-semibold mb-1">Quick Booking</h4>
-                    <p className="text-sm">Based on your preferences</p>
-                    <button onClick={() => setIsBookModalOpen(true)} className="mt-4 py-2 px-4 bg-indigo text-white rounded-md hover:bg-indigo-dark transition-colors">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="flex flex-col items-center text-center p-4 rounded-lg border border-emerald-800/30 hover:border-emerald-600/50 bg-gradient-to-br from-emerald-800/10 to-black/40 hover:from-emerald-800/20 hover:to-black/50 transition-all">
+                    <Calendar className="w-8 h-8 mb-3 text-emerald-500" />
+                    <h4 className="text-base font-semibold mb-1 text-white">Quick Booking</h4>
+                    <p className="text-sm text-gray-400">Based on your preferences</p>
+                    <button onClick={() => setIsBookModalOpen(true)} className="mt-3 py-1.5 px-4 bg-emerald-800/80 hover:bg-emerald-700 text-white text-sm rounded-full transition-colors">
                       Book Now
                     </button>
                   </div>
                   
-                  <div className="flex flex-col items-center text-center p-4 rounded-lg border border-navy hover:bg-navy hover:text-white transition-all">
-                    <Clock className="w-10 h-10 mb-3" />
-                    <h4 className="text-lg font-semibold mb-1">Upcoming Event</h4>
-                    <p className="text-sm">Community basketball tournament</p>
-                    <button className="mt-4 py-2 px-4 bg-navy-dark text-white rounded-md hover:bg-black transition-colors">
+                  <div className="flex flex-col items-center text-center p-4 rounded-lg border border-emerald-800/30 hover:border-emerald-600/50 bg-gradient-to-br from-emerald-800/10 to-black/40 hover:from-emerald-800/20 hover:to-black/50 transition-all">
+                    <Clock className="w-8 h-8 mb-3 text-emerald-500" />
+                    <h4 className="text-base font-semibold mb-1 text-white">Upcoming Event</h4>
+                    <p className="text-sm text-gray-400">Community tournament</p>
+                    <button className="mt-3 py-1.5 px-4 bg-emerald-800/80 hover:bg-emerald-700 text-white text-sm rounded-full transition-colors">
                       Learn More
                     </button>
                   </div>
                   
-                  <div className="flex flex-col items-center text-center p-4 rounded-lg border border-navy hover:bg-navy hover:text-white transition-all">
-                    <User className="w-10 h-10 mb-3" />
-                    <h4 className="text-lg font-semibold mb-1">Complete Profile</h4>
-                    <p className="text-sm">Get personalized recommendations</p>
-                    <Link to="/register" className="mt-4 py-2 px-4 bg-navy-dark text-white rounded-md hover:bg-black transition-colors">
+                  <div className="flex flex-col items-center text-center p-4 rounded-lg border border-emerald-800/30 hover:border-emerald-600/50 bg-gradient-to-br from-emerald-800/10 to-black/40 hover:from-emerald-800/20 hover:to-black/50 transition-all">
+                    <User className="w-8 h-8 mb-3 text-emerald-500" />
+                    <h4 className="text-base font-semibold mb-1 text-white">Complete Profile</h4>
+                    <p className="text-sm text-gray-400">Get recommendations</p>
+                    <Link to="/register" className="mt-3 py-1.5 px-4 bg-emerald-800/80 hover:bg-emerald-700 text-white text-sm rounded-full transition-colors">
                       Sign Up
                     </Link>
                   </div>
