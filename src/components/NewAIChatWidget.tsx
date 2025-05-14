@@ -32,6 +32,21 @@ const NewAIChatWidget = () => {
   const recognitionRef = useRef<any>(null);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
   const [consentGiven, setConsentGiven] = useState<boolean | null>(null);
+  const [windowHeight, setWindowHeight] = useState<number>(0);
+
+  // Track window height changes for mobile keyboard
+  useEffect(() => {
+    const updateWindowHeight = () => {
+      setWindowHeight(window.innerHeight);
+    };
+
+    window.addEventListener('resize', updateWindowHeight);
+    updateWindowHeight();
+
+    return () => {
+      window.removeEventListener('resize', updateWindowHeight);
+    };
+  }, []);
 
   // Check notification permission
   useEffect(() => {
@@ -207,7 +222,9 @@ const NewAIChatWidget = () => {
   // Focus input when chat opens
   useEffect(() => {
     if (isOpen && inputRef.current) {
-      inputRef.current.focus();
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
     }
   }, [isOpen]);
 
@@ -224,6 +241,42 @@ const NewAIChatWidget = () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [messages]);
+
+  // Mobile keyboard handling
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleResize = () => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
+
+    const visualViewport = window.visualViewport;
+    if (visualViewport) {
+      visualViewport.addEventListener('resize', handleResize);
+    }
+
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      if (visualViewport) {
+        visualViewport.removeEventListener('resize', handleResize);
+      }
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [isOpen]);
+
+  // Handle body scroll when chat is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.classList.add('chat-open');
+    } else {
+      document.body.classList.remove('chat-open');
+    }
+
+    return () => {
+      document.body.classList.remove('chat-open');
+    };
+  }, [isOpen]);
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return;
@@ -383,13 +436,12 @@ const NewAIChatWidget = () => {
   };
 
   const formatMessageContent = (content: string) => {
-    // Enhanced formatting with markdown support
     const formatted = content
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
-      .replace(/\*(.*?)\*/g, '<em>$1</em>') // Italics
-      .replace(/```([^`]+)```/g, '<pre class="bg-gray-800/50 p-2 rounded my-1 overflow-x-auto"><code>$1</code></pre>') // Code blocks
-      .replace(/`([^`]+)`/g, '<code class="bg-gray-800/50 px-1 rounded">$1</code>') // Inline code
-      .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-emerald-400 hover:underline">$1</a>') // Links
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/```([^`]+)```/g, '<pre class="bg-gray-800/50 p-2 rounded my-1 overflow-x-auto"><code>$1</code></pre>')
+      .replace(/`([^`]+)`/g, '<code class="bg-gray-800/50 px-1 rounded">$1</code>')
+      .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-emerald-400 hover:underline">$1</a>')
       .replace(/\b(tennis|football|basketball|badminton)\b/gi, '<span class="text-emerald-300">$1</span>')
       .replace(/\n/g, '<br />');
 
@@ -472,12 +524,17 @@ const NewAIChatWidget = () => {
 
       <div 
         className={cn(
-          "fixed bottom-24 right-6 w-[90vw] sm:w-[400px] max-h-[600px] rounded-lg shadow-2xl z-40 border overflow-hidden transition-all duration-300 ease-in-out",
+          "fixed bottom-24 right-6 w-[90vw] sm:w-[400px] rounded-lg shadow-2xl z-40 border overflow-hidden transition-all duration-300 ease-in-out",
           "bg-gray-900 border-emerald-800/30 backdrop-blur-sm",
           isOpen 
             ? "scale-100 opacity-100 translate-y-0" 
             : "scale-95 opacity-0 translate-y-4 pointer-events-none"
         )}
+        style={{
+          maxHeight: `calc(${windowHeight}px - 180px)`,
+          height: isOpen ? 'auto' : undefined,
+          touchAction: 'manipulation'
+        }}
       >
         <div className="p-4 border-b border-emerald-800/30 bg-gradient-to-r from-black to-emerald-900/20">
           <div className="flex items-center gap-3">
@@ -491,7 +548,14 @@ const NewAIChatWidget = () => {
           </div>
         </div>
 
-        <div className="flex flex-col h-[400px] overflow-y-auto p-4 bg-gradient-to-b from-gray-900/80 to-gray-900">
+        <div 
+          className="flex flex-col overflow-y-auto p-4 bg-gradient-to-b from-gray-900/80 to-gray-900"
+          style={{
+            maxHeight: 'calc(100% - 120px)',
+            height: 'auto',
+            overflowAnchor: 'none'
+          }}
+        >
           {messages.length === 0 ? (
             <div className="flex-1 flex items-center justify-center text-emerald-300/70">
               <div className="text-center">
@@ -589,7 +653,12 @@ const NewAIChatWidget = () => {
           <div ref={messagesEndRef} />
         </div>
 
-        <div className="border-t border-emerald-800/30 p-4 bg-gray-900/80 backdrop-blur-sm">
+        <div 
+          className="border-t border-emerald-800/30 p-4 bg-gray-900/80 backdrop-blur-sm sticky bottom-0"
+          style={{
+            paddingBottom: 'max(1rem, env(safe-area-inset-bottom))'
+          }}
+        >
           {messages.length === 0 && renderExampleQueries()}
           <div className="flex gap-2">
             <button
@@ -614,6 +683,11 @@ const NewAIChatWidget = () => {
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyDown={handleKeyPress}
+              onFocus={() => {
+                setTimeout(() => {
+                  messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+                }, 300);
+              }}
               disabled={isLoading || !user || isSessionExpired}
               rows={1}
             />
