@@ -27,9 +27,17 @@ Keep responses concise, focusing on helping users:
 7. Contact venue owners and staff
 
 For venue contact queries:
-- Direct users to the chat option below the "Book Now" button on venue details page
-- Inform them about the contact number available on the venue details page
-- Mention that both options are available on the venue details page
+- Always mention the chat option below the "Book Now" button on venue details page first
+- If specific contact details (phone, hours) are available, include them
+- If specific details are not available, direct users to find them on the venue details page
+- Always maintain a helpful tone and provide alternative contact methods
+- Include any additional venue information (location, rating, sports) if available
+
+When handling contact queries:
+1. First try to fetch venue-specific contact details
+2. If specific details aren't available, provide the standard contact methods
+3. Always mention the venue details page as a reliable source of information
+4. Include any additional venue context that might be helpful
 
 You can use functions to access real data from our database when needed.
 
@@ -1074,6 +1082,9 @@ async function bookCourt(supabase: any, userId: string, courtId: string, date: s
 
 async function getVenueContact(supabase: any, venue_name: string) {
   try {
+    // Clean up the venue name for better matching
+    const cleanVenueName = venue_name.trim().replace(/[\/\\]/g, ' ');
+    
     const { data: venue, error } = await supabase
       .from('venues')
       .select(`
@@ -1082,36 +1093,63 @@ async function getVenueContact(supabase: any, venue_name: string) {
         contact_number,
         has_chat_support,
         business_hours,
-        address
+        address,
+        rating,
+        sports:venue_sports(
+          sport:sports(name)
+        )
       `)
-      .ilike('name', `%${venue_name}%`)
+      .or(`name.ilike.%${cleanVenueName}%,name.ilike.%${venue_name}%`)
       .single();
 
     if (error) throw error;
 
     if (!venue) {
       return {
-        message: "Venue not found. Please check the venue name and try again."
+        message: `For venue "${venue_name}", you can contact them in two ways:\n\n` +
+                "1. Use the chat option available below the 'Book Now' button on the venue details page\n" +
+                "2. Check the contact number on the venue details page\n\n" +
+                "All contact information is available on the venue details page for quick access."
       };
     }
 
+    // Format sports list
+    const sports = venue.sports
+      ? venue.sports.map((s: any) => s.sport.name).join(', ')
+      : 'Not specified';
+
+    const contactMessage = `You can contact ${venue.name} in two ways:\n\n` +
+      "1. Use the chat option available below the 'Book Now' button on the venue details page\n" +
+      (venue.contact_number 
+        ? `2. Call them at ${venue.contact_number}${venue.business_hours ? ` during business hours: ${venue.business_hours}` : ''}\n\n`
+        : "2. Check the contact number on the venue details page\n\n"
+      ) +
+      "Additional Venue Information:\n" +
+      `📍 Location: ${venue.address || 'Available on venue page'}\n` +
+      (venue.rating ? `⭐ Rating: ${venue.rating}\n` : '') +
+      `🎯 Sports Available: ${sports}\n\n` +
+      "The venue details page has all contact information and is the quickest way to reach the venue staff.";
+
     return {
-      message: `You can contact ${venue.name} in two ways:\n\n` +
-        "1. Use the chat option available below the 'Book Now' button on the venue details page\n" +
-        `2. Call them at ${venue.contact_number} during business hours: ${venue.business_hours}\n\n` +
-        "The venue details page has all contact information and the quickest way to reach the venue staff.",
+      message: contactMessage,
       venue_details: {
         name: venue.name,
         contact_number: venue.contact_number,
         has_chat_support: venue.has_chat_support,
         business_hours: venue.business_hours,
-        address: venue.address
+        address: venue.address,
+        rating: venue.rating,
+        sports: sports
       }
     };
   } catch (error) {
     console.error('Error fetching venue contact:', error);
+    // Provide a helpful response even when there's an error
     return {
-      message: "Sorry, I couldn't fetch the venue contact information. Please try again or check the venue details page directly."
+      message: `For venue "${venue_name}", you can contact them in two ways:\n\n` +
+              "1. Use the chat option available below the 'Book Now' button on the venue details page\n" +
+              "2. Check the contact number on the venue details page\n\n" +
+              "All contact information is available on the venue details page for quick access."
     };
   }
 }
