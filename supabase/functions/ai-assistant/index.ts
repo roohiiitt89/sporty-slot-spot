@@ -113,6 +113,49 @@ serve(async (req) => {
         content: `The current user has user_id: ${userId}. Use this to fetch their data without asking them for it.`
       });
     }
+
+
+
+
+
+    // Venue contact intent detection
+if (messages && messages.length > 0) {
+  const latestMsg = messages[messages.length - 1].content.toLowerCase();
+  const contactRegex = /(?:contact|call|get in touch with|reach)\s+(?:the\s+)?(.+?)\s+(?:venue|center|place|club|facility)?[?.]?$/i;
+  const match = latestMsg.match(contactRegex);
+
+  if (match) {
+    const venueName = match[1].trim();
+    const { data: venue, error } = await supabase
+      .from("venues")
+      .select("name, contact_number")
+      .ilike("name", `%${venueName}%`)
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      return new Response(JSON.stringify({ message: { content: "Sorry, I couldn't fetch venue details right now." } }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    if (!venue) {
+      return new Response(JSON.stringify({ message: { content: `Sorry, I couldn't find a venue named "${venueName}".` } }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    let reply = `You can chat with the "${venue.name}" venue owner directly within the site using the "Chat with Venue" feature.`;
+    if (venue.contact_number) {
+      reply += ` Or call the venue owner at ${venue.contact_number}.`;
+    } else {
+      reply += ` However, no phone number is available for this venue.`;
+    }
+
+    return new Response(JSON.stringify({ message: { content: reply } }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+  }
+}
+
+
+
+
+
+
     
     // Define available functions
     const functions = [
