@@ -33,6 +33,35 @@ const NewAIChatWidget = () => {
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
   const [consentGiven, setConsentGiven] = useState<boolean | null>(null);
   const [windowHeight, setWindowHeight] = useState<number>(0);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startY, setStartY] = useState(0);
+  const [scrollTop, setScrollTop] = useState(0);
+
+
+
+   // Add touch event handlers for swipe functionality
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (chatContainerRef.current) {
+      setIsDragging(true);
+      setStartY(e.touches[0].pageY);
+      setScrollTop(chatContainerRef.current.scrollTop);
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging || !chatContainerRef.current) return;
+    const y = e.touches[0].pageY;
+    const walk = (y - startY) * 1.5; // Adjust scroll speed
+    chatContainerRef.current.scrollTop = scrollTop - walk;
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+  };
+
+
+
 
   // Track window height changes for mobile keyboard
   useEffect(() => {
