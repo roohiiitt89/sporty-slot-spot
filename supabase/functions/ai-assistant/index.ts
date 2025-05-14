@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -24,7 +25,6 @@ Keep responses concise, focusing on helping users:
 4. Get recommendations based on their preferences
 5. Understand venue policies and amenities
 6. Navigate payment options
-7. Get venue contact information
 
 You can use functions to access real data from our database when needed.
 
@@ -113,6 +113,10 @@ serve(async (req) => {
         content: `The current user has user_id: ${userId}. Use this to fetch their data without asking them for it.`
       });
     }
+
+
+
+
     
     // Define available functions
     const functions = [
@@ -177,17 +181,18 @@ serve(async (req) => {
           required: ["court_id", "date", "start_time", "end_time"]
         }
       },
-      {
-        name: "get_venue_contact",
-        description: "Get contact details for a specific venue",
-        parameters: {
-          type: "object",
-          properties: {
-            venue_name: { type: "string", description: "Name of the venue" }
-          },
-          required: ["venue_name"]
-        }
-      }
+       {
+         name: "get_venue_contact",
+         description: "Get contact details (phone, location, etc.) for a specific venue by name.",
+         parameters: {
+           type: "object",
+           properties: {
+      venue_name: { type: "string", description: "Name of the venue" }
+    },
+    required: ["venue_name"]
+  }
+}
+
     ];
     
     // Only include admin functions if the user has admin role
@@ -240,7 +245,7 @@ serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gpt-4",
+          model: "gpt-4o-mini",
           messages: completeMessages,
           temperature: 0.7,
           tools: functions.map(fn => ({ type: "function", function: fn })),
@@ -276,7 +281,7 @@ serve(async (req) => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "gpt-4",
+            model: "gpt-4o-mini",
             messages: [
               ...completeMessages,
               responseMessage,
@@ -342,6 +347,7 @@ async function handleFunctionCall(functionCall: any, supabase: any) {
     case "get_available_slots":
       return await getAvailableSlots(supabase, args.venue_id, args.court_id, args.date);
     case "get_user_bookings":
+      // Important change: Use the userId from the auth context instead of requiring it as an argument
       return await getUserBookings(supabase, userId, args.limit || 10);
     case "admin_summary":
       return await getAdminSummary(supabase, args.venue_id);
@@ -353,66 +359,18 @@ async function handleFunctionCall(functionCall: any, supabase: any) {
       return await getVenueAdmins(supabase, args.venue_id);
     case "get_bookings_by_date_range":
       return await getBookingsByDateRange(supabase, args.start_date, args.end_date, args.venue_id);
+    
+     case "get_venue_contact":
+        return await getVenueContact(supabase, args.venue_name);
+
+
+
     case "book_court":
       return await bookCourt(supabase, userId, args.court_id, args.date, args.start_time, args.end_time);
-    case "get_venue_contact":
-      return await getVenueContact(supabase, args.venue_name);
     default:
       throw new Error(`Unknown function: ${name}`);
   }
 }
-
-async function getVenueContact(supabase: any, venue_name: string) {
-  try {
-    const { data: venue, error } = await supabase
-      .from("venues")
-      .select("name, location, contact_number, opening_hours")
-      .ilike("name", `%${venue_name}%`)
-      .limit(1)
-      .maybeSingle();
-
-    if (error) {
-      console.error("Error fetching venue contact:", error);
-      return { 
-        success: false, 
-        message: "Sorry, I couldn't fetch venue details right now." 
-      };
-    }
-
-    if (!venue) {
-      return { 
-        success: false, 
-        message: `Sorry, I couldn't find a venue named "${venue_name}".` 
-      };
-    }
-
-    let reply = `You can chat with the "${venue.name}" venue owner directly within the site using the "Chat with Venue" feature.`;
-    if (venue.contact_number) {
-      reply += ` Or call the venue owner at ${venue.contact_number}.`;
-    }
-    if (venue.location) {
-      reply += `\nLocation: ${venue.location}`;
-    }
-    if (venue.opening_hours) {
-      reply += `\nOpening Hours: ${venue.opening_hours}`;
-    }
-
-    return {
-      success: true,
-      venue_name: venue.name,
-      contact_info: reply
-    };
-  } catch (error) {
-    console.error("Error in getVenueContact:", error);
-    return {
-      success: false,
-      message: "Failed to fetch venue contact information"
-    };
-  }
-}
-
-
-
 
 async function getUserBookings(supabase: any, user_id: string, limit: number = 10) {
   if (!user_id) {
@@ -469,6 +427,46 @@ async function getUserBookings(supabase: any, user_id: string, limit: number = 1
       .limit(limit);
     
     if (upcomingError) throw upcomingError;
+
+
+
+ 
+
+
+    if (functionCall.name === "get_venue_contact") {
+  const { venue_name } = functionCall.arguments;
+  const { data: venue, error } = await supabase
+    .from("venues")
+    .select("name, location, contact_number, opening_hours")
+    .ilike("name", `%${venue_name}%`)
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !venue) {
+    return {
+      content: `Sorry, I couldn't find contact details for "${venue_name}".`
+    };
+  }
+
+  let reply = `You can chat with the "${venue.name}" venue owner directly within the site using the "Chat with Venue" feature.`;
+  if (venue.contact_number) {
+    reply += ` Or call the venue owner at ${venue.contact_number}.`;
+  }
+  if (venue.location) {
+    reply += `\nLocation: ${venue.location}`;
+  }
+  if (venue.opening_hours) {
+    reply += `\nOpening Hours: ${venue.opening_hours}`;
+  }
+
+  return { content: reply };
+}
+
+
+
+
+
+
     
     // Get past bookings
     const { data: pastBookings, error: pastError } = await supabase
