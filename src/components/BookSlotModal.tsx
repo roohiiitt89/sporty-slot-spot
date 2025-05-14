@@ -4,7 +4,7 @@ import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { format, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 import SportDisplayName from './SportDisplayName';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -110,6 +110,17 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     transition: { duration: 0.8, repeat: Infinity }
   };
 
+  // Date selection handler
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newDate = e.target.value;
+    setSelectedDate(newDate);
+    
+    // Only fetch if court is already selected
+    if (selectedCourt) {
+      fetchAvailability();
+    }
+  };
+
   useEffect(() => {
     if (!user) {
       toast({
@@ -132,41 +143,8 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       setSelectedVenue(venueId);
       fetchVenueDetails(venueId);
     }
- 
+  }, [venueId, user, navigate, onClose]);
 
- useEffect(() => {
-  if (!user) return;
-
-  const bookingChannel = supabase
-    .channel('booking-updates')
-    .on('postgres_changes', {
-      event: '*',
-      schema: 'public',
-      table: 'bookings'
-    }, (payload) => {
-      console.log('Booking change detected:', payload);
-      if (selectedCourt && selectedDate) {
-        setRefreshKey(prev => prev + 1);
-      }
-    })
-    .subscribe();
-
-  return () => {
-    supabase.removeChannel(bookingChannel);
-  };
-}, [user, selectedCourt, selectedDate]);
-
-// Add this additional effect for periodic refreshes
-useEffect(() => {
-  if (currentStep === 2 && selectedCourt && selectedDate) {
-    const intervalId = setInterval(() => {
-      setRefreshKey(prev => prev + 1);
-    }, 15000);
-    
-    return () => clearInterval(intervalId);
-  }
-}, [currentStep, selectedCourt, selectedDate]);
-    
   useEffect(() => {
     const loadRazorpayScript = () => {
       return new Promise((resolve) => {
@@ -184,6 +162,40 @@ useEffect(() => {
 
     loadRazorpayScript();
   }, []);
+
+  // Real-time updates subscription
+  useEffect(() => {
+    if (!user) return;
+
+    const bookingChannel = supabase
+      .channel('booking-updates')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'bookings'
+      }, (payload) => {
+        console.log('Booking change detected:', payload);
+        if (selectedCourt && selectedDate) {
+          setRefreshKey(prev => prev + 1);
+        }
+      })
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(bookingChannel);
+    };
+  }, [user, selectedCourt, selectedDate]);
+
+  // Periodic refresh when viewing slots
+  useEffect(() => {
+    if (currentStep === 2 && selectedCourt && selectedDate) {
+      const intervalId = setInterval(() => {
+        setRefreshKey(prev => prev + 1);
+      }, 15000);
+      
+      return () => clearInterval(intervalId);
+    }
+  }, [currentStep, selectedCourt, selectedDate]);
 
   useEffect(() => {
     if (selectedVenue) {
@@ -208,11 +220,11 @@ useEffect(() => {
   }, [selectedVenue, selectedSport]);
 
   useEffect(() => {
-    if (selectedCourt) {
+    if (selectedCourt && selectedDate) {
       fetchAvailability();
       fetchCourtDetails(selectedCourt);
     }
-  }, [selectedCourt, refreshKey]);
+  }, [selectedCourt, selectedDate, refreshKey]);
 
   useEffect(() => {
     if (user) {
@@ -415,77 +427,78 @@ useEffect(() => {
   };
 
   const fetchAvailability = useCallback(async () => {
-  if (!selectedCourt || !selectedDate) return;
-  
-  setLoading(prev => ({ ...prev, availability: true }));
-  try {
-    const { data, error } = await supabase
-      .rpc('get_available_slots', { 
-        p_court_id: selectedCourt, 
-        p_date: selectedDate 
-      });
+    if (!selectedCourt || !selectedDate) return;
     
-    if (error) throw error;
-    
-    const { data: templateSlots, error: templateError } = await supabase
-      .from('template_slots')
-      .select('start_time, end_time, price')
-      .eq('court_id', selectedCourt);
-      
-    if (templateError) throw templateError;
-    
-    const priceMap: Record<string, string> = {};
-    templateSlots?.forEach(slot => {
-      const key = `${slot.start_time}-${slot.end_time}`;
-      priceMap[key] = slot.price;
-    });
-    
-    const slotsWithPrice = data?.map(slot => {
-      const key = `${slot.start_time}-${slot.end_time}`;
-      return {
-        ...slot,
-        price: priceMap[key] || courtRate.toString()
-      };
-    }) || [];
-    
-    setAvailableTimeSlots(slotsWithPrice);
-    
-    // Only update selected slots if they're no longer available
-    const updatedSelectedSlots = selectedSlots.filter(slotDisplay => {
-      const [startTime, endTime] = slotDisplay.split(' - ').map(t => convertTo24Hour(t));
-      const stillAvailable = slotsWithPrice.some(slot => 
-        slot.start_time === startTime && 
-        slot.end_time === endTime && 
-        slot.is_available
-      );
-      
-      if (!stillAvailable) {
-        const updatedPrices = { ...selectedSlotPrices };
-        delete updatedPrices[slotDisplay];
-        setSelectedSlotPrices(updatedPrices);
-        toast({
-          title: "Slot unavailable",
-          description: `${slotDisplay} was booked by someone else`,
-          variant: "destructive",
+    setLoading(prev => ({ ...prev, availability: true }));
+    try {
+      const { data, error } = await supabase
+        .rpc('get_available_slots', { 
+          p_court_id: selectedCourt, 
+          p_date: selectedDate 
         });
+      
+      if (error) throw error;
+      
+      const { data: templateSlots, error: templateError } = await supabase
+        .from('template_slots')
+        .select('start_time, end_time, price')
+        .eq('court_id', selectedCourt);
+        
+      if (templateError) throw templateError;
+      
+      const priceMap: Record<string, string> = {};
+      templateSlots?.forEach(slot => {
+        const key = `${slot.start_time}-${slot.end_time}`;
+        priceMap[key] = slot.price;
+      });
+      
+      const slotsWithPrice = data?.map(slot => {
+        const key = `${slot.start_time}-${slot.end_time}`;
+        return {
+          ...slot,
+          price: priceMap[key] || courtRate.toString()
+        };
+      }) || [];
+      
+      setAvailableTimeSlots(slotsWithPrice);
+      
+      const updatedSelectedSlots = selectedSlots.filter(slotDisplay => {
+        const [startTime, endTime] = slotDisplay.split(' - ').map(t => convertTo24Hour(t));
+        const slotStillAvailable = slotsWithPrice.some(slot => 
+          slot.start_time === startTime && 
+          slot.end_time === endTime && 
+          slot.is_available
+        );
+        
+        if (!slotStillAvailable && selectedSlots.length > 0) {
+          toast({
+            title: "Slot no longer available",
+            description: `The time slot ${slotDisplay} is no longer available`,
+            variant: "destructive",
+          });
+          
+          const updatedPrices = { ...selectedSlotPrices };
+          delete updatedPrices[slotDisplay];
+          setSelectedSlotPrices(updatedPrices);
+        }
+        
+        return slotStillAvailable;
+      });
+      
+      if (updatedSelectedSlots.length !== selectedSlots.length) {
+        setSelectedSlots(updatedSelectedSlots);
       }
-      return stillAvailable;
-    });
-    
-    if (updatedSelectedSlots.length !== selectedSlots.length) {
-      setSelectedSlots(updatedSelectedSlots);
+    } catch (error) {
+      console.error('Error fetching availability:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load availability",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(prev => ({ ...prev, availability: false }));
     }
-  } catch (error) {
-    console.error('Error fetching availability:', error);
-    toast({
-      title: "Error",
-      description: "Failed to load availability. Please try again.",
-      variant: "destructive",
-    });
-  } finally {
-    setLoading(prev => ({ ...prev, availability: false }));
-  }
-}, [selectedCourt, selectedDate, courtRate, selectedSlots, selectedSlotPrices]);
+  }, [selectedCourt, selectedDate, courtRate, selectedSlots, selectedSlotPrices]);
 
   const formatTime = (time: string) => {
     const [hour, minute] = time.split(':').map(n => parseInt(n));
@@ -510,19 +523,7 @@ useEffect(() => {
 
   const handleSlotClick = (slot: TimeSlot) => {
     if (!slot.is_available) return;
-
-  
-  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  const newDate = e.target.value;
-  setSelectedDate(newDate);
-  
-  // Only fetch if court is already selected
-  if (selectedCourt) {
-    fetchAvailability();
-  }
-};
-
-
+    
     const slotDisplay = `${formatTime(slot.start_time)} - ${formatTime(slot.end_time)}`;
     const slotPrice = parseFloat(slot.price);
     
@@ -585,13 +586,12 @@ useEffect(() => {
   const createRazorpayOrder = async () => {
     setLoading(prev => ({ ...prev, payment: true }));
     try {
-      // Fix: Convert to paise without additional multiplication as createRazorpayOrder now handles it
-      const totalAmountInPaise = Math.round(calculateTotalPrice() * 100); // Convert rupees to paise
+      const totalAmountInPaise = Math.round(calculateTotalPrice() * 100);
       const receipt = `booking_${Date.now()}`;
       
       const response = await supabase.functions.invoke('create-razorpay-order', {
         body: {
-          amount: totalAmountInPaise, // Send amount already in paise
+          amount: totalAmountInPaise,
           receipt: receipt,
           notes: {
             court_id: selectedCourt,
@@ -649,7 +649,7 @@ useEffect(() => {
           address: "Sports Venue Address"
         },
         theme: {
-          color: "#047857" // Emerald-800
+          color: "#047857"
         },
         handler: function(response: any) {
           handleBooking(response.razorpay_payment_id, response.razorpay_order_id);
@@ -861,7 +861,7 @@ useEffect(() => {
         {/* Progress Steps */}
         <div className="px-6 pt-6 pb-4 border-b border-emerald-800/20">
           <div className="flex items-center justify-center">
-            {[1, 2, 3].map((step) => (
+            {[1, 2].map((step) => (
               <React.Fragment key={step}>
                 <motion.div 
                   whileHover={{ scale: 1.05 }}
@@ -880,7 +880,7 @@ useEffect(() => {
                     <span className="font-medium">{step}</span>
                   )}
                 </motion.div>
-                {step < 3 && (
+                {step < 2 && (
                   <div className={`w-16 h-1 transition-all duration-300 ${
                     currentStep > step ? 'bg-gradient-to-r from-emerald-600 to-emerald-800' : 'bg-gray-700'
                   }`}></div>
@@ -889,13 +889,12 @@ useEffect(() => {
             ))}
           </div>
           <div className="flex justify-between mt-3 text-sm">
-            <span className={currentStep === 1 ? 'text-emerald-400 font-medium' : 'text-gray-500'}>Details</span>
-            <span className={currentStep === 2 ? 'text-emerald-400 font-medium' : 'text-gray-500'}>Slots</span>
-            <span className={currentStep === 3 ? 'text-emerald-400 font-medium' : 'text-gray-500'}>Confirm</span>
+            <span className={currentStep === 1 ? 'text-emerald-400 font-medium' : 'text-gray-500'}>Select Slot</span>
+            <span className={currentStep === 2 ? 'text-emerald-400 font-medium' : 'text-gray-500'}>Confirm & Pay</span>
           </div>
         </div>
 
-        {/* Step 1: Venue/Sport Selection */}
+        {/* Step 1: Slot Selection */}
         {currentStep === 1 && (
           <motion.div 
             initial="hidden"
@@ -957,357 +956,346 @@ useEffect(() => {
             </motion.div>
             
             <motion.div variants={fadeIn} className="space-y-2">
-  <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
-    <Activity size={16} className="text-emerald-400" />
-    Select Sport
-  </label>
-  
-  {!selectedVenue ? (
-    <p className="mt-1 text-xs text-gray-500 flex items-center gap-1">
-      <Info size={14} />
-      Please select a venue first
-    </p>
-  ) : venueSports.length === 0 ? (
-    <p className="mt-1 text-xs text-red-400 flex items-center gap-1">
-      <AlertCircle size={14} />
-      No sports available for this venue
-    </p>
-  ) : (
-    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
-      {venueSports.map((sport) => (
-        <motion.div
-          key={sport.id}
-          whileHover={{ scale: 1.03 }}
-          className="flex items-center"
-        >
-          <input
-            type="radio"
-            id={`sport-${sport.id}`}
-            name="sport"
-            value={sport.id}
-            checked={selectedSport === sport.id}
-            onChange={() => {
-              setSelectedSport(sport.id);
-              fetchSportDetails(sport.id);
-            }}
-            className="hidden"
-          />
-          <label
-            htmlFor={`sport-${sport.id}`}
-            className={`flex items-center justify-center gap-1 w-full p-2 rounded-lg border text-sm transition-all cursor-pointer ${
-              selectedSport === sport.id
-                ? 'bg-emerald-600 text-white border-emerald-700 shadow-md shadow-emerald-800/20'
-                : 'bg-gray-800 border-gray-600 hover:border-emerald-500 hover:bg-gray-750 text-gray-200'
-            }`}
-          >
-            <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-              selectedSport === sport.id 
-                ? 'border-white bg-white' 
-                : 'border-gray-400'
-            }`}>
-              {selectedSport === sport.id && (
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-600"></div>
+              <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
+                <Activity size={16} className="text-emerald-400" />
+                Select Sport
+              </label>
+              
+              {!selectedVenue ? (
+                <p className="mt-1 text-xs text-gray-500 flex items-center gap-1">
+                  <Info size={14} />
+                  Please select a venue first
+                </p>
+              ) : venueSports.length === 0 ? (
+                <p className="mt-1 text-xs text-red-400 flex items-center gap-1">
+                  <AlertCircle size={14} />
+                  No sports available for this venue
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+                  {venueSports.map((sport) => (
+                    <motion.div
+                      key={sport.id}
+                      whileHover={{ scale: 1.03 }}
+                      className="flex items-center"
+                    >
+                      <input
+                        type="radio"
+                        id={`sport-${sport.id}`}
+                        name="sport"
+                        value={sport.id}
+                        checked={selectedSport === sport.id}
+                        onChange={() => {
+                          setSelectedSport(sport.id);
+                          fetchSportDetails(sport.id);
+                        }}
+                        className="hidden"
+                      />
+                      <label
+                        htmlFor={`sport-${sport.id}`}
+                        className={`flex items-center justify-center gap-1 w-full p-2 rounded-lg border text-sm transition-all cursor-pointer ${
+                          selectedSport === sport.id
+                            ? 'bg-emerald-600 text-white border-emerald-700 shadow-md shadow-emerald-800/20'
+                            : 'bg-gray-800 border-gray-600 hover:border-emerald-500 hover:bg-gray-750 text-gray-200'
+                        }`}
+                      >
+                        <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                          selectedSport === sport.id 
+                            ? 'border-white bg-white' 
+                            : 'border-gray-400'
+                        }`}>
+                          {selectedSport === sport.id && (
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-600"></div>
+                          )}
+                        </div>
+                        {selectedVenue ? (
+                          <SportDisplayName
+                            venueId={selectedVenue}
+                            sportId={sport.id}
+                            defaultName={sport.name}
+                          />
+                        ) : (
+                          sport.name
+                        )}
+                      </label>
+                    </motion.div>
+                  ))}
+                </div>
               )}
-            </div>
-            {selectedVenue ? (
-              <SportDisplayName
-                venueId={selectedVenue}
-                sportId={sport.id}
-                defaultName={sport.name}
-              />
-            ) : (
-              sport.name
-            )}
-          </label>
-        </motion.div>
-      ))}
-    </div>
-  )}
-  
-  {sportDetails && (
-    <motion.div 
-      initial={{ opacity: 0, height: 0 }}
-      animate={{ opacity: 1, height: 'auto' }}
-      className="mt-2 p-3 bg-gray-800/50 rounded-lg border border-emerald-800/20"
-    >
-      <div className="flex items-center gap-3">
-        {sportDetails.icon_name && (
-          <div className="w-10 h-10 rounded-full bg-emerald-900/50 flex items-center justify-center">
-            <span className="text-emerald-400">{sportDetails.icon_name}</span>
-          </div>
-        )}
-        <div>
-          <h4 className="font-medium text-emerald-400">
-            {selectedVenue ? (
-              <SportDisplayName
-                venueId={selectedVenue}
-                sportId={sportDetails.id}
-                defaultName={sportDetails.name}
-              />
-            ) : (
-              sportDetails.name
-            )}
-          </h4>
-          <p className="text-xs text-gray-400 mt-1">Select a court for this sport</p>
-        </div>
-      </div>
-    </motion.div>
-  )}
-</motion.div>
-
+              
+              {sportDetails && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="mt-2 p-3 bg-gray-800/50 rounded-lg border border-emerald-800/20"
+                >
+                  <div className="flex items-center gap-3">
+                    {sportDetails.icon_name && (
+                      <div className="w-10 h-10 rounded-full bg-emerald-900/50 flex items-center justify-center">
+                        <span className="text-emerald-400">{sportDetails.icon_name}</span>
+                      </div>
+                    )}
+                    <div>
+                      <h4 className="font-medium text-emerald-400">
+                        {selectedVenue ? (
+                          <SportDisplayName
+                            venueId={selectedVenue}
+                            sportId={sportDetails.id}
+                            defaultName={sportDetails.name}
+                          />
+                        ) : (
+                          sportDetails.name
+                        )}
+                      </h4>
+                      <p className="text-xs text-gray-400 mt-1">Select a court for this sport</p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </motion.div>
             
             <motion.div variants={fadeIn} className="space-y-2">
-  <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
-    <MapPin size={16} className="text-emerald-400" />
-    Select Court
-  </label>
-  
-  {loading.courts ? (
-    <motion.p 
-      animate={pulse}
-      className="mt-1 text-xs text-gray-500 flex items-center gap-1"
-    >
-      <Loader size={14} className="animate-spin" />
-      Loading courts...
-    </motion.p>
-  ) : !selectedVenue || !selectedSport ? (
-    <p className="mt-1 text-xs text-gray-500 flex items-center gap-1">
-      <Info size={14} />
-      Please select a venue and sport first
-    </p>
-  ) : courts.length === 0 ? (
-    <p className="mt-1 text-xs text-red-400 flex items-center gap-1">
-      <AlertCircle size={14} />
-      No courts available for this venue and sport combination.
-    </p>
-  ) : (
-    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
-      {courts.map((court) => (
-        <motion.div
-          key={court.id}
-          whileHover={{ scale: 1.03 }}
-          className="flex items-center"
-        >
-          <input
-            type="radio"
-            id={`court-${court.id}`}
-            name="court"
-            value={court.id}
-            checked={selectedCourt === court.id}
-            onChange={() => {
-              setSelectedCourt(court.id);
-              setCourtRate(court.hourly_rate);
-              fetchCourtDetails(court.id);
-            }}
-            className="hidden"
-          />
-          <label
-            htmlFor={`court-${court.id}`}
-            className={`flex items-center justify-center gap-1 w-full p-2 rounded-lg border text-sm transition-all cursor-pointer ${
-              selectedCourt === court.id
-                ? 'bg-emerald-600 text-white border-emerald-700 shadow-md shadow-emerald-800/20'
-                : 'bg-gray-800 border-gray-600 hover:border-emerald-500 hover:bg-gray-750 text-gray-200'
-            }`}
-          >
-            <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-              selectedCourt === court.id 
-                ? 'border-white bg-white' 
-                : 'border-gray-400'
-            }`}>
-              {selectedCourt === court.id && (
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-600"></div>
-              )}
-            </div>
-            <div className="flex items-center gap-1">
-              <span>{court.name}</span>
-              {court.court_group_id && (
-                <span className="text-xs">🏟️</span>
-              )}
-            </div>
-          </label>
-        </motion.div>
-      ))}
-    </div>
-  )}
-  
-  {selectedCourt && courtDetails && (
-    <motion.div 
-      initial={{ opacity: 0, height: 0 }}
-      animate={{ opacity: 1, height: 'auto' }}
-      className="mt-2 p-3 bg-gray-800/50 rounded-lg border border-emerald-800/20"
-    >
-      <div className="flex items-start gap-3">
-        <div className="w-10 h-10 rounded-full bg-emerald-900/50 flex items-center justify-center">
-          <span className="text-emerald-400">🏟️</span>
-        </div>
-        <div>
-          <h4 className="font-medium text-emerald-400">{courtDetails.name}</h4>
-          {courtDetails.description && (
-            <p className="text-xs text-gray-400 mt-1">{courtDetails.description}</p>
-          )}
-          <div className="mt-2 flex items-center gap-2">
-            <span className="text-xs px-2 py-1 bg-emerald-900/30 text-emerald-300 rounded-full">
+              <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
+                <MapPin size={16} className="text-emerald-400" />
+                Select Court
+              </label>
               
-            </span>
-            {courtDetails.court_group_id && (
-              <span className="text-xs px-2 py-1 bg-blue-900/30 text-blue-300 rounded-full">
-                Shared Space
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  )}
-</motion.div>
+              {loading.courts ? (
+                <motion.p 
+                  animate={pulse}
+                  className="mt-1 text-xs text-gray-500 flex items-center gap-1"
+                >
+                  <Loader size={14} className="animate-spin" />
+                  Loading courts...
+                </motion.p>
+              ) : !selectedVenue || !selectedSport ? (
+                <p className="mt-1 text-xs text-gray-500 flex items-center gap-1">
+                  <Info size={14} />
+                  Please select a venue and sport first
+                </p>
+              ) : courts.length === 0 ? (
+                <p className="mt-1 text-xs text-red-400 flex items-center gap-1">
+                  <AlertCircle size={14} />
+                  No courts available for this venue and sport combination.
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+                  {courts.map((court) => (
+                    <motion.div
+                      key={court.id}
+                      whileHover={{ scale: 1.03 }}
+                      className="flex items-center"
+                    >
+                      <input
+                        type="radio"
+                        id={`court-${court.id}`}
+                        name="court"
+                        value={court.id}
+                        checked={selectedCourt === court.id}
+                        onChange={() => {
+                          setSelectedCourt(court.id);
+                          setCourtRate(court.hourly_rate);
+                          fetchCourtDetails(court.id);
+                        }}
+                        className="hidden"
+                      />
+                      <label
+                        htmlFor={`court-${court.id}`}
+                        className={`flex items-center justify-center gap-1 w-full p-2 rounded-lg border text-sm transition-all cursor-pointer ${
+                          selectedCourt === court.id
+                            ? 'bg-emerald-600 text-white border-emerald-700 shadow-md shadow-emerald-800/20'
+                            : 'bg-gray-800 border-gray-600 hover:border-emerald-500 hover:bg-gray-750 text-gray-200'
+                        }`}
+                      >
+                        <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                          selectedCourt === court.id 
+                            ? 'border-white bg-white' 
+                            : 'border-gray-400'
+                        }`}>
+                          {selectedCourt === court.id && (
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-600"></div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span>{court.name}</span>
+                          {court.court_group_id && (
+                            <span className="text-xs">🏟️</span>
+                          )}
+                        </div>
+                      </label>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+              
+              {selectedCourt && courtDetails && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="mt-2 p-3 bg-gray-800/50 rounded-lg border border-emerald-800/20"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-full bg-emerald-900/50 flex items-center justify-center">
+                      <span className="text-emerald-400">🏟️</span>
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-emerald-400">{courtDetails.name}</h4>
+                      {courtDetails.description && (
+                        <p className="text-xs text-gray-400 mt-1">{courtDetails.description}</p>
+                      )}
+                      <div className="mt-2 flex items-center gap-2">
+                        <span className="text-xs px-2 py-1 bg-emerald-900/30 text-emerald-300 rounded-full">
+                          ₹{courtDetails.hourly_rate}/hour
+                        </span>
+                        {courtDetails.court_group_id && (
+                          <span className="text-xs px-2 py-1 bg-blue-900/30 text-blue-300 rounded-full">
+                            Shared Space
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </motion.div>
             
             <motion.div variants={fadeIn} className="space-y-2">
               <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
                 <Calendar size={16} className="text-emerald-400" />
                 Select Date
               </label>
-             <input
-  type="date"
-  value={selectedDate}
-  onChange={handleDateChange}
-  min={new Date().toISOString().split('T')[0]}
-  className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-white placeholder-gray-400 transition-all"
-/>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={handleDateChange}
+                min={new Date().toISOString().split('T')[0]}
+                className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-white placeholder-gray-400 transition-all"
+              />
             </motion.div>
-          </motion.div>
-        )}
 
-        {/* Step 2: Time Slot Selection */}
-        {currentStep === 2 && (
-          <motion.div 
-            initial="hidden"
-            animate="visible"
-            variants={staggerContainer}
-            className="p-6"
-          >
-            <motion.div variants={fadeIn} className="mb-6">
-              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                <Clock size={20} className="text-emerald-400" />
-                Select Time Slots
-              </h3>
-              <p className="text-sm text-gray-400 mt-1">
-                Available slots for {selectedDate} at {courts.find(c => c.id === selectedCourt)?.name}
-              </p>
-            </motion.div>
-            
-            <motion.div variants={fadeIn} className="mb-4 flex justify-between items-center">
-              <p className="text-sm font-medium text-gray-300">
-                Showing availability for: <span className="text-emerald-400">{format(new Date(selectedDate), 'PPP')}</span>
-              </p>
-              <motion.button 
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setRefreshKey(prev => prev + 1)}
-                className="text-sm text-emerald-400 hover:text-emerald-300 flex items-center gap-1 transition-colors"
-              >
-                <RefreshCw size={14} className="animate-spin-once" />
-                Refresh
-              </motion.button>
-            </motion.div>
-            
-            {loading.availability ? (
+            {selectedCourt && selectedDate && (
               <motion.div 
-                variants={fadeIn}
-                className="flex flex-col items-center justify-center py-8"
+                initial="hidden"
+                animate="visible"
+                variants={staggerContainer}
+                className="pt-4 mt-4 border-t border-emerald-800/20"
               >
-                <Loader className="animate-spin text-emerald-400" size={24} />
-                <p className="mt-2 text-sm text-gray-400">Loading availability...</p>
-              </motion.div>
-            ) : (
-              <>
-                <motion.div 
-                  variants={staggerContainer}
-                  className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3"
-                >
-                  {availableTimeSlots.map((slot) => {
-    const slotDisplay = `${formatTime(slot.start_time)} - ${formatTime(slot.end_time)}`;
-    const isSelected = selectedSlots.includes(slotDisplay);
-    return (
-      <button
-        key={`${slot.start_time}-${slot.end_time}`}
-        onClick={() => handleSlotClick(slot)}
-        disabled={!slot.is_available}
-        className={`
-          p-3 rounded-md border transition-all text-center
-          ${slot.is_available
-            ? isSelected
-              ? 'bg-emerald-600 text-white border-emerald-700 shadow-lg shadow-emerald-800/30'
-              : 'bg-gray-800 border-gray-600 hover:border-emerald-500 hover:bg-gray-750 text-gray-200'
-            : 'bg-gray-900/60 border-gray-800 text-gray-400 cursor-not-allowed'}
-        `}
-      >
-        <div className="font-medium">{slotDisplay}</div>
-        <div className="text-xs mt-1">₹{parseFloat(slot.price).toFixed(2)}</div>
-      </button>
-    );
-  })}
-</div>
+                <motion.div variants={fadeIn} className="mb-4 flex justify-between items-center">
+                  <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                    <Clock size={20} className="text-emerald-400" />
+                    Available Time Slots
+                  </h3>
+                  <motion.button 
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setRefreshKey(prev => prev + 1)}
+                    className="text-sm text-emerald-400 hover:text-emerald-300 flex items-center gap-1 transition-colors"
+                  >
+                    <RefreshCw size={14} className="animate-spin-once" />
+                    Refresh
+                  </motion.button>
                 </motion.div>
                 
-                {availableTimeSlots.length === 0 && (
+                {loading.availability ? (
                   <motion.div 
                     variants={fadeIn}
-                    className="text-center py-8 bg-gray-800/50 rounded-lg border border-emerald-800/20 mt-4"
+                    className="flex flex-col items-center justify-center py-8"
                   >
-                    <p className="text-gray-400">No available time slots found for this date.</p>
+                    <Loader className="animate-spin text-emerald-400" size={24} />
+                    <p className="mt-2 text-sm text-gray-400">Loading availability...</p>
                   </motion.div>
-                )}
-                
-                <motion.div 
-  variants={fadeIn}
-  className="mt-6 flex flex-wrap items-center gap-3 text-xs"
->
-  <div className="flex items-center">
-    <div className="w-3 h-3 bg-emerald-600 rounded-full mr-2"></div>
-    <span className="text-gray-300">Selected</span>
-  </div>
-  <div className="flex items-center">
-    <div className="w-3 h-3 bg-gray-800 border border-gray-600 rounded-full mr-2"></div>
-    <span className="text-gray-300">Available</span>
-  </div>
-  <div className="flex items-center">
-    <div className="w-3 h-3 bg-red-900/60 rounded-full mr-2"></div>
-    <span className="text-gray-300">Booked</span>
-  </div>
-</motion.div>
-                
-                {selectedSlots.length > 0 && (
-                  <motion.div 
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mt-6 p-4 bg-emerald-900/20 rounded-lg border border-emerald-800/30"
-                  >
-                    <h4 className="font-medium text-emerald-300 mb-2">Selected Slots</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedSlots.sort().map(slot => (
-                        <motion.span 
-                          key={slot} 
-                          whileHover={{ scale: 1.05 }}
-                          className="bg-emerald-800/80 text-white px-3 py-1 rounded-full text-sm flex items-center gap-1"
-                        >
-                          {slot.split(' - ')[0]} <ChevronRight size={14} /> {slot.split(' - ')[1]}
-                          <span className="font-semibold ml-1">₹{selectedSlotPrices[slot]?.toFixed(2)}</span>
-                        </motion.span>
-                      ))}
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                      {availableTimeSlots.map((slot) => {
+                        const slotDisplay = `${formatTime(slot.start_time)} - ${formatTime(slot.end_time)}`;
+                        const isSelected = selectedSlots.includes(slotDisplay);
+                        return (
+                          <motion.button
+                            key={`${slot.start_time}-${slot.end_time}`}
+                            variants={slideUp}
+                            whileHover={{ scale: slot.is_available ? 1.03 : 1 }}
+                            whileTap={{ scale: slot.is_available ? 0.98 : 1 }}
+                            disabled={!slot.is_available}
+                            onClick={() => handleSlotClick(slot)}
+                            className={`
+                              p-2 rounded-lg border transition-all text-center text-sm transform
+                              ${slot.is_available 
+                                ? isSelected
+                                  ? 'bg-emerald-600 text-white border-emerald-700 shadow-lg shadow-emerald-800/30'
+                                  : 'bg-gray-800 border-gray-600 hover:border-emerald-500 hover:bg-gray-750 text-gray-200'
+                                : 'bg-red-900/60 border-red-800 text-red-200 cursor-not-allowed'}
+                              ${isSelected ? 'ring-2 ring-emerald-400' : ''}
+                            `}
+                          >
+                            <div className="font-medium">{slotDisplay}</div>
+                            <div className="text-xs mt-1">₹{parseFloat(slot.price).toFixed(2)}</div>
+                          </motion.button>
+                        );
+                      })}
                     </div>
-                    <div className="mt-3 pt-3 border-t border-emerald-800/30 flex justify-between">
-                      <span className="font-medium text-emerald-300">Total:</span>
-                      <span className="text-lg font-bold text-emerald-400">₹{calculateTotalPrice().toFixed(2)}</span>
-                    </div>
-                  </motion.div>
+                    
+                    {availableTimeSlots.length === 0 && (
+                      <motion.div 
+                        variants={fadeIn}
+                        className="text-center py-8 bg-gray-800/50 rounded-lg border border-emerald-800/20"
+                      >
+                        <p className="text-gray-400">No available time slots found for this date.</p>
+                      </motion.div>
+                    )}
+                    
+                    <motion.div 
+                      variants={fadeIn}
+                      className="mt-6 flex flex-wrap items-center gap-3 text-xs"
+                    >
+                      <div className="flex items-center">
+                        <div className="w-3 h-3 bg-emerald-600 rounded-full mr-2"></div>
+                        <span className="text-gray-300">Selected</span>
+                      </div>
+                      <div className="flex items-center">
+                        <div className="w-3 h-3 bg-gray-800 border border-gray-600 rounded-full mr-2"></div>
+                        <span className="text-gray-300">Available</span>
+                      </div>
+                      <div className="flex items-center">
+                        <div className="w-3 h-3 bg-red-900/60 rounded-full mr-2"></div>
+                        <span className="text-gray-300">Booked</span>
+                      </div>
+                    </motion.div>
+                    
+                    {selectedSlots.length > 0 && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mt-6 p-4 bg-emerald-900/20 rounded-lg border border-emerald-800/30"
+                      >
+                        <h4 className="font-medium text-emerald-300 mb-2">Selected Slots</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedSlots.sort().map(slot => (
+                            <motion.span 
+                              key={slot} 
+                              whileHover={{ scale: 1.05 }}
+                              className="bg-emerald-800/80 text-white px-3 py-1 rounded-full text-sm flex items-center gap-1"
+                            >
+                              {slot.split(' - ')[0]} <ChevronRight size={14} /> {slot.split(' - ')[1]}
+                              <span className="font-semibold ml-1">₹{selectedSlotPrices[slot]?.toFixed(2)}</span>
+                            </motion.span>
+                          ))}
+                        </div>
+                        <div className="mt-3 pt-3 border-t border-emerald-800/30 flex justify-between">
+                          <span className="font-medium text-emerald-300">Total:</span>
+                          <span className="text-lg font-bold text-emerald-400">₹{calculateTotalPrice().toFixed(2)}</span>
+                        </div>
+                      </motion.div>
+                    )}
+                  </>
                 )}
-              </>
+              </motion.div>
             )}
           </motion.div>
         )}
 
-        {/* Step 3: Confirmation */}
-        {currentStep === 3 && (
+        {/* Step 2: Confirmation & Payment */}
+        {currentStep === 2 && (
           <motion.div 
             initial="hidden"
             animate="visible"
@@ -1454,14 +1442,14 @@ useEffect(() => {
               <div></div>
             )}
             
-            {currentStep < 3 ? (
+            {currentStep < 2 ? (
               <motion.div whileHover={{ scale: 1.03 }}>
                 <Button
                   onClick={handleNextStep}
-                  disabled={isSubmitting || bookingInProgress}
+                  disabled={isSubmitting || bookingInProgress || selectedSlots.length === 0}
                   className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white hover:shadow-lg hover:shadow-emerald-800/30 transition-all"
                 >
-                  Next
+                  Continue to Payment
                   <ChevronRight size={16} />
                 </Button>
               </motion.div>
