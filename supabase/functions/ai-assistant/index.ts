@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -26,7 +25,6 @@ Keep responses concise, focusing on helping users:
 5. Understand venue policies and amenities
 6. Navigate payment options
 7. Get venue contact information
-
 
 You can use functions to access real data from our database when needed.
 
@@ -115,49 +113,6 @@ serve(async (req) => {
         content: `The current user has user_id: ${userId}. Use this to fetch their data without asking them for it.`
       });
     }
-
-
-
-
-
-    // Venue contact intent detection
-if (messages && messages.length > 0) {
-  const latestMsg = messages[messages.length - 1].content.toLowerCase();
-  const contactRegex = /(?:contact|call|get in touch with|reach)\s+(?:the\s+)?(.+?)\s+(?:venue|center|place|club|facility)?[?.]?$/i;
-  const match = latestMsg.match(contactRegex);
-
-  if (match) {
-    const venueName = match[1].trim();
-    const { data: venue, error } = await supabase
-      .from("venues")
-      .select("name, contact_number")
-      .ilike("name", `%${venueName}%`)
-      .limit(1)
-      .maybeSingle();
-
-    if (error) {
-      return new Response(JSON.stringify({ message: { content: "Sorry, I couldn't fetch venue details right now." } }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
-    if (!venue) {
-      return new Response(JSON.stringify({ message: { content: `Sorry, I couldn't find a venue named "${venueName}".` } }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
-
-    let reply = `You can chat with the "${venue.name}" venue owner directly within the site using the "Chat with Venue" feature.`;
-    if (venue.contact_number) {
-      reply += ` Or call the venue owner at ${venue.contact_number}.`;
-    } else {
-      reply += ` However, no phone number is available for this venue.`;
-    }
-
-    return new Response(JSON.stringify({ message: { content: reply } }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-  }
-}
-
-
-
-
-
-
     
     // Define available functions
     const functions = [
@@ -208,28 +163,6 @@ if (messages && messages.length > 0) {
           required: []
         }
       },
-
-
-
-
-{
-        name: "get_venue_contact",
-        description: "Get contact details for a specific venue",
-        parameters: {
-          type: "object",
-          properties: {
-            venue_name: { type: "string", description: "Name of the venue" }
-          },
-          required: ["venue_name"]
-        }
-      },
-
-
-
-
-
-
-
       {
         name: "book_court",
         description: "Book a court for a specific date and time slot",
@@ -242,6 +175,17 @@ if (messages && messages.length > 0) {
             end_time: { type: "string", description: "End time in HH:MM format" }
           },
           required: ["court_id", "date", "start_time", "end_time"]
+        }
+      },
+      {
+        name: "get_venue_contact",
+        description: "Get contact details for a specific venue",
+        parameters: {
+          type: "object",
+          properties: {
+            venue_name: { type: "string", description: "Name of the venue" }
+          },
+          required: ["venue_name"]
         }
       }
     ];
@@ -296,7 +240,7 @@ if (messages && messages.length > 0) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gpt-4o-mini",
+          model: "gpt-4",
           messages: completeMessages,
           temperature: 0.7,
           tools: functions.map(fn => ({ type: "function", function: fn })),
@@ -332,7 +276,7 @@ if (messages && messages.length > 0) {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "gpt-4o-mini",
+            model: "gpt-4",
             messages: [
               ...completeMessages,
               responseMessage,
@@ -398,7 +342,6 @@ async function handleFunctionCall(functionCall: any, supabase: any) {
     case "get_available_slots":
       return await getAvailableSlots(supabase, args.venue_id, args.court_id, args.date);
     case "get_user_bookings":
-      // Important change: Use the userId from the auth context instead of requiring it as an argument
       return await getUserBookings(supabase, userId, args.limit || 10);
     case "admin_summary":
       return await getAdminSummary(supabase, args.venue_id);
@@ -412,17 +355,12 @@ async function handleFunctionCall(functionCall: any, supabase: any) {
       return await getBookingsByDateRange(supabase, args.start_date, args.end_date, args.venue_id);
     case "book_court":
       return await bookCourt(supabase, userId, args.court_id, args.date, args.start_time, args.end_time);
-    
     case "get_venue_contact":
       return await getVenueContact(supabase, args.venue_name);
-
-
     default:
       throw new Error(`Unknown function: ${name}`);
   }
 }
-
-
 
 async function getVenueContact(supabase: any, venue_name: string) {
   try {
@@ -472,9 +410,6 @@ async function getVenueContact(supabase: any, venue_name: string) {
     };
   }
 }
-
-
-
 
 
 
