@@ -1,5 +1,7 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -30,6 +32,19 @@ IMPORTANT: You already know who the user is. DO NOT ask users for their user ID,
 Instead, use the authenticated user information already provided to this function.
 `;
 
+// Hindi-English mixed system prompt for bilingual responses
+const HINGLISH_SYSTEM_PROMPT = `
+${SYSTEM_PROMPT}
+
+If the user writes in Hinglish (Hindi-English mix), please respond in Hinglish as well. 
+Be friendly and conversational. Use phrases like:
+- "Kya help chahiye aapko?" (What help do you need?)
+- "Main check kar raha hoon" (I'm checking)
+- "Yeh raha aapka booking details" (Here are your booking details)
+
+Always maintain a polite and helpful tone in either language.
+`;
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -49,73 +64,45 @@ serve(async (req) => {
       );
     }
     
-    const { messages, userId, role, functionCall } = await req.json();
-
-    // If there's a specific function call, handle it
-    if (functionCall) {
-      const result = await handleFunctionCall(functionCall);
-      return new Response(JSON.stringify({ result }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+    const { messages, userId, role } = await req.json();
+    
+    // Check if user is authenticated
+    if (!userId) {
+      return new Response(
+        JSON.stringify({ 
+          message: { 
+            role: "assistant", 
+            content: "Please sign in to use booking features. कृपया साइन इन करें।" 
+          }
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
+    // Detect language - check if the latest user message might be in Hinglish
+    let selectedSystemPrompt = SYSTEM_PROMPT;
+    if (messages && messages.length > 0) {
+      const latestUserMsg = messages[messages.length - 1].content || '';
+      
+      // Very basic Hinglish detection (presence of common Hindi words/patterns)
+      const hindiPatterns = ['kya', 'hai', 'main', 'mujhe', 'aap', 'kaise', 'nahi', 'karo', 'kar', 'mein'];
+      const mightBeHinglish = hindiPatterns.some(pattern => 
+        latestUserMsg.toLowerCase().includes(pattern)
+      );
+      
+      if (mightBeHinglish) {
+        selectedSystemPrompt = HINGLISH_SYSTEM_PROMPT;
+      }
+    }
 
-   const { data: bookings, error } = await supabase
-  .from('bookings')
-  .select('*')
-  .eq('user_id', userId)
-  .gte('booking_date', today)
-  .order('booking_date', { ascending: true });
-
-  if (error) throw error;
-
-
-
-  const { messages, userId } = await req.json();
-const latestMsg = messages[messages.length - 1].content.toLowerCase();
-
-if (latestMsg.includes("my upcoming bookings")) {
-  // Fetch bookings for this user
-  const { data: bookings } = await supabase
-    .from('bookings')
-    .select('*')
-    .eq('user_id', userId)
-    .gte('booking_date', today);
-
-  if (!bookings || bookings.length === 0) {
-    return respond("You have no upcoming bookings.");
-  }
-  // Format and return bookings
-  return respond(`Here are your upcoming bookings:\n${formatBookings(bookings)}`);
-}
-
-if (latestMsg.includes("sports available")) {
-  // Fetch sports from your sports/venues table
-  const { data: sports } = await supabase
-    .from('sports')
-    .select('name');
-
-  if (!sports || sports.length === 0) {
-    return respond("No sports are currently available.");
-  }
-  return respond(`Sports available: ${sports.map(s => s.name).join(', ')}`);
-}
-
-// Fallback: Use OpenAI for general queries
-const openaiResponse = await callOpenAI(messages);
-return respond(openaiResponse);
-
-
-
-
-
-
-
-
+    // Create Supabase client for database access
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    const supabase = createClient(supabaseUrl, supabaseKey);
     
     // Prepare complete message history with system prompt
     const completeMessages = [
-      { role: "system", content: SYSTEM_PROMPT },
+      { role: "system", content: selectedSystemPrompt },
       ...messages
     ];
     
@@ -151,17 +138,6 @@ return respond(openaiResponse);
             limit: { type: "number", description: "Number of bookings to return" }
           },
           required: []
-        }
-      },
-      {
-        name: "admin_summary",
-        description: "Get administrative summary for a venue (requires admin role)",
-        parameters: {
-          type: "object",
-          properties: {
-            venue_id: { type: "string", description: "UUID of the venue" }
-          },
-          required: ["venue_id"]
         }
       },
       {
@@ -205,6 +181,18 @@ return respond(openaiResponse);
     
     // Only include admin functions if the user has admin role
     if (role === 'admin' || role === 'super_admin') {
+      functions.push({
+        name: "admin_summary",
+        description: "Get administrative summary for a venue (requires admin role)",
+        parameters: {
+          type: "object",
+          properties: {
+            venue_id: { type: "string", description: "UUID of the venue" }
+          },
+          required: ["venue_id"]
+        }
+      });
+      
       functions.push({
         name: "get_venue_admins",
         description: "List users who can manage a venue (admin only)",
@@ -267,7 +255,7 @@ return respond(openaiResponse);
           name: functionName,
           arguments: functionArgs,
           userId: userId
-        });
+        }, supabase);
         
         // Make a second call to OpenAI with the function result
         const secondResponse = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -334,14 +322,8 @@ return respond(openaiResponse);
   }
 });
 
-async function handleFunctionCall(functionCall: any) {
+async function handleFunctionCall(functionCall: any, supabase: any) {
   const { name, arguments: args, userId } = functionCall;
-  
-  // Create Supabase client
-  const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-  
-  const supabase = createClient(supabaseUrl, supabaseKey);
   
   console.log(`Handling function call: ${name} with args:`, args);
   
@@ -1037,11 +1019,3 @@ async function bookCourt(supabase: any, userId: string, courtId: string, date: s
     };
   }
 }
-
-// Create a Supabase client (basic implementation)
-function createClient(supabaseUrl: string, supabaseKey: string) {
-  return {
-    from: (table: string) => ({
-      select: (columns: string = '*') => ({
-        eq: (column: string, value: any) => ({
-          order: (column: string, { ascending = true }: { ascending: boolean } = { ascending: true }) => ({
