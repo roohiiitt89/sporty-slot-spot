@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { toast } from '@/components/ui/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 
 type MessageRole = 'user' | 'assistant' | 'system';
 
@@ -33,6 +34,7 @@ const NewAIChatWidget = () => {
   const recognitionRef = useRef<any>(null);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
   const [consentGiven, setConsentGiven] = useState<boolean | null>(null);
+  const navigate = useNavigate();
 
   // Detect mobile
   const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
@@ -497,7 +499,6 @@ const NewAIChatWidget = () => {
           y: 20,
         }}
         className={cn(
-          // Mobile: full screen modal, Desktop: floating box
           isMobile
             ? "fixed inset-0 z-50 flex flex-col bg-gradient-to-b from-gray-900 via-gray-900 to-black border-emerald-500/20"
             : "fixed bottom-24 right-6 w-[90vw] sm:w-[400px] max-h-[600px] rounded-2xl shadow-2xl z-40 overflow-hidden bg-gradient-to-b from-gray-900 via-gray-900 to-black border border-emerald-500/20",
@@ -505,6 +506,23 @@ const NewAIChatWidget = () => {
         )}
         style={isMobile ? { maxHeight: "100dvh", height: "100dvh" } : {}}
       >
+        {/* Mobile Back Button */}
+        {isMobile && isOpen && (
+          <button
+            onClick={() => {
+              setIsOpen(false);
+              navigate('/');
+            }}
+            className="absolute top-4 left-4 z-50 flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-700/90 text-white font-semibold shadow-lg hover:bg-emerald-800 transition-all"
+            style={{ fontSize: 16 }}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+            Back
+          </button>
+        )}
+
         <div className="p-4 border-b border-emerald-800/30 bg-gradient-to-r from-emerald-900/20 to-transparent backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
