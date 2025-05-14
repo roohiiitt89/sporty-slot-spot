@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, Calendar, MapPin, Clock, User, ChevronRight, Activity, Star, Search } from 'lucide-react';
+import { ArrowRight, Calendar, MapPin, Clock, User, ChevronRight, Activity, Star } from 'lucide-react';
 import Header from '../components/Header';
 import BookSlotModal from '../components/BookSlotModal';
 import { EnterChallengeButton } from '@/components/challenge/EnterChallengeButton';
@@ -70,9 +70,6 @@ const Index: React.FC = () => {
     sports: true
   });
   const [locationPermissionHandled, setLocationPermissionHandled] = useState(false);
-  const [searchSport, setSearchSport] = useState('');
-  const [searchLocation, setSearchLocation] = useState('');
-  const [searchDate, setSearchDate] = useState('');
   
   const venuesRef = useRef<HTMLDivElement>(null);
   const sportsRef = useRef<HTMLDivElement>(null);
@@ -175,16 +172,6 @@ const Index: React.FC = () => {
     </div>
   );
   
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Build query string
-    const params = new URLSearchParams();
-    if (searchSport) params.append('sport', searchSport);
-    if (searchLocation) params.append('location', searchLocation);
-    if (searchDate) params.append('date', searchDate);
-    navigate(`/venues?${params.toString()}`);
-  };
-  
   return <div className="min-h-screen bg-navy-dark text-card-foreground">
       <Header />
       
@@ -221,51 +208,6 @@ const Index: React.FC = () => {
           
           <EnterChallengeButton />
         </div>
-      </section>
-
-      <section className="search-bar-section py-6 bg-gradient-to-r from-emerald-800/80 via-navy-dark to-navy-dark fade-in">
-        <form
-          onSubmit={handleSearch}
-          className="container mx-auto px-4 flex flex-col md:flex-row items-center gap-4 rounded-2xl shadow-xl backdrop-blur-md bg-navy/70 border border-emerald-800/40"
-          style={{ maxWidth: 900 }}
-        >
-          <div className="flex items-center w-full md:w-auto bg-navy-light rounded-xl px-3 py-2 shadow-inner focus-within:ring-2 focus-within:ring-emerald-500 transition">
-            <Activity className="text-emerald-400 mr-2" />
-            <input
-              type="text"
-              value={searchSport}
-              onChange={e => setSearchSport(e.target.value)}
-              placeholder="Sport (e.g. Football)"
-              className="bg-transparent outline-none text-white placeholder:text-emerald-200 w-full"
-            />
-          </div>
-          <div className="flex items-center w-full md:w-auto bg-navy-light rounded-xl px-3 py-2 shadow-inner focus-within:ring-2 focus-within:ring-emerald-500 transition">
-            <MapPin className="text-emerald-400 mr-2" />
-            <input
-              type="text"
-              value={searchLocation}
-              onChange={e => setSearchLocation(e.target.value)}
-              placeholder="Location"
-              className="bg-transparent outline-none text-white placeholder:text-emerald-200 w-full"
-            />
-          </div>
-          <div className="flex items-center w-full md:w-auto bg-navy-light rounded-xl px-3 py-2 shadow-inner focus-within:ring-2 focus-within:ring-emerald-500 transition">
-            <Calendar className="text-emerald-400 mr-2" />
-            <input
-              type="date"
-              value={searchDate}
-              onChange={e => setSearchDate(e.target.value)}
-              className="bg-transparent outline-none text-white placeholder:text-emerald-200 w-full"
-            />
-          </div>
-          <button
-            type="submit"
-            className="flex items-center gap-2 px-6 py-2 rounded-xl bg-gradient-to-r from-emerald-600 via-emerald-800 to-emerald-700 text-white font-bold shadow-lg hover:scale-105 hover:from-emerald-500 hover:to-emerald-800 transition-all duration-200 focus:ring-2 focus:ring-emerald-400"
-          >
-            <Search className="w-5 h-5" />
-            Search
-          </button>
-        </form>
       </section>
 
       {/* Add Location Permission Request here */}
