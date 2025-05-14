@@ -34,6 +34,17 @@ const NewAIChatWidget = () => {
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
   const [consentGiven, setConsentGiven] = useState<boolean | null>(null);
 
+  // Detect mobile
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+
+  // Prevent body scroll when chat is open on mobile
+  useEffect(() => {
+    if (isMobile && isOpen) {
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = ""; };
+    }
+  }, [isMobile, isOpen]);
+
   // Check notification permission
   useEffect(() => {
     if ('Notification' in window) {
@@ -486,11 +497,13 @@ const NewAIChatWidget = () => {
           y: 20,
         }}
         className={cn(
-          "fixed bottom-24 right-6 w-[90vw] sm:w-[400px] max-h-[600px] rounded-2xl shadow-2xl z-40 overflow-hidden",
-          "bg-gradient-to-b from-gray-900 via-gray-900 to-black",
-          "border border-emerald-500/20",
+          // Mobile: full screen modal, Desktop: floating box
+          isMobile
+            ? "fixed inset-0 z-50 flex flex-col bg-gradient-to-b from-gray-900 via-gray-900 to-black border-emerald-500/20"
+            : "fixed bottom-24 right-6 w-[90vw] sm:w-[400px] max-h-[600px] rounded-2xl shadow-2xl z-40 overflow-hidden bg-gradient-to-b from-gray-900 via-gray-900 to-black border border-emerald-500/20",
           !isOpen && "pointer-events-none"
         )}
+        style={isMobile ? { maxHeight: "100dvh", height: "100dvh" } : {}}
       >
         <div className="p-4 border-b border-emerald-800/30 bg-gradient-to-r from-emerald-900/20 to-transparent backdrop-blur-sm">
           <div className="flex items-center justify-between">
