@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { MessageCircle, X, Send, Mic, ThumbsUp, ThumbsDown, User, Bot } from 'lucide-react';
+import { MessageCircle, X, Send, Mic, ThumbsUp, ThumbsDown, User, Bot, Settings, Sparkles } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { toast } from '@/components/ui/use-toast';
+import { motion, AnimatePresence } from 'framer-motion';
 
 type MessageRole = 'user' | 'assistant' | 'system';
 
@@ -448,96 +449,124 @@ const NewAIChatWidget = () => {
 
   return (
     <>
-      <button
+      <motion.button
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
         className={cn(
-          "fixed bottom-6 right-6 rounded-full w-14 h-14 p-0 shadow-xl z-50 flex items-center justify-center",
-          "bg-black border-2 border-emerald-800 hover:bg-gray-900 transition-all duration-300",
-          "focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2 focus:ring-offset-black",
+          "fixed bottom-6 right-6 rounded-full w-14 h-14 p-0 shadow-xl z-50",
+          "flex items-center justify-center group",
+          "bg-gradient-to-r from-emerald-600 to-emerald-500",
+          "border-2 border-emerald-400/20",
+          "hover:shadow-emerald-500/20 hover:shadow-lg",
+          "transition-all duration-300",
+          "focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2",
           isOpen ? "rotate-90" : "rotate-0"
         )}
         onClick={() => setIsOpen(!isOpen)}
       >
         {isOpen ? (
-          <X className="h-6 w-6 text-emerald-400" />
+          <X className="h-6 w-6 text-white" />
         ) : (
-          <MessageCircle className="h-6 w-6 text-emerald-400" />
+          <div className="relative">
+            <MessageCircle className="h-6 w-6 text-white" />
+            <span className="absolute -top-1 -right-1 h-3 w-3 bg-emerald-400 rounded-full border-2 border-white animate-pulse" />
+          </div>
         )}
-        {isLoading && (
-          <span className="absolute -top-1 -right-1 flex h-4 w-4">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500"></span>
-          </span>
-        )}
-      </button>
+      </motion.button>
 
-      <div 
+      <motion.div
+        initial={false}
+        animate={isOpen ? {
+          scale: 1,
+          opacity: 1,
+          y: 0,
+        } : {
+          scale: 0.95,
+          opacity: 0,
+          y: 20,
+        }}
         className={cn(
-          "fixed bottom-24 right-6 w-[90vw] sm:w-[400px] max-h-[600px] rounded-lg shadow-2xl z-40 border overflow-hidden transition-all duration-300 ease-in-out",
-          "bg-gray-900 border-emerald-800/30 backdrop-blur-sm",
-          isOpen 
-            ? "scale-100 opacity-100 translate-y-0" 
-            : "scale-95 opacity-0 translate-y-4 pointer-events-none"
+          "fixed bottom-24 right-6 w-[90vw] sm:w-[400px] max-h-[600px] rounded-2xl shadow-2xl z-40 overflow-hidden",
+          "bg-gradient-to-b from-gray-900 via-gray-900 to-black",
+          "border border-emerald-500/20",
+          !isOpen && "pointer-events-none"
         )}
       >
-        <div className="p-4 border-b border-emerald-800/30 bg-gradient-to-r from-black to-emerald-900/20">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-full bg-emerald-900/30 border border-emerald-800/50">
-              <MessageCircle className="h-5 w-5 text-emerald-400" />
+        <div className="p-4 border-b border-emerald-800/30 bg-gradient-to-r from-emerald-900/20 to-transparent backdrop-blur-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="p-2 rounded-full bg-emerald-900/30 border border-emerald-800/50">
+                  <Sparkles className="h-5 w-5 text-emerald-400" />
+                </div>
+                <span className="absolute -bottom-1 -right-1 h-3 w-3 bg-emerald-500 rounded-full border-2 border-gray-900" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-white flex items-center gap-2">
+                  Grid2Play Assistant
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-900/50 border border-emerald-700/50 text-emerald-400">
+                    Active
+                  </span>
+                </h3>
+                <p className="text-xs text-emerald-300/80">Smart Booking Assistant</p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-semibold text-white">Grid2Play Assistant</h3>
-              <p className="text-xs text-emerald-300/80">Ask about bookings, venues, and sports</p>
-            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-lg text-gray-400 hover:text-emerald-400"
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
           </div>
         </div>
 
-        <div className="flex flex-col h-[400px] overflow-y-auto p-4 bg-gradient-to-b from-gray-900/80 to-gray-900">
-          {messages.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center text-emerald-300/70">
-              <div className="text-center">
-                <p className="mb-4 text-lg font-medium">How can I help with your sports bookings?</p>
-                {renderExampleQueries()}
-              </div>
-            </div>
-          ) : (
-            messages.map((message) => (
-              <div
+        <div className="flex flex-col h-[400px] overflow-y-auto p-4 bg-gradient-to-b from-gray-900/50 to-black/50">
+          <AnimatePresence>
+            {messages.map((message) => (
+              <motion.div
                 key={message.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
                 className={cn(
-                  "mb-4 max-w-[80%] animate-fade-in",
-                  message.role === "user" 
-                    ? "self-end ml-auto" 
-                    : "self-start mr-auto"
+                  "mb-4 max-w-[80%] group",
+                  message.role === "user" ? "self-end ml-auto" : "self-start mr-auto"
                 )}
               >
                 <div className="flex items-start gap-2">
                   {message.role === "user" ? (
-                    <div className="flex-shrink-0 mt-1 p-1 rounded-full bg-emerald-800/50 border border-emerald-700/50">
-                      <User className="h-3 w-3 text-emerald-300" />
+                    <div className="flex-shrink-0 mt-1">
+                      <div className="p-1.5 rounded-full bg-emerald-900/50 border border-emerald-700/50">
+                        <User className="h-3 w-3 text-emerald-400" />
+                      </div>
                     </div>
                   ) : (
-                    <div className="flex-shrink-0 mt-1 p-1 rounded-full bg-gray-800/50 border border-gray-700/50">
-                      <Bot className="h-3 w-3 text-gray-300" />
+                    <div className="flex-shrink-0 mt-1">
+                      <div className="p-1.5 rounded-full bg-gray-800/50 border border-gray-700/50">
+                        <Bot className="h-3 w-3 text-gray-300" />
+                      </div>
                     </div>
                   )}
                   <div
                     className={cn(
-                      "rounded-lg p-3 shadow-sm relative group",
+                      "rounded-2xl p-4 shadow-lg relative group",
                       "transition-all duration-200",
-                      message.role === "user" 
-                        ? "bg-emerald-800/90 text-white border border-emerald-700/50" 
-                        : "bg-gray-800/90 text-gray-100 border border-gray-700/50"
+                      message.role === "user"
+                        ? "bg-gradient-to-br from-emerald-600/90 to-emerald-700/90 text-white"
+                        : "bg-gradient-to-br from-gray-800/90 to-gray-900/90 text-gray-100",
+                      "border border-opacity-20 hover:border-opacity-40",
+                      message.role === "user"
+                        ? "border-emerald-400"
+                        : "border-gray-500"
                     )}
                   >
-                    <div 
-                      className="whitespace-pre-wrap [&>strong]:font-bold [&>em]:italic [&>span]:font-medium [&>a]:underline [&>pre]:overflow-x-auto"
-                      dangerouslySetInnerHTML={formatMessageContent(message.content)}
-                    />
+                    <div className="whitespace-pre-wrap">{message.content}</div>
                     
                     {message.timestamp && (
                       <div className={cn(
-                        "text-xs mt-1 text-right",
-                        message.role === "user" ? "text-emerald-200/70" : "text-gray-400"
+                        "text-xs mt-2 opacity-60",
+                        message.role === "user" ? "text-emerald-200" : "text-gray-400"
                       )}>
                         {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </div>
@@ -545,103 +574,139 @@ const NewAIChatWidget = () => {
 
                     {message.role === 'assistant' && (
                       <div className="absolute -bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 rounded-full bg-gray-800/80 hover:bg-emerald-900/80"
                           onClick={() => handleReaction(message.id, 'thumbsUp')}
-                          className={cn(
-                            "p-1 rounded-full bg-gray-800/80 border border-gray-700/50",
-                            "hover:bg-emerald-800/50 hover:border-emerald-700/50",
+                        >
+                          <ThumbsUp className={cn(
+                            "h-3 w-3",
                             message.reactions?.thumbsUp ? "text-emerald-400" : "text-gray-400"
-                          )}
-                        >
-                          <ThumbsUp className="h-3 w-3" />
-                        </button>
-                        <button
+                          )} />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 rounded-full bg-gray-800/80 hover:bg-red-900/80"
                           onClick={() => handleReaction(message.id, 'thumbsDown')}
-                          className={cn(
-                            "p-1 rounded-full bg-gray-800/80 border border-gray-700/50",
-                            "hover:bg-red-800/50 hover:border-red-700/50",
-                            message.reactions?.thumbsDown ? "text-red-400" : "text-gray-400"
-                          )}
                         >
-                          <ThumbsDown className="h-3 w-3" />
-                        </button>
+                          <ThumbsDown className={cn(
+                            "h-3 w-3",
+                            message.reactions?.thumbsDown ? "text-red-400" : "text-gray-400"
+                          )} />
+                        </Button>
                       </div>
                     )}
-
-                    {message.id.includes('consent-prompt') && renderConsentButtons()}
                   </div>
                 </div>
-              </div>
-            ))
-          )}
+              </motion.div>
+            ))}
+          </AnimatePresence>
+
           {isLoading && (
-            <div className="self-start mr-auto mb-4">
-              <div className="bg-gray-800/80 rounded-lg p-3 border border-gray-700/50 flex items-center gap-2">
-                <div className="flex space-x-1">
-                  <div className="w-2 h-2 rounded-full bg-emerald-400 animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                  <div className="w-2 h-2 rounded-full bg-emerald-400 animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                  <div className="w-2 h-2 rounded-full bg-emerald-400 animate-bounce" style={{ animationDelay: '300ms' }}></div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="self-start mr-auto mb-4"
+            >
+              <div className="bg-gray-800/80 rounded-xl p-3 border border-gray-700/50">
+                <div className="flex items-center gap-3">
+                  <div className="flex space-x-1">
+                    <motion.div
+                      animate={{ scale: [1, 1.2, 1] }}
+                      transition={{ repeat: Infinity, duration: 1, delay: 0 }}
+                      className="w-2 h-2 rounded-full bg-emerald-400"
+                    />
+                    <motion.div
+                      animate={{ scale: [1, 1.2, 1] }}
+                      transition={{ repeat: Infinity, duration: 1, delay: 0.2 }}
+                      className="w-2 h-2 rounded-full bg-emerald-400"
+                    />
+                    <motion.div
+                      animate={{ scale: [1, 1.2, 1] }}
+                      transition={{ repeat: Infinity, duration: 1, delay: 0.4 }}
+                      className="w-2 h-2 rounded-full bg-emerald-400"
+                    />
+                  </div>
+                  <span className="text-sm text-emerald-400 font-medium">Thinking...</span>
                 </div>
-                <span className="text-sm text-emerald-300">Thinking...</span>
               </div>
-            </div>
+            </motion.div>
           )}
           <div ref={messagesEndRef} />
         </div>
 
-        <div className="border-t border-emerald-800/30 p-4 bg-gray-900/80 backdrop-blur-sm">
-          {messages.length === 0 && renderExampleQueries()}
+        <div className="border-t border-emerald-800/30 p-4 bg-gradient-to-t from-black to-gray-900/80 backdrop-blur-sm">
           <div className="flex gap-2">
-            <button
+            <Button
+              variant="outline"
+              size="icon"
               onClick={toggleVoiceInput}
               className={cn(
-                "h-[44px] w-[44px] rounded-lg flex items-center justify-center transition-all",
-                "bg-gray-800/80 text-gray-400 border border-gray-700/50",
-                "hover:bg-gray-700/80 hover:text-white",
-                isListening ? "animate-pulse bg-red-800/50 text-red-400" : ""
+                "h-[44px] w-[44px] rounded-xl",
+                "bg-gray-800/80 text-gray-400 border-gray-700/50",
+                "hover:bg-emerald-900/50 hover:text-emerald-400 hover:border-emerald-700/50",
+                isListening && "animate-pulse bg-red-900/50 text-red-400 border-red-700/50"
               )}
             >
               <Mic className="h-5 w-5" />
-            </button>
-            <textarea
-              ref={inputRef}
-              className={cn(
-                "flex-1 resize-none rounded-lg px-4 py-3 h-[44px] max-h-[120px] focus:outline-none",
-                "bg-gray-800/80 text-white placeholder-gray-500 border border-gray-700/50",
-                "focus:border-emerald-700 focus:ring-1 focus:ring-emerald-700/30 transition-all"
-              )}
-              placeholder={isListening ? "Listening..." : "Type your message..."}
-              value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              onKeyDown={handleKeyPress}
-              disabled={isLoading || !user || isSessionExpired}
-              rows={1}
-            />
-            <button
+            </Button>
+
+            <div className="relative flex-1">
+              <textarea
+                ref={inputRef}
+                className={cn(
+                  "w-full resize-none rounded-xl px-4 py-3 h-[44px] max-h-[120px]",
+                  "bg-gray-800/80 text-white placeholder-gray-500",
+                  "border border-gray-700/50",
+                  "focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none",
+                  "transition-all duration-200"
+                )}
+                placeholder={isListening ? "Listening..." : "Type your message..."}
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                onKeyDown={handleKeyPress}
+                disabled={isLoading || !user || isSessionExpired}
+                rows={1}
+              />
+              <div className="absolute right-2 bottom-2 text-xs text-gray-500">
+                {inputMessage.length}/500
+              </div>
+            </div>
+
+            <Button
               onClick={handleSendMessage}
               disabled={!inputMessage.trim() || isLoading || !user || isSessionExpired}
               className={cn(
-                "h-[44px] w-[44px] rounded-lg flex items-center justify-center transition-all",
-                "bg-emerald-800/90 text-emerald-100 border border-emerald-700/50",
-                "hover:bg-emerald-700/80 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed",
-                "focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2 focus:ring-offset-gray-900"
+                "h-[44px] w-[44px] rounded-xl",
+                "bg-gradient-to-r from-emerald-600 to-emerald-500",
+                "text-white border-none",
+                "hover:opacity-90 disabled:opacity-50",
+                "transition-all duration-200"
               )}
             >
               <Send className="h-5 w-5" />
-            </button>
+            </Button>
           </div>
+
           {isSessionExpired && (
-            <div className="mt-2 text-center">
-              <button 
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-2 text-center"
+            >
+              <Button
+                variant="link"
                 onClick={() => window.location.reload()}
-                className="text-xs text-emerald-400 hover:underline"
+                className="text-xs text-emerald-400 hover:text-emerald-300"
               >
                 Session expired. Click here to refresh and log in again.
-              </button>
-            </div>
+              </Button>
+            </motion.div>
           )}
         </div>
-      </div>
+      </motion.div>
     </>
   );
 };
