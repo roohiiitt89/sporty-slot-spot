@@ -250,7 +250,7 @@ const Index: React.FC = () => {
             ) : venues.length > 0 ? (
               <Carousel className="w-full">
                 <CarouselContent className="-ml-2 md:-ml-4">
-                  {venues.slice(0, visibleVenueCount).map((venue, index) => (
+                  {venues.map((venue, index) => (
                     <CarouselItem key={venue.id} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/4">
                       <div 
                         className="venue-card group cursor-pointer overflow-hidden rounded-lg bg-navy-light hover:bg-navy transition-all duration-300" 
