@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MapPin, Star, ArrowLeft, MessageCircle, Navigation, Clock } from 'lucide-react';
+import { MapPin, Star, ArrowLeft, MessageCircle, Navigation, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useGeolocation, calculateDistance } from '@/hooks/use-geolocation';
@@ -17,6 +17,7 @@ import { getVenueSportDisplayNames } from '@/utils/sportDisplayNames';
 import AvailabilityWidget from '@/components/AvailabilityWidget';
 import VenueImageCarousel from '@/components/VenueImageCarousel';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 
 interface Venue {
   id: string;
@@ -504,92 +505,89 @@ const VenueDetails: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-navy-dark">
       <Header />
       
-      {/* Hero Section with Venue Image Carousel */}
-      <div className="relative">
-        <VenueImageCarousel 
-          images={venueImages}
-          venueName={venue?.name || ''}
-          className={isMobile ? "h-60" : "h-96"}
-        />
-        
-        <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6 text-white">
-          <div className="container mx-auto">
-            <button 
-              onClick={() => navigate('/venues')}
-              className="mb-2 md:mb-4 flex items-center text-xs md:text-sm font-medium hover:text-indigo-light transition-colors"
-            >
-              <ArrowLeft className="w-3 h-3 md:w-4 md:h-4 mr-1" />
-              Back to All Venues
-            </button>
-            
-            <div className="flex justify-between items-start">
-              <div>
-                <h1 className="text-xl md:text-4xl font-bold mb-1 md:mb-2">{venue?.name}</h1>
-                <div className="flex items-center text-gray-300 mb-1 md:mb-2">
-                  <MapPin className="w-3 h-3 md:w-4 md:h-4 mr-1" />
-                  <span className="text-sm md:text-base">{venue?.location}</span>
+      {/* Back Button */}
+      <div className="container mx-auto px-4 py-4">
+        <button
+          onClick={() => navigate('/venues')}
+          className="flex items-center text-gray-400 hover:text-white transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to Venues
+        </button>
+      </div>
+
+      {/* Hero Section with Image Carousel */}
+      <div className="relative w-full h-[40vh] md:h-[50vh] lg:h-[60vh] mb-8 overflow-hidden">
+        <Carousel className="w-full h-full">
+          <CarouselContent>
+            {venueImages.map((image, index) => (
+              <CarouselItem key={index} className="w-full h-full">
+                <div className="relative w-full h-full">
+                  <img
+                    src={image}
+                    alt={`${venue?.name} - View ${index + 1}`}
+                    className="w-full h-full object-cover"
+                    loading={index === 0 ? 'eager' : 'lazy'}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-navy-dark via-transparent to-transparent opacity-90" />
                 </div>
-                
-                {distance !== null && (
-                  <div className="flex items-center text-[#2def80] mb-1 md:mb-2">
-                    <Navigation className="w-3 h-3 md:w-4 md:h-4 mr-1" />
-                    <span className="text-xs md:text-sm">
-                      {distance < 1 
-                        ? `${(distance * 1000).toFixed(0)} meters away` 
-                        : `${distance.toFixed(1)} km away`}
-                    </span>
-                  </div>
-                )}
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
+            <CarouselPrevious className="h-8 w-8 rounded-full bg-black/50 hover:bg-black/70 text-white" />
+            <CarouselNext className="h-8 w-8 rounded-full bg-black/50 hover:bg-black/70 text-white" />
+          </div>
+        </Carousel>
+        
+        {/* Venue Title Overlay */}
+        <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-navy-dark to-transparent">
+          <div className="container mx-auto">
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-2">
+              {venue?.name}
+            </h1>
+            <div className="flex items-center text-gray-300 space-x-4">
+              <div className="flex items-center">
+                <MapPin className="w-4 h-4 mr-1" />
+                <span>{venue?.location}</span>
               </div>
-              
-              <div className="flex items-center bg-white/90 backdrop-blur-sm rounded-full px-2 md:px-3 py-1 md:py-1.5 text-navy-dark">
-                <Star className="h-4 w-4 md:h-5 md:w-5 text-yellow-500 fill-current mr-1" />
-                <span className="text-sm md:text-base font-bold">{venue?.rating?.toFixed(1) || '4.5'}</span>
+              <div className="flex items-center">
+                <Star className="w-4 h-4 mr-1 text-[#2def80]" />
+                <span>{venue?.rating?.toFixed(1) || '4.5'}</span>
               </div>
             </div>
           </div>
         </div>
       </div>
-      
-      {/* Venue Details - Conditional rendering based on screen size */}
-      <div className="container mx-auto px-4 py-6 md:py-10">
+
+      {/* Main Content */}
+      <div className="container mx-auto px-4 pb-16">
         {isMobile ? <MobileLayout /> : <DesktopLayout />}
       </div>
-      
-      {/* Footer */}
-      <footer className="bg-[#1e3b2c] text-white py-6 md:py-8 mt-8 md:mt-12">
-        <div className="container mx-auto px-4 text-center">
-          <p className="text-sm md:text-base">&copy; 2025 SportySlot. All rights reserved.</p>
-        </div>
-      </footer>
-      
-      {/* Book Slot Modal - Pass the current venue ID */}
+
+      {/* Modals */}
       {isBookModalOpen && (
-        <BookSlotModal 
-          onClose={() => setIsBookModalOpen(false)} 
-          venueId={id} 
+        <BookSlotModal
+          onClose={() => setIsBookModalOpen(false)}
+          venueId={id || ''}
         />
       )}
-      
-      {/* Chat Modal */}
       {isChatModalOpen && venue && (
         <ChatModal
-          venueId={venue.id}
-          venueName={venue.name}
           onClose={() => setIsChatModalOpen(false)}
+          venueId={id || ''}
+          venueName={venue.name}
         />
       )}
-      
-      {/* Review Modal */}
       {isReviewModalOpen && venue && (
         <ReviewModal
-          bookingId="" // This is optional and would be filled when coming from a completed booking
-          venueId={venue.id}
+          venueId={id || ''}
           venueName={venue.name}
           onClose={() => setIsReviewModalOpen(false)}
+          bookingId=""
         />
       )}
     </div>
