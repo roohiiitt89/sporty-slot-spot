@@ -1,655 +1,714 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { useState, useRef, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { MessageCircle, X, Send, Mic, ThumbsUp, ThumbsDown, User, Bot, Settings, Sparkles } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { cn } from '@/lib/utils';
+import { toast } from '@/components/ui/use-toast';
+import { motion, AnimatePresence } from 'framer-motion';
 
-// Types
-interface Message {
-  role: "system" | "user" | "assistant" | "function";
+type MessageRole = 'user' | 'assistant' | 'system';
+
+interface ChatMessage {
+  id: string;
+  role: MessageRole;
   content: string;
-  name?: string;
-}
-
-interface Venue {
-  id: string;
-  name: string;
-  contact_number?: string;
-  has_chat_support: boolean;
-  business_hours?: string;
-  address?: string;
-  rating?: number;
-  sports?: Array<{
-    sport: {
-      name: string;
-    };
-  }>;
-}
-
-interface VenueContactResponse {
-  success: boolean;
-  message: string;
-  venue_details?: {
-    name: string;
-    contact_number?: string;
-    has_chat_support: boolean;
-    business_hours?: string;
-    address?: string;
-    rating?: number;
-    sports: string;
+  timestamp: Date;
+  reactions?: {
+    thumbsUp?: boolean;
+    thumbsDown?: boolean;
   };
 }
 
-// Additional Types
-interface Booking {
-  id: string;
-  venue_id: string;
-  user_id: string;
-  slot_date: string;
-  slot_time: string;
-  sport_id: string;
-  status: string;
-  venue?: Venue;
-  sport?: {
-    name: string;
-  };
-}
+const NewAIChatWidget = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [inputMessage, setInputMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isFirstInteraction, setIsFirstInteraction] = useState(true);
+  const [isListening, setIsListening] = useState(false);
+  const { user, userRole, isSessionExpired, logout } = useAuth();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const recognitionRef = useRef<any>(null);
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
+  const [consentGiven, setConsentGiven] = useState<boolean | null>(null);
 
-interface Sport {
-  id: string;
-  name: string;
-  icon?: string;
-}
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
-const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY') || '';
-
-const SYSTEM_PROMPT = `
-You are a helpful assistant embedded in a sports slot booking website called Grid2Play. Your job is to help users with venue selection, slot availability, bookings, cancellations, payments, and recommendations for sports-related activities on this platform.
-
-If the user asks anything unrelated to this platform (e.g., homework, coding help, chatting, etc.), politely say:
-'Sorry, I can only help with sports slot booking queries on this site.' Do not answer off-topic queries.
-
-Keep responses concise, focusing on helping users:
-1. Find available slots at venues
-2. Book courts for their preferred sports
-3. Check their booking history
-4. Get recommendations based on their preferences
-5. Understand venue policies and amenities
-6. Navigate payment options
-7. Contact venue owners and staff
-
-IMPORTANT RULES FOR CONTACT QUERIES:
-1. If a user asks about contacting ANY venue:
-   - ALWAYS use the get_venue_contact function
-   - Extract the venue name from their query
-   - Pass the exact venue name to the function
-   - NEVER make up contact information
-   - NEVER skip calling get_venue_contact
-
-2. For queries containing words like "contact", "reach", "call", "phone", "chat with":
-   - ALWAYS treat them as contact queries
-   - ALWAYS use get_venue_contact function
-   - Extract venue name and pass to function
-
-3. When extracting venue names:
-   - Include "BOX" if it's part of the name
-   - Keep special characters (like /)
-   - Maintain exact capitalization
-   - For "RPM BOX" queries, use "RPM BOX CRICKET/FOOTBALL BOX"
-
-4. NEVER provide venue information without using get_venue_contact
-5. ALWAYS use the exact response from get_venue_contact
-6. NEVER modify or omit information from get_venue_contact response
-
-Example contact queries that MUST use get_venue_contact:
-- "How can I contact RPM BOX?"
-- "Contact details for Sports Arena"
-- "How to reach RPM BOX venue"
-- "Phone number for RPM BOX"
-- "Can I chat with RPM BOX staff?"
-
-You can use functions to access real data from our database when needed.
-
-IMPORTANT: You already know who the user is. DO NOT ask users for their user ID, email, or any identifying information.
-Instead, use the authenticated user information already provided to this function.
-`;
-
-const HINGLISH_SYSTEM_PROMPT = `
-${SYSTEM_PROMPT}
-
-If the user writes in Hinglish (Hindi-English mix), please respond in Hinglish as well. 
-Be friendly and conversational. Use phrases like:
-- "Kya help chahiye aapko?" (What help do you need?)
-- "Main check kar raha hoon" (I'm checking)
-- "Yeh raha aapka booking details" (Here are your booking details)
-
-Always maintain a polite and helpful tone in either language.
-`;
-
-// Function to handle venue contact information
-async function getVenueContact(supabase: SupabaseClient, venue_name: string): Promise<VenueContactResponse> {
-  try {
-    // Clean up the venue name for better matching
-    const cleanVenueName = venue_name.trim().replace(/[\/\\]/g, ' ').replace(/box/i, 'BOX');
-    
-    // First try exact match
-    let { data: venues, error } = await supabase
-      .from('venues')
-      .select(`
-        id,
-        name,
-        contact_number,
-        has_chat_support,
-        business_hours,
-        address,
-        rating,
-        sports:venue_sports(
-          sport:sports(name)
-        )
-      `)
-      .or(`name.ilike.${cleanVenueName},name.ilike.%${cleanVenueName}%,name.ilike.%${venue_name}%`)
-      .order('name', { ascending: true });
-
-    if (error) {
-      console.error('Error fetching venue:', error);
-      throw error;
+  // Check notification permission
+  useEffect(() => {
+    if ('Notification' in window) {
+      setNotificationPermission(Notification.permission);
     }
+  }, []);
 
-    // If no exact match found, try fuzzy match
-    if (!venues || venues.length === 0) {
-      const { data: fuzzyVenues, error: fuzzyError } = await supabase
-        .from('venues')
-        .select(`
-          id,
-          name,
-          contact_number,
-          has_chat_support,
-          business_hours,
-          address,
-          rating,
-          sports:venue_sports(
-            sport:sports(name)
-          )
-        `)
-        .textSearch('name', cleanVenueName, {
-          type: 'websearch',
-          config: 'english'
-        });
+  // Request notification permission if needed
+  const requestNotificationPermission = async () => {
+    if ('Notification' in window && notificationPermission !== 'granted') {
+      const permission = await Notification.requestPermission();
+      setNotificationPermission(permission);
+      return permission === 'granted';
+    }
+    return notificationPermission === 'granted';
+  };
 
-      if (fuzzyError) throw fuzzyError;
+  // Show notification when new message arrives and tab is not active
+  const showNotification = (message: string) => {
+    if (document.hidden && notificationPermission === 'granted') {
+      new Notification('Grid2Play Assistant', {
+        body: message,
+        icon: '/favicon.ico'
+      });
+    }
+  };
+
+  // Check for session expiration
+  useEffect(() => {
+    if (isSessionExpired && isOpen) {
+      setMessages(prev => [...prev, {
+        id: 'session-expired-' + Date.now(),
+        role: 'assistant',
+        content: "Your session has expired. Please log in again to continue chatting.",
+        timestamp: new Date()
+      }]);
+    }
+  }, [isSessionExpired, isOpen]);
+
+  // Load conversation history from localStorage and check for analytics consent
+  useEffect(() => {
+    if (user) {
+      const savedChat = localStorage.getItem(`ai_chat_history_${user.id}`);
+      const savedConsent = localStorage.getItem(`ai_chat_consent_${user.id}`);
       
-      if (!fuzzyVenues || fuzzyVenues.length === 0) {
-        return {
-          success: false,
-          message: `For venue "${venue_name}", you can contact them in two ways:\n\n` +
-                  "1. Use the chat option available below the 'Book Now' button on the venue details page\n" +
-                  "2. Check the contact number on the venue details page\n\n" +
-                  "All contact information is available on the venue details page for quick access."
+      if (savedConsent !== null) {
+        setConsentGiven(savedConsent === 'true');
+      }
+
+      if (savedChat) {
+        try {
+          const parsedChat = JSON.parse(savedChat);
+          setMessages(parsedChat.map((msg: any) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp)
+          })));
+        } catch (e) {
+          console.error("Failed to parse chat history", e);
+        }
+      }
+    }
+  }, [user]);
+
+  // Save conversation history to localStorage
+  useEffect(() => {
+    if (user && messages.length > 0) {
+      localStorage.setItem(
+        `ai_chat_history_${user.id}`,
+        JSON.stringify(messages.map(msg => ({
+          ...msg,
+          timestamp: msg.timestamp.toISOString()
+        })))
+      );
+
+      // Send anonymized logs to backend if consent given
+      if (consentGiven) {
+        sendAnonymizedLogs();
+      }
+    }
+  }, [messages, user, consentGiven]);
+
+  // Send anonymized chat logs to backend
+  const sendAnonymizedLogs = async () => {
+    try {
+      const logs = messages.map(msg => ({
+        role: msg.role,
+        content: msg.content,
+        timestamp: msg.timestamp.toISOString(),
+        reactions: msg.reactions
+      }));
+
+      await supabase.functions.invoke('log-chat-analytics', {
+        body: {
+          userId: user?.id, // Still tracked but anonymized in backend processing
+          messages: logs,
+          userAgent: navigator.userAgent
+        }
+      });
+    } catch (error) {
+      console.error("Failed to send analytics", error);
+    }
+  };
+
+  // Initialize voice recognition
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        recognitionRef.current = new SpeechRecognition();
+        recognitionRef.current.continuous = false;
+        recognitionRef.current.interimResults = false;
+        recognitionRef.current.lang = 'en-US';
+
+        recognitionRef.current.onresult = (event: any) => {
+          const transcript = event.results[0][0].transcript;
+          setInputMessage(prev => prev + ' ' + transcript);
+          setIsListening(false);
+        };
+
+        recognitionRef.current.onerror = (event: any) => {
+          console.error('Speech recognition error', event.error);
+          setIsListening(false);
+          toast({
+            title: "Voice input failed",
+            description: event.error,
+            variant: "destructive"
+          });
         };
       }
-      
-      venues = fuzzyVenues;
     }
 
-    const venue = venues[0]; // Get the first matching venue
-
-    // Format sports list
-    const sports = venue.sports
-      ? venue.sports.map((s: any) => s.sport.name).join(', ')
-      : 'Not specified';
-
-    const contactMessage = `You can contact ${venue.name} in two ways:\n\n` +
-      "1. Use the chat option available below the 'Book Now' button on the venue details page\n" +
-      (venue.contact_number 
-        ? `2. Call them at ${venue.contact_number}${venue.business_hours ? ` during business hours: ${venue.business_hours}` : ''}\n\n`
-        : "2. Check the contact number on the venue details page\n\n"
-      ) +
-      "Additional Venue Information:\n" +
-      `📍 Location: ${venue.address || 'Available on venue page'}\n` +
-      (venue.rating ? `⭐ Rating: ${venue.rating}\n` : '') +
-      `🎯 Sports Available: ${sports}\n\n` +
-      "The venue details page has all contact information and is the quickest way to reach the venue staff.";
-
-    return {
-      success: true,
-      message: contactMessage,
-      venue_details: {
-        name: venue.name,
-        contact_number: venue.contact_number,
-        has_chat_support: venue.has_chat_support,
-        business_hours: venue.business_hours,
-        address: venue.address,
-        rating: venue.rating,
-        sports
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
       }
     };
-  } catch (error) {
-    console.error('Error in getVenueContact:', error);
-    return {
-      success: false,
-      message: `For venue "${venue_name}", you can contact them in two ways:\n\n` +
-              "1. Use the chat option available below the 'Book Now' button on the venue details page\n" +
-              "2. Check the contact number on the venue details page\n\n" +
-              "All contact information is available on the venue details page for quick access."
-    };
-  }
-}
+  }, []);
 
-// Function to get user's booking history
-async function getUserBookings(supabase: SupabaseClient, userId: string): Promise<any> {
-  try {
-    const { data: bookings, error } = await supabase
-      .from('bookings')
-      .select(`
-        *,
-        venue:venues(*),
-        sport:sports(*)
-      `)
-      .eq('user_id', userId)
-      .order('slot_date', { ascending: false });
-
-    if (error) throw error;
-
-    return {
-      success: true,
-      bookings: bookings || [],
-      message: bookings && bookings.length > 0
-        ? `Found ${bookings.length} bookings`
-        : "No bookings found"
-    };
-  } catch (error) {
-    console.error('Error fetching bookings:', error);
-    return {
-      success: false,
-      message: "Failed to fetch booking history"
-    };
-  }
-}
-
-// Function to get venue information
-async function getVenueInfo(supabase: SupabaseClient, venue_name: string): Promise<any> {
-  try {
-    const { data: venues, error } = await supabase
-      .from('venues')
-      .select(`
-        *,
-        sports:venue_sports(
-          sport:sports(*)
-        )
-      `)
-      .ilike('name', `%${venue_name}%`);
-
-    if (error) throw error;
-
-    return {
-      success: true,
-      venues: venues || [],
-      message: venues && venues.length > 0
-        ? `Found ${venues.length} matching venues`
-        : "No venues found"
-    };
-  } catch (error) {
-    console.error('Error fetching venue info:', error);
-    return {
-      success: false,
-      message: "Failed to fetch venue information"
-    };
-  }
-}
-
-// Function to get available slots
-async function getAvailableSlots(supabase: SupabaseClient, venue_id: string, date: string): Promise<any> {
-  try {
-    const { data: slots, error } = await supabase
-      .from('slots')
-      .select('*')
-      .eq('venue_id', venue_id)
-      .eq('date', date)
-      .eq('is_available', true);
-
-    if (error) throw error;
-
-    return {
-      success: true,
-      slots: slots || [],
-      message: slots && slots.length > 0
-        ? `Found ${slots.length} available slots`
-        : "No available slots found for this date"
-    };
-  } catch (error) {
-    console.error('Error fetching slots:', error);
-    return {
-      success: false,
-      message: "Failed to fetch available slots"
-    };
-  }
-}
-
-// Function to get sports information
-async function getSportsInfo(supabase: SupabaseClient): Promise<any> {
-  try {
-    const { data: sports, error } = await supabase
-      .from('sports')
-      .select('*');
-
-    if (error) throw error;
-
-    return {
-      success: true,
-      sports: sports || [],
-      message: sports && sports.length > 0
-        ? `Found ${sports.length} sports`
-        : "No sports found"
-    };
-  } catch (error) {
-    console.error('Error fetching sports:', error);
-    return {
-      success: false,
-      message: "Failed to fetch sports information"
-    };
-  }
-}
-
-// Function to get nearby venues
-async function getNearbyVenues(supabase: SupabaseClient, latitude: number, longitude: number, radius: number = 5): Promise<any> {
-  try {
-    // Using PostGIS to calculate distance and find nearby venues
-    const { data: venues, error } = await supabase
-      .rpc('get_venues_within_radius', {
-        lat: latitude,
-        lng: longitude,
-        radius_km: radius
-      });
-
-    if (error) throw error;
-
-    return {
-      success: true,
-      venues: venues || [],
-      message: venues && venues.length > 0
-        ? `Found ${venues.length} venues within ${radius}km`
-        : "No venues found in this area"
-    };
-  } catch (error) {
-    console.error('Error fetching nearby venues:', error);
-    return {
-      success: false,
-      message: "Failed to fetch nearby venues"
-    };
-  }
-}
-
-// Main serve function
-serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  try {
-    if (!OPENAI_API_KEY) {
-      throw new Error('OpenAI API key not configured');
-    }
-    
-    const { messages, userId } = await req.json();
-    
-    // Check if user is authenticated
-    if (!userId) {
-      return new Response(
-        JSON.stringify({ 
-          message: { 
-            role: "assistant", 
-            content: "Please sign in to use the chat assistant. कृपया साइन इन करें।" 
-          }
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Detect language
-    let selectedSystemPrompt = SYSTEM_PROMPT;
-    if (messages && messages.length > 0) {
-      const latestUserMsg = messages[messages.length - 1].content || '';
-      const hindiPatterns = ['kya', 'hai', 'main', 'mujhe', 'aap', 'kaise', 'nahi', 'karo', 'kar', 'mein'];
-      const mightBeHinglish = hindiPatterns.some(pattern => 
-        latestUserMsg.toLowerCase().includes(pattern)
-      );
-      
-      if (mightBeHinglish) {
-        selectedSystemPrompt = HINGLISH_SYSTEM_PROMPT;
-      }
-    }
-
-    // Create Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-    const supabase = createClient(supabaseUrl, supabaseKey);
-    
-    // Prepare messages
-    const completeMessages: Message[] = [
-      { role: "system", content: selectedSystemPrompt },
-      ...messages
-    ];
-
-    // Add user context
-    completeMessages.unshift({
-      role: "system",
-      content: `The current user has user_id: ${userId}. Use this to fetch their data without asking them for it.`
-    });
-
-    // Define available functions
-    const functions = [
-      {
-        name: "get_venue_contact",
-        description: "Get contact details and communication options for a specific venue",
-        parameters: {
-          type: "object",
-          properties: {
-            venue_name: { 
-              type: "string", 
-              description: "Name of the venue" 
-            }
-          },
-          required: ["venue_name"]
-        }
-      },
-      {
-        name: "get_user_bookings",
-        description: "Get booking history for the current user",
-        parameters: {
-          type: "object",
-          properties: {
-            user_id: {
-              type: "string",
-              description: "User ID to fetch bookings for"
-            }
-          },
-          required: ["user_id"]
-        }
-      },
-      {
-        name: "get_venue_info",
-        description: "Get detailed information about a venue",
-        parameters: {
-          type: "object",
-          properties: {
-            venue_name: {
-              type: "string",
-              description: "Name of the venue to search for"
-            }
-          },
-          required: ["venue_name"]
-        }
-      },
-      {
-        name: "get_available_slots",
-        description: "Get available slots for a venue on a specific date",
-        parameters: {
-          type: "object",
-          properties: {
-            venue_id: {
-              type: "string",
-              description: "ID of the venue"
-            },
-            date: {
-              type: "string",
-              description: "Date to check availability for (YYYY-MM-DD)"
-            }
-          },
-          required: ["venue_id", "date"]
-        }
-      },
-      {
-        name: "get_sports_info",
-        description: "Get information about available sports",
-        parameters: {
-          type: "object",
-          properties: {}
-        }
-      },
-      {
-        name: "get_nearby_venues",
-        description: "Find venues near a specific location",
-        parameters: {
-          type: "object",
-          properties: {
-            latitude: {
-              type: "number",
-              description: "Latitude of the location"
-            },
-            longitude: {
-              type: "number",
-              description: "Longitude of the location"
-            },
-            radius: {
-              type: "number",
-              description: "Search radius in kilometers (default: 5)"
-            }
-          },
-          required: ["latitude", "longitude"]
-        }
-      }
-    ];
-
-    // Update the OpenAI API call to force function calling for contact queries
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-3.5-turbo",
-        messages: completeMessages,
-        temperature: 0.7,
-        functions,
-        function_call: messages[messages.length - 1].content.toLowerCase().match(/\b(contact|reach|call|phone|chat|number)\b/) 
-          ? { 
-              name: 'get_venue_contact',
-              arguments: JSON.stringify({
-                venue_name: messages[messages.length - 1].content.toLowerCase().includes('rpm box') 
-                  ? "RPM BOX CRICKET/FOOTBALL BOX"
-                  : messages[messages.length - 1].content.match(/(?:contact|reach|call|phone|chat with|number for)\s+([^?.,]+)/i)?.[1]?.trim() || ""
-              })
-            }
-          : "auto",
-      }),
-    });
-
-    const data = await response.json();
-    
-    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-      throw new Error('Invalid response from OpenAI');
-    }
-
-    const responseMessage = data.choices[0].message;
-    let result = { message: responseMessage };
-
-    // Handle function calls
-    if (responseMessage.function_call) {
-      const functionName = responseMessage.function_call.name;
-      const functionArgs = JSON.parse(responseMessage.function_call.arguments);
-
-      let functionResult;
-      switch (functionName) {
-        case 'get_venue_contact':
-          functionResult = await getVenueContact(supabase, functionArgs.venue_name);
-          break;
-        case 'get_user_bookings':
-          functionResult = await getUserBookings(supabase, functionArgs.user_id);
-          break;
-        case 'get_venue_info':
-          functionResult = await getVenueInfo(supabase, functionArgs.venue_name);
-          break;
-        case 'get_available_slots':
-          functionResult = await getAvailableSlots(supabase, functionArgs.venue_id, functionArgs.date);
-          break;
-        case 'get_sports_info':
-          functionResult = await getSportsInfo(supabase);
-          break;
-        case 'get_nearby_venues':
-          functionResult = await getNearbyVenues(
-            supabase,
-            functionArgs.latitude,
-            functionArgs.longitude,
-            functionArgs.radius
-          );
-          break;
-      }
-
-      // Second call to OpenAI with function result
-      const secondResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${OPENAI_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-3.5-turbo",
-          messages: [
-            ...completeMessages,
-            responseMessage,
-            {
-              role: "function",
-              name: functionName,
-              content: JSON.stringify(functionResult)
-            }
-          ],
-          temperature: 0.7
-        }),
-      });
-
-      const secondData = await secondResponse.json();
-      result = { 
-        message: secondData.choices[0].message,
-        functionCall: {
-          name: functionName,
-          arguments: functionArgs,
-          result: functionResult
-        }
+  // Welcome message setup
+  useEffect(() => {
+    if (isOpen && isFirstInteraction && messages.length === 0) {
+      const welcomeMessage: ChatMessage = {
+        id: 'welcome-' + Date.now(),
+        role: 'assistant',
+        content: user ? 
+          `Hello${user.user_metadata?.name ? ' ' + user.user_metadata.name : ''}! How can I help you with sports bookings today?` : 
+          'Please sign in to use the chat assistant.',
+        timestamp: new Date()
       };
+      setMessages([welcomeMessage]);
+      setIsFirstInteraction(false);
+
+      // Show analytics consent prompt if not already set
+      if (user && consentGiven === null) {
+        setTimeout(() => {
+          setMessages(prev => [...prev, {
+            id: 'consent-prompt-' + Date.now(),
+            role: 'assistant',
+            content: "To help improve our service, may we use anonymized chat data for quality improvement? This won't include personal information.",
+            timestamp: new Date()
+          }]);
+        }, 1500);
+      }
+    }
+  }, [isOpen, isFirstInteraction, user, messages.length, consentGiven]);
+
+  // Scroll to bottom of chat
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isOpen]);
+
+  // Focus input when chat opens
+  useEffect(() => {
+    if (isOpen && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isOpen]);
+
+  // Handle tab visibility changes for notifications
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && messages.length > 0) {
+        document.title = "Grid2Play Assistant";
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [messages]);
+
+  const handleSendMessage = async () => {
+    if (!inputMessage.trim()) return;
+    
+    if (isSessionExpired) {
+      toast({
+        title: "Session Expired",
+        description: "Please log in again to continue chatting",
+        variant: "destructive"
+      });
+      return;
     }
 
-    return new Response(JSON.stringify(result), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
-
-  } catch (error) {
-    console.error("Error:", error);
-    return new Response(
-      JSON.stringify({ 
-        message: { 
-          role: "assistant", 
-          content: "I encountered an error. Please try again later." 
+    if (!user) {
+      toast({
+        title: "Not Signed In",
+        description: "Please sign in to use the chat assistant",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    const userMessage: ChatMessage = {
+      id: 'user-' + Date.now(),
+      role: 'user',
+      content: inputMessage.trim(),
+      timestamp: new Date()
+    };
+    
+    setMessages(prev => [...prev, userMessage]);
+    setInputMessage('');
+    setIsLoading(true);
+    
+    try {
+      const messageHistory = messages
+        .filter(msg => msg.role !== 'system')
+        .map(({ role, content }) => ({ role, content }));
+      
+      messageHistory.push({ role: 'user', content: userMessage.content });
+      
+      const { data, error } = await supabase.functions.invoke('chat-assistant', {
+        body: { 
+          messages: messageHistory,
+          userId: user.id,
+          context: {
+            userRole,
+            previousMessages: messages.slice(-10) // Send last 10 messages for context
+          }
         }
-      }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200
+      });
+      
+      if (error) throw error;
+      
+      if (data?.message) {
+        const assistantMessage: ChatMessage = {
+          id: 'assistant-' + Date.now(),
+          role: 'assistant',
+          content: data.message.content,
+          timestamp: new Date()
+        };
+        
+        setMessages(prev => [...prev, assistantMessage]);
+        
+        // Show notification if tab is not active
+        if (document.hidden) {
+          const canNotify = await requestNotificationPermission();
+          if (canNotify) {
+            showNotification(data.message.content.substring(0, 100));
+          } else {
+            document.title = "New message! - Grid2Play Assistant";
+          }
+        }
+      } else {
+        throw new Error("Invalid response format");
       }
+    } catch (error: any) {
+      console.error("Chat error:", error);
+      setMessages(prev => [...prev, {
+        id: 'error-' + Date.now(),
+        role: 'assistant',
+        content: "Sorry, I encountered an error. Please try again later.",
+        timestamp: new Date()
+      }]);
+      
+      toast({
+        title: "Chat Error",
+        description: error.message || "Failed to communicate with assistant",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  const toggleVoiceInput = () => {
+    if (!recognitionRef.current) {
+      toast({
+        title: "Voice input not supported",
+        description: "Your browser doesn't support speech recognition",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    } else {
+      recognitionRef.current.start();
+      setIsListening(true);
+    }
+  };
+
+  const handleReaction = (messageId: string, reaction: 'thumbsUp' | 'thumbsDown') => {
+    setMessages(prev => prev.map(msg => {
+      if (msg.id === messageId) {
+        return {
+          ...msg,
+          reactions: {
+            ...msg.reactions,
+            [reaction]: !msg.reactions?.[reaction],
+            [reaction === 'thumbsUp' ? 'thumbsDown' : 'thumbsUp']: false
+          }
+        };
+      }
+      return msg;
+    }));
+
+    // Send feedback to backend
+    supabase.functions.invoke('chat-feedback', {
+      body: {
+        messageId,
+        reaction,
+        userId: user?.id
+      }
+    }).catch(console.error);
+  };
+
+  const handleConsent = (given: boolean) => {
+    setConsentGiven(given);
+    if (user) {
+      localStorage.setItem(`ai_chat_consent_${user.id}`, String(given));
+    }
+    setMessages(prev => [...prev, {
+      id: 'consent-response-' + Date.now(),
+      role: 'user',
+      content: given ? "Yes, I agree" : "No, I don't agree",
+      timestamp: new Date()
+    }]);
+  };
+
+  const formatMessageContent = (content: string) => {
+    // Enhanced formatting with markdown support
+    const formatted = content
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
+      .replace(/\*(.*?)\*/g, '<em>$1</em>') // Italics
+      .replace(/```([^`]+)```/g, '<pre class="bg-gray-800/50 p-2 rounded my-1 overflow-x-auto"><code>$1</code></pre>') // Code blocks
+      .replace(/`([^`]+)`/g, '<code class="bg-gray-800/50 px-1 rounded">$1</code>') // Inline code
+      .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-emerald-400 hover:underline">$1</a>') // Links
+      .replace(/\b(tennis|football|basketball|badminton)\b/gi, '<span class="text-emerald-300">$1</span>')
+      .replace(/\n/g, '<br />');
+
+    return { __html: formatted };
+  };
+
+  const renderExampleQueries = () => {
+    const examples = [
+      "Show my upcoming bookings",
+      "Find available football courts tomorrow",
+      "What sports can I play at Grid2Play?",
+      "How do I cancel a booking?"
+    ];
+
+    return (
+      <div className="flex flex-col gap-2 mb-4">
+        <p className="text-sm text-emerald-300">Try asking:</p>
+        <div className="flex flex-wrap gap-2">
+          {examples.map((example, index) => (
+            <button
+              key={index}
+              className="text-xs bg-emerald-900/50 text-emerald-100 px-3 py-1 rounded-full hover:bg-emerald-800/80 transition-colors border border-emerald-800/30"
+              onClick={() => {
+                setInputMessage(example);
+                inputRef.current?.focus();
+              }}
+            >
+              {example}
+            </button>
+          ))}
+        </div>
+      </div>
     );
-  }
-});
+  };
+
+  const renderConsentButtons = () => {
+    return (
+      <div className="flex gap-2 mt-2">
+        <button
+          onClick={() => handleConsent(true)}
+          className="text-xs bg-emerald-800/50 text-emerald-100 px-3 py-1 rounded hover:bg-emerald-700/80 transition-colors border border-emerald-700/30"
+        >
+          Yes, I agree
+        </button>
+        <button
+          onClick={() => handleConsent(false)}
+          className="text-xs bg-gray-800/50 text-gray-100 px-3 py-1 rounded hover:bg-gray-700/80 transition-colors border border-gray-700/30"
+        >
+          No, thanks
+        </button>
+      </div>
+    );
+  };
+
+  if (!user) return null;
+
+  return (
+    <>
+      <motion.button
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        className={cn(
+          "fixed bottom-6 right-6 rounded-full w-14 h-14 p-0 shadow-xl z-50",
+          "flex items-center justify-center group",
+          "bg-gradient-to-r from-emerald-600 to-emerald-500",
+          "border-2 border-emerald-400/20",
+          "hover:shadow-emerald-500/20 hover:shadow-lg",
+          "transition-all duration-300",
+          "focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2",
+          isOpen ? "rotate-90" : "rotate-0"
+        )}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        {isOpen ? (
+          <X className="h-6 w-6 text-white" />
+        ) : (
+          <div className="relative">
+            <MessageCircle className="h-6 w-6 text-white" />
+            <span className="absolute -top-1 -right-1 h-3 w-3 bg-emerald-400 rounded-full border-2 border-white animate-pulse" />
+          </div>
+        )}
+      </motion.button>
+
+      <motion.div
+        initial={false}
+        animate={isOpen ? {
+          scale: 1,
+          opacity: 1,
+          y: 0,
+        } : {
+          scale: 0.95,
+          opacity: 0,
+          y: 20,
+        }}
+        className={cn(
+          "fixed bottom-24 right-6 w-[90vw] sm:w-[400px] max-h-[600px] rounded-2xl shadow-2xl z-40 overflow-hidden",
+          "bg-gradient-to-b from-gray-900 via-gray-900 to-black",
+          "border border-emerald-500/20",
+          !isOpen && "pointer-events-none"
+        )}
+      >
+        <div className="p-4 border-b border-emerald-800/30 bg-gradient-to-r from-emerald-900/20 to-transparent backdrop-blur-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="p-2 rounded-full bg-emerald-900/30 border border-emerald-800/50">
+                  <Sparkles className="h-5 w-5 text-emerald-400" />
+                </div>
+                <span className="absolute -bottom-1 -right-1 h-3 w-3 bg-emerald-500 rounded-full border-2 border-gray-900" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-white flex items-center gap-2">
+                  Grid2Play Assistant
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-900/50 border border-emerald-700/50 text-emerald-400">
+                    Active
+                  </span>
+                </h3>
+                <p className="text-xs text-emerald-300/80">Smart Booking Assistant</p>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-lg text-gray-400 hover:text-emerald-400"
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex flex-col h-[400px] overflow-y-auto p-4 bg-gradient-to-b from-gray-900/50 to-black/50">
+          <AnimatePresence>
+            {messages.map((message) => (
+              <motion.div
+                key={message.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className={cn(
+                  "mb-4 max-w-[80%] group",
+                  message.role === "user" ? "self-end ml-auto" : "self-start mr-auto"
+                )}
+              >
+                <div className="flex items-start gap-2">
+                  {message.role === "user" ? (
+                    <div className="flex-shrink-0 mt-1">
+                      <div className="p-1.5 rounded-full bg-emerald-900/50 border border-emerald-700/50">
+                        <User className="h-3 w-3 text-emerald-400" />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex-shrink-0 mt-1">
+                      <div className="p-1.5 rounded-full bg-gray-800/50 border border-gray-700/50">
+                        <Bot className="h-3 w-3 text-gray-300" />
+                      </div>
+                    </div>
+                  )}
+                  <div
+                    className={cn(
+                      "rounded-2xl p-4 shadow-lg relative group",
+                      "transition-all duration-200",
+                      message.role === "user"
+                        ? "bg-gradient-to-br from-emerald-600/90 to-emerald-700/90 text-white"
+                        : "bg-gradient-to-br from-gray-800/90 to-gray-900/90 text-gray-100",
+                      "border border-opacity-20 hover:border-opacity-40",
+                      message.role === "user"
+                        ? "border-emerald-400"
+                        : "border-gray-500"
+                    )}
+                  >
+                    <div className="whitespace-pre-wrap">{message.content}</div>
+                    
+                    {message.timestamp && (
+                      <div className={cn(
+                        "text-xs mt-2 opacity-60",
+                        message.role === "user" ? "text-emerald-200" : "text-gray-400"
+                      )}>
+                        {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    )}
+
+                    {message.role === 'assistant' && (
+                      <div className="absolute -bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 rounded-full bg-gray-800/80 hover:bg-emerald-900/80"
+                          onClick={() => handleReaction(message.id, 'thumbsUp')}
+                        >
+                          <ThumbsUp className={cn(
+                            "h-3 w-3",
+                            message.reactions?.thumbsUp ? "text-emerald-400" : "text-gray-400"
+                          )} />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 rounded-full bg-gray-800/80 hover:bg-red-900/80"
+                          onClick={() => handleReaction(message.id, 'thumbsDown')}
+                        >
+                          <ThumbsDown className={cn(
+                            "h-3 w-3",
+                            message.reactions?.thumbsDown ? "text-red-400" : "text-gray-400"
+                          )} />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+
+          {isLoading && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="self-start mr-auto mb-4"
+            >
+              <div className="bg-gray-800/80 rounded-xl p-3 border border-gray-700/50">
+                <div className="flex items-center gap-3">
+                  <div className="flex space-x-1">
+                    <motion.div
+                      animate={{ scale: [1, 1.2, 1] }}
+                      transition={{ repeat: Infinity, duration: 1, delay: 0 }}
+                      className="w-2 h-2 rounded-full bg-emerald-400"
+                    />
+                    <motion.div
+                      animate={{ scale: [1, 1.2, 1] }}
+                      transition={{ repeat: Infinity, duration: 1, delay: 0.2 }}
+                      className="w-2 h-2 rounded-full bg-emerald-400"
+                    />
+                    <motion.div
+                      animate={{ scale: [1, 1.2, 1] }}
+                      transition={{ repeat: Infinity, duration: 1, delay: 0.4 }}
+                      className="w-2 h-2 rounded-full bg-emerald-400"
+                    />
+                  </div>
+                  <span className="text-sm text-emerald-400 font-medium">Thinking...</span>
+                </div>
+              </div>
+            </motion.div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+
+        <div className="border-t border-emerald-800/30 p-4 bg-gradient-to-t from-black to-gray-900/80 backdrop-blur-sm">
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={toggleVoiceInput}
+              className={cn(
+                "h-[44px] w-[44px] rounded-xl",
+                "bg-gray-800/80 text-gray-400 border-gray-700/50",
+                "hover:bg-emerald-900/50 hover:text-emerald-400 hover:border-emerald-700/50",
+                isListening && "animate-pulse bg-red-900/50 text-red-400 border-red-700/50"
+              )}
+            >
+              <Mic className="h-5 w-5" />
+            </Button>
+
+            <div className="relative flex-1">
+              <textarea
+                ref={inputRef}
+                className={cn(
+                  "w-full resize-none rounded-xl px-4 py-3 h-[44px] max-h-[120px]",
+                  "bg-gray-800/80 text-white placeholder-gray-500",
+                  "border border-gray-700/50",
+                  "focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none",
+                  "transition-all duration-200"
+                )}
+                placeholder={isListening ? "Listening..." : "Type your message..."}
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                onKeyDown={handleKeyPress}
+                disabled={isLoading || !user || isSessionExpired}
+                rows={1}
+              />
+              <div className="absolute right-2 bottom-2 text-xs text-gray-500">
+                {inputMessage.length}/500
+              </div>
+            </div>
+
+            <Button
+              onClick={handleSendMessage}
+              disabled={!inputMessage.trim() || isLoading || !user || isSessionExpired}
+              className={cn(
+                "h-[44px] w-[44px] rounded-xl",
+                "bg-gradient-to-r from-emerald-600 to-emerald-500",
+                "text-white border-none",
+                "hover:opacity-90 disabled:opacity-50",
+                "transition-all duration-200"
+              )}
+            >
+              <Send className="h-5 w-5" />
+            </Button>
+          </div>
+
+          {isSessionExpired && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-2 text-center"
+            >
+              <Button
+                variant="link"
+                onClick={() => window.location.reload()}
+                className="text-xs text-emerald-400 hover:text-emerald-300"
+              >
+                Session expired. Click here to refresh and log in again.
+              </Button>
+            </motion.div>
+          )}
+        </div>
+      </motion.div>
+    </>
+  );
+};
+
+export default NewAIChatWidget;
