@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
@@ -260,6 +259,19 @@ function containsSportQuery(message: string): boolean {
   ];
   
   return sportKeywords.some(keyword => keyword.test(message));
+}
+
+// Helper function to detect challenge mode queries
+function containsChallengeModeQuery(message: string): boolean {
+  if (!message) return false;
+  const challengeKeywords = [
+    /challenge mode/i,
+    /challenge feature/i,
+    /challenge section/i,
+    /challenge kya hai/i,
+    /challenge/i
+  ];
+  return challengeKeywords.some((pattern) => pattern.test(message));
 }
 
 // Function to get user bookings using Supabase client
