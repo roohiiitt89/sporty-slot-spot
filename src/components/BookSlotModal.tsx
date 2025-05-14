@@ -127,7 +127,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     fetchSports();
     
     const today = new Date();
-   /* setSelectedDate(today.toISOString().split('T')[0]);*/
+   setSelectedDate(today.toISOString().split('T')[0]);
 
     if (venueId) {
       setSelectedVenue(venueId);
