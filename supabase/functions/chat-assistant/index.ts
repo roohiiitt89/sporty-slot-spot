@@ -10,7 +10,7 @@ const corsHeaders = {
 
 // System prompt to define the assistant's behavior and limitations
 const SYSTEM_PROMPT = `
-You are Grid2Play's lovable, expert sports slot booking assistant.
+You are Grid2Play's expert sports slot booking assistant.
 
 You have full permission to access the backend database and can call any function needed to answer user queries accurately and reliably.
 
@@ -32,6 +32,10 @@ Examples of what you can help with:
 - Recommending venues or sports
 - Explaining venue rules or amenities
 - Providing payment or booking status
+
+IMPORTANT: Use only the real data provided to you through the system. Do not make up venues, bookings or other information.
+When responding about bookings, venues, and sports, ONLY reference the actual database information provided to you.
+NEVER reference fictional venues like "ABC Sports Complex", "XYZ Ground", or other venues that aren't in the user's actual database.
 `;
 
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY') || '';
@@ -113,14 +117,49 @@ serve(async (req) => {
       try {
         const bookingInfo = await getUserBookings(userId);
         
-        if (bookingInfo.success) {
+        if (bookingInfo && bookingInfo.success) {
+          // Add booking information as a system message so the AI has context
           completeMessages.push({
             role: "system",
-            content: `User has ${bookingInfo.upcoming.length} upcoming bookings and ${bookingInfo.past.length} past bookings. Upcoming bookings: ${JSON.stringify(bookingInfo.upcoming)}`
+            content: `User has ${bookingInfo.upcoming.length} upcoming bookings and ${bookingInfo.past.length} past bookings. 
+            
+            Upcoming bookings details: ${JSON.stringify(bookingInfo.upcoming)}
+            
+            Past bookings details: ${JSON.stringify(bookingInfo.past)}`
           });
         }
       } catch (error) {
         console.error("Error getting booking information:", error);
+      }
+    }
+    
+    // Get venue information for venue-related queries
+    if (containsVenueQuery(messages[messages.length - 1]?.content || "")) {
+      try {
+        const venuesInfo = await getVenues();
+        if (venuesInfo && venuesInfo.success) {
+          completeMessages.push({
+            role: "system",
+            content: `Available venues: ${JSON.stringify(venuesInfo.venues)}`
+          });
+        }
+      } catch (error) {
+        console.error("Error getting venue information:", error);
+      }
+    }
+    
+    // Get sport information for sport-related queries
+    if (containsSportQuery(messages[messages.length - 1]?.content || "")) {
+      try {
+        const sportsInfo = await getSports();
+        if (sportsInfo && sportsInfo.success) {
+          completeMessages.push({
+            role: "system",
+            content: `Available sports: ${JSON.stringify(sportsInfo.sports)}`
+          });
+        }
+      } catch (error) {
+        console.error("Error getting sports information:", error);
       }
     }
 
@@ -203,6 +242,26 @@ function containsBookingQuery(message: string): boolean {
   return bookingKeywords.some(keyword => keyword.test(message));
 }
 
+// Helper function to identify venue-related queries
+function containsVenueQuery(message: string): boolean {
+  const venueKeywords = [
+    /venue/i, /place/i, /ground/i, /court/i, /stadium/i, /arena/i,
+    /location/i, /center/i, /centre/i, /where/i, /facility/i
+  ];
+  
+  return venueKeywords.some(keyword => keyword.test(message));
+}
+
+// Helper function to identify sport-related queries
+function containsSportQuery(message: string): boolean {
+  const sportKeywords = [
+    /sport/i, /game/i, /play/i, /cricket/i, /football/i, /soccer/i,
+    /basketball/i, /tennis/i, /badminton/i, /volleyball/i, /activity/i
+  ];
+  
+  return sportKeywords.some(keyword => keyword.test(message));
+}
+
 // Function to get user bookings using Supabase client
 async function getUserBookings(userId: string) {
   try {
@@ -211,7 +270,7 @@ async function getUserBookings(userId: string) {
     // Get current date in YYYY-MM-DD format
     const today = new Date().toISOString().split('T')[0];
     
-    // Get upcoming bookings
+    // Get upcoming bookings with venue and court details
     const { data: upcomingBookings, error: upcomingError } = await supabase
       .from('bookings')
       .select(`
@@ -221,8 +280,20 @@ async function getUserBookings(userId: string) {
         end_time,
         total_price,
         status,
-        courts(name, venue_id),
-        venues:courts(name)
+        courts:court_id (
+          id,
+          name,
+          venue_id,
+          venues:venue_id (
+            id,
+            name,
+            location
+          ),
+          sports:sport_id (
+            id,
+            name
+          )
+        )
       `)
       .eq('user_id', userId)
       .gte('booking_date', today)
@@ -231,7 +302,7 @@ async function getUserBookings(userId: string) {
       
     if (upcomingError) throw upcomingError;
     
-    // Get past bookings
+    // Get past bookings with venue and court details
     const { data: pastBookings, error: pastError } = await supabase
       .from('bookings')
       .select(`
@@ -240,7 +311,21 @@ async function getUserBookings(userId: string) {
         start_time,
         end_time,
         total_price,
-        status
+        status,
+        courts:court_id (
+          id,
+          name,
+          venue_id,
+          venues:venue_id (
+            id,
+            name,
+            location
+          ),
+          sports:sport_id (
+            id,
+            name
+          )
+        )
       `)
       .eq('user_id', userId)
       .lt('booking_date', today)
@@ -250,21 +335,113 @@ async function getUserBookings(userId: string) {
     if (pastError) throw pastError;
     
     // Format bookings for better readability in assistant responses
-    const formattedUpcoming = upcomingBookings.map(booking => ({
+    const formattedUpcoming = upcomingBookings?.map(booking => ({
       date: booking.booking_date,
       time: `${booking.start_time} - ${booking.end_time}`,
       court: booking.courts?.name || 'Unknown court',
-      venue: booking.venues?.name || 'Unknown venue',
-      status: booking.status
-    }));
+      venue: booking.courts?.venues?.name || 'Unknown venue',
+      sport: booking.courts?.sports?.name || 'Unknown sport',
+      status: booking.status,
+      price: booking.total_price
+    })) || [];
+    
+    const formattedPast = pastBookings?.map(booking => ({
+      date: booking.booking_date,
+      time: `${booking.start_time} - ${booking.end_time}`,
+      court: booking.courts?.name || 'Unknown court',
+      venue: booking.courts?.venues?.name || 'Unknown venue',
+      sport: booking.courts?.sports?.name || 'Unknown sport',
+      status: booking.status,
+      price: booking.total_price
+    })) || [];
     
     return {
       success: true,
       upcoming: formattedUpcoming,
-      past: pastBookings
+      past: formattedPast
     };
   } catch (error) {
     console.error("Error in getUserBookings:", error);
-    return { success: false };
+    return { success: false, error: error.message };
+  }
+}
+
+// Function to get venues using Supabase client
+async function getVenues() {
+  try {
+    const { data: venues, error } = await supabase
+      .from('venues')
+      .select(`
+        id,
+        name,
+        location,
+        description,
+        opening_hours,
+        rating,
+        sports:courts (
+          sports:sport_id (
+            id,
+            name
+          )
+        )
+      `)
+      .eq('is_active', true)
+      .order('name', { ascending: true });
+      
+    if (error) throw error;
+    
+    // Format venues for better readability
+    const formattedVenues = venues?.map(venue => {
+      // Extract unique sports from this venue
+      const uniqueSports = new Set();
+      venue.sports?.forEach(court => {
+        if (court.sports?.name) {
+          uniqueSports.add(court.sports.name);
+        }
+      });
+      
+      return {
+        id: venue.id,
+        name: venue.name,
+        location: venue.location,
+        description: venue.description,
+        openingHours: venue.opening_hours,
+        rating: venue.rating,
+        sports: Array.from(uniqueSports)
+      };
+    }) || [];
+    
+    return {
+      success: true,
+      venues: formattedVenues
+    };
+  } catch (error) {
+    console.error("Error in getVenues:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Function to get sports using Supabase client
+async function getSports() {
+  try {
+    const { data: sports, error } = await supabase
+      .from('sports')
+      .select(`
+        id,
+        name,
+        description
+      `)
+      .eq('is_active', true)
+      .order('name', { ascending: true });
+      
+    if (error) throw error;
+    
+    return {
+      success: true,
+      sports: sports
+    };
+  } catch (error) {
+    console.error("Error in getSports:", error);
+    return { success: false, error: error.message };
   }
 }
