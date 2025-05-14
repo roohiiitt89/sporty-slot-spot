@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, Clock, MapPin, Calendar, User, CreditCard, Loader, ChevronRight, Check, ChevronLeft, Activity, RefreshCw, Info, AlertCircle } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
@@ -110,6 +111,20 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     transition: { duration: 0.8, repeat: Infinity }
   };
 
+
+useEffect(() => {
+  if (!selectedDate) {
+    const today = new Date();
+    setSelectedDate(today.toISOString().split('T')[0]);
+  }
+}, []);
+
+
+
+
+
+
+
   useEffect(() => {
     if (!user) {
       toast({
@@ -125,8 +140,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     fetchVenues();
     fetchSports();
     
-    const today = new Date();
-    setSelectedDate(today.toISOString().split('T')[0]);
+  
 
     if (venueId) {
       setSelectedVenue(venueId);
@@ -1491,3 +1505,4 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
 };
 
 export default BookSlotModal;
+
