@@ -30,38 +30,13 @@ const NewAIChatWidget = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<any>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
   const [consentGiven, setConsentGiven] = useState<boolean | null>(null);
   const [windowHeight, setWindowHeight] = useState<number>(0);
-  const chatContainerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [startY, setStartY] = useState(0);
   const [scrollTop, setScrollTop] = useState(0);
-
-
-
-   // Add touch event handlers for swipe functionality
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (chatContainerRef.current) {
-      setIsDragging(true);
-      setStartY(e.touches[0].pageY);
-      setScrollTop(chatContainerRef.current.scrollTop);
-    }
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isDragging || !chatContainerRef.current) return;
-    const y = e.touches[0].pageY;
-    const walk = (y - startY) * 1.5; // Adjust scroll speed
-    chatContainerRef.current.scrollTop = scrollTop - walk;
-  };
-
-  const handleTouchEnd = () => {
-    setIsDragging(false);
-  };
-
-
-
 
   // Track window height changes for mobile keyboard
   useEffect(() => {
@@ -76,6 +51,26 @@ const NewAIChatWidget = () => {
       window.removeEventListener('resize', updateWindowHeight);
     };
   }, []);
+
+  // Touch event handlers for swipe scrolling
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (chatContainerRef.current) {
+      setIsDragging(true);
+      setStartY(e.touches[0].pageY);
+      setScrollTop(chatContainerRef.current.scrollTop);
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging || !chatContainerRef.current) return;
+    const y = e.touches[0].pageY;
+    const walk = (y - startY) * 1.5;
+    chatContainerRef.current.scrollTop = scrollTop - walk;
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+  };
 
   // Check notification permission
   useEffect(() => {
@@ -170,7 +165,7 @@ const NewAIChatWidget = () => {
 
       await supabase.functions.invoke('log-chat-analytics', {
         body: {
-          userId: user?.id, // Still tracked but anonymized in backend processing
+          userId: user?.id,
           messages: logs,
           userAgent: navigator.userAgent
         }
@@ -229,7 +224,6 @@ const NewAIChatWidget = () => {
       setMessages([welcomeMessage]);
       setIsFirstInteraction(false);
 
-      // Show analytics consent prompt if not already set
       if (user && consentGiven === null) {
         setTimeout(() => {
           setMessages(prev => [...prev, {
@@ -352,7 +346,7 @@ const NewAIChatWidget = () => {
           userId: user.id,
           context: {
             userRole,
-            previousMessages: messages.slice(-10) // Send last 10 messages for context
+            previousMessages: messages.slice(-10)
           }
         }
       });
@@ -369,7 +363,6 @@ const NewAIChatWidget = () => {
         
         setMessages(prev => [...prev, assistantMessage]);
         
-        // Show notification if tab is not active
         if (document.hidden) {
           const canNotify = await requestNotificationPermission();
           if (canNotify) {
@@ -441,7 +434,6 @@ const NewAIChatWidget = () => {
       return msg;
     }));
 
-    // Send feedback to backend
     supabase.functions.invoke('chat-feedback', {
       body: {
         messageId,
@@ -578,13 +570,36 @@ const NewAIChatWidget = () => {
         </div>
 
         <div 
+          ref={chatContainerRef}
           className="flex flex-col overflow-y-auto p-4 bg-gradient-to-b from-gray-900/80 to-gray-900"
           style={{
             maxHeight: 'calc(100% - 120px)',
             height: 'auto',
-            overflowAnchor: 'none'
+            overflowAnchor: 'none',
+            scrollbarWidth: 'thin',
+            scrollbarColor: '#047857 transparent',
+            WebkitOverflowScrolling: 'touch',
+            overscrollBehavior: 'contain'
           }}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
         >
+          <style jsx>{`
+            div::-webkit-scrollbar {
+              width: 6px;
+              height: 6px;
+            }
+            div::-webkit-scrollbar-track {
+              background: transparent;
+            }
+            div::-webkit-scrollbar-thumb {
+              background-color: #047857;
+              border-radius: 20px;
+              border: 1px solid #064e3b;
+            }
+          `}</style>
+
           {messages.length === 0 ? (
             <div className="flex-1 flex items-center justify-center text-emerald-300/70">
               <div className="text-center">
@@ -593,80 +608,83 @@ const NewAIChatWidget = () => {
               </div>
             </div>
           ) : (
-            messages.map((message) => (
-              <div
-                key={message.id}
-                className={cn(
-                  "mb-4 max-w-[80%] animate-fade-in",
-                  message.role === "user" 
-                    ? "self-end ml-auto" 
-                    : "self-start mr-auto"
-                )}
-              >
-                <div className="flex items-start gap-2">
-                  {message.role === "user" ? (
-                    <div className="flex-shrink-0 mt-1 p-1 rounded-full bg-emerald-800/50 border border-emerald-700/50">
-                      <User className="h-3 w-3 text-emerald-300" />
-                    </div>
-                  ) : (
-                    <div className="flex-shrink-0 mt-1 p-1 rounded-full bg-gray-800/50 border border-gray-700/50">
-                      <Bot className="h-3 w-3 text-gray-300" />
-                    </div>
+            <div className="space-y-4">
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={cn(
+                    "max-w-[80%] animate-fade-in",
+                    message.role === "user" 
+                      ? "self-end ml-auto" 
+                      : "self-start mr-auto"
                   )}
-                  <div
-                    className={cn(
-                      "rounded-lg p-3 shadow-sm relative group",
-                      "transition-all duration-200",
-                      message.role === "user" 
-                        ? "bg-emerald-800/90 text-white border border-emerald-700/50" 
-                        : "bg-gray-800/90 text-gray-100 border border-gray-700/50"
-                    )}
-                  >
-                    <div 
-                      className="whitespace-pre-wrap [&>strong]:font-bold [&>em]:italic [&>span]:font-medium [&>a]:underline [&>pre]:overflow-x-auto"
-                      dangerouslySetInnerHTML={formatMessageContent(message.content)}
-                    />
-                    
-                    {message.timestamp && (
-                      <div className={cn(
-                        "text-xs mt-1 text-right",
-                        message.role === "user" ? "text-emerald-200/70" : "text-gray-400"
-                      )}>
-                        {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                >
+                  <div className="flex items-start gap-2">
+                    {message.role === "user" ? (
+                      <div className="flex-shrink-0 mt-1 p-1 rounded-full bg-emerald-800/50 border border-emerald-700/50">
+                        <User className="h-3 w-3 text-emerald-300" />
+                      </div>
+                    ) : (
+                      <div className="flex-shrink-0 mt-1 p-1 rounded-full bg-gray-800/50 border border-gray-700/50">
+                        <Bot className="h-3 w-3 text-gray-300" />
                       </div>
                     )}
+                    <div
+                      className={cn(
+                        "rounded-lg p-3 shadow-sm relative group",
+                        "transition-all duration-200",
+                        message.role === "user" 
+                          ? "bg-emerald-800/90 text-white border border-emerald-700/50" 
+                          : "bg-gray-800/90 text-gray-100 border border-gray-700/50"
+                      )}
+                    >
+                      <div 
+                        className="whitespace-pre-wrap [&>strong]:font-bold [&>em]:italic [&>span]:font-medium [&>a]:underline [&>pre]:overflow-x-auto"
+                        dangerouslySetInnerHTML={formatMessageContent(message.content)}
+                      />
+                      
+                      {message.timestamp && (
+                        <div className={cn(
+                          "text-xs mt-1 text-right",
+                          message.role === "user" ? "text-emerald-200/70" : "text-gray-400"
+                        )}>
+                          {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      )}
 
-                    {message.role === 'assistant' && (
-                      <div className="absolute -bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => handleReaction(message.id, 'thumbsUp')}
-                          className={cn(
-                            "p-1 rounded-full bg-gray-800/80 border border-gray-700/50",
-                            "hover:bg-emerald-800/50 hover:border-emerald-700/50",
-                            message.reactions?.thumbsUp ? "text-emerald-400" : "text-gray-400"
-                          )}
-                        >
-                          <ThumbsUp className="h-3 w-3" />
-                        </button>
-                        <button
-                          onClick={() => handleReaction(message.id, 'thumbsDown')}
-                          className={cn(
-                            "p-1 rounded-full bg-gray-800/80 border border-gray-700/50",
-                            "hover:bg-red-800/50 hover:border-red-700/50",
-                            message.reactions?.thumbsDown ? "text-red-400" : "text-gray-400"
-                          )}
-                        >
-                          <ThumbsDown className="h-3 w-3" />
-                        </button>
-                      </div>
-                    )}
+                      {message.role === 'assistant' && (
+                        <div className="absolute -bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => handleReaction(message.id, 'thumbsUp')}
+                            className={cn(
+                              "p-1 rounded-full bg-gray-800/80 border border-gray-700/50",
+                              "hover:bg-emerald-800/50 hover:border-emerald-700/50",
+                              message.reactions?.thumbsUp ? "text-emerald-400" : "text-gray-400"
+                            )}
+                          >
+                            <ThumbsUp className="h-3 w-3" />
+                          </button>
+                          <button
+                            onClick={() => handleReaction(message.id, 'thumbsDown')}
+                            className={cn(
+                              "p-1 rounded-full bg-gray-800/80 border border-gray-700/50",
+                              "hover:bg-red-800/50 hover:border-red-700/50",
+                              message.reactions?.thumbsDown ? "text-red-400" : "text-gray-400"
+                            )}
+                          >
+                            <ThumbsDown className="h-3 w-3" />
+                          </button>
+                        </div>
+                      )}
 
-                    {message.id.includes('consent-prompt') && renderConsentButtons()}
+                      {message.id.includes('consent-prompt') && renderConsentButtons()}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
+              ))}
+            </div>
           )}
+          
           {isLoading && (
             <div className="self-start mr-auto mb-4">
               <div className="bg-gray-800/80 rounded-lg p-3 border border-gray-700/50 flex items-center gap-2">
