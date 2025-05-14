@@ -441,18 +441,36 @@ const Index: React.FC = () => {
               <CarouselContent>
                 {athletesBenefits.map((benefit, index) => (
                   <CarouselItem key={index} className="pl-1 md:basis-1/2 lg:basis-1/3">
-                    <div className="relative h-[400px] rounded-lg overflow-hidden bg-navy">
-                      <img 
-                        src={benefit.image} 
-                        alt={benefit.title}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-navy via-navy/50 to-transparent" />
-                      <div className="absolute inset-x-0 bottom-0 p-4 md:p-6">
-                        <div className="bg-navy/80 backdrop-blur-sm rounded-lg p-4 border border-indigo/20">
-                          <h3 className="text-lg font-bold text-white mb-2">{benefit.title}</h3>
-                          <p className="text-sm text-gray-300">{benefit.description}</p>
+                    <div className="relative h-[300px] rounded-xl overflow-hidden bg-navy group active:scale-95 transition-all duration-300">
+                      {/* Animated border effect */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-indigo via-[#2def80] to-indigo opacity-0 group-hover:opacity-100 transition-opacity duration-300" 
+                           style={{ padding: '1px' }}>
+                        <div className="absolute inset-0 bg-navy rounded-xl" />
+                      </div>
+
+                      {/* Main content */}
+                      <div className="relative h-full">
+                        <img 
+                          src={benefit.image} 
+                          alt={benefit.title}
+                          className="w-full h-full object-cover brightness-90 group-hover:brightness-100 group-hover:scale-105 transition-all duration-500"
+                          loading="lazy"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-navy via-navy/50 to-transparent opacity-90" />
+                        
+                        {/* Content overlay with animation */}
+                        <div className="absolute inset-x-0 bottom-0 p-4">
+                          <div className="bg-navy/80 backdrop-blur-sm rounded-lg p-4 border-t border-indigo/20 transform translate-y-0 group-hover:-translate-y-2 transition-transform duration-300">
+                            {/* Glowing dot indicator */}
+                            <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#2def80] shadow-lg shadow-[#2def80]/50 group-hover:animate-ping" />
+                            
+                            <h3 className="text-lg font-bold text-white mb-2 group-hover:text-[#2def80] transition-colors">
+                              {benefit.title}
+                            </h3>
+                            <p className="text-sm text-gray-300 line-clamp-2 group-hover:line-clamp-none transition-all duration-300">
+                              {benefit.description}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -460,8 +478,8 @@ const Index: React.FC = () => {
                 ))}
               </CarouselContent>
               <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 flex gap-2">
-                <CarouselPrevious className="relative inset-0 translate-y-0 h-8 w-8 rounded-full bg-navy hover:bg-indigo text-white" />
-                <CarouselNext className="relative inset-0 translate-y-0 h-8 w-8 rounded-full bg-navy hover:bg-indigo text-white" />
+                <CarouselPrevious className="relative inset-0 translate-y-0 h-8 w-8 rounded-full bg-navy hover:bg-indigo text-white border border-indigo/20 hover:border-indigo transition-colors" />
+                <CarouselNext className="relative inset-0 translate-y-0 h-8 w-8 rounded-full bg-navy hover:bg-indigo text-white border border-indigo/20 hover:border-indigo transition-colors" />
               </div>
             </Carousel>
           </div>
