@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -6,14 +6,6 @@ import { useAuth } from '@/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import SportDisplayName from './SportDisplayName';
-import { Button } from '@/components/ui/button';
-
-// Declare Razorpay types based on their SDK
-declare global {
-  interface Window {
-    Razorpay: any;
-  }
-}
 
 interface BookSlotModalProps {
   onClose: () => void;
@@ -69,14 +61,9 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     sports: false,
     courts: false,
     availability: false,
-    booking: false,
-    payment: false
+    booking: false
   });
   const [courtRate, setCourtRate] = useState<number>(0);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [bookingInProgress, setBookingInProgress] = useState(false);
-  const [razorpayOrderId, setRazorpayOrderId] = useState('');
 
   useEffect(() => {
     // Check if user is logged in, if not redirect to login
@@ -101,47 +88,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     if (venueId) {
       setSelectedVenue(venueId);
     }
-    
-    // Setup real-time subscription for bookings
-    const bookingChannel = supabase
-      .channel('booking-updates')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'bookings'
-      }, (payload) => {
-        console.log('Booking change detected:', payload);
-        // Refresh availability data when a booking is created/updated/deleted
-        if (selectedCourt && selectedDate) {
-          setRefreshKey(prev => prev + 1);
-        }
-      })
-      .subscribe();
-      
-    return () => {
-      supabase.removeChannel(bookingChannel);
-    };
-  }, [venueId, user, navigate, onClose]);
-
-  // Dynamic Razorpay script loading
-  useEffect(() => {
-    const loadRazorpayScript = () => {
-      return new Promise((resolve) => {
-        const script = document.createElement('script');
-        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-        script.onload = () => {
-          resolve(true);
-        };
-        script.onerror = () => {
-          resolve(false);
-        };
-        document.body.appendChild(script);
-      });
-    };
-
-    // Load Razorpay script
-    loadRazorpayScript();
-  }, []);
+  }, [venueId]);
 
   useEffect(() => {
     if (selectedVenue) {
@@ -161,24 +108,11 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     }
   }, [selectedVenue, selectedSport]);
 
-  // Effect for fetching availability with the refresh key
   useEffect(() => {
     if (selectedCourt && selectedDate) {
       fetchAvailability();
     }
-  }, [selectedCourt, selectedDate, refreshKey]);
-
-  // Add periodic refresh of availability data
-  useEffect(() => {
-    if (currentStep === 2 && selectedCourt && selectedDate) {
-      // Refresh availability data every 15 seconds
-      const intervalId = setInterval(() => {
-        setRefreshKey(prev => prev + 1);
-      }, 15000);
-      
-      return () => clearInterval(intervalId);
-    }
-  }, [currentStep, selectedCourt, selectedDate]);
+  }, [selectedCourt, selectedDate]);
 
   useEffect(() => {
     if (user) {
@@ -336,7 +270,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     }
   };
 
-  const fetchAvailability = useCallback(async () => {
+  const fetchAvailability = async () => {
     if (!selectedCourt || !selectedDate) return;
     
     setLoading(prev => ({ ...prev, availability: true }));
@@ -376,37 +310,8 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       }) || [];
       
       setAvailableTimeSlots(slotsWithPrice);
-      
-      // Check if any previously selected slots are no longer available
-      const updatedSelectedSlots = selectedSlots.filter(slotDisplay => {
-        const [startTime, endTime] = slotDisplay.split(' - ').map(t => convertTo24Hour(t));
-        const slotStillAvailable = slotsWithPrice.some(slot => 
-          slot.start_time === startTime && 
-          slot.end_time === endTime && 
-          slot.is_available
-        );
-        
-        // If a slot is no longer available, show a toast
-        if (!slotStillAvailable && selectedSlots.length > 0) {
-          toast({
-            title: "Slot no longer available",
-            description: `The time slot ${slotDisplay} is no longer available and has been removed from your selection.`,
-            variant: "destructive",
-          });
-          
-          // Remove from prices as well
-          const updatedPrices = { ...selectedSlotPrices };
-          delete updatedPrices[slotDisplay];
-          setSelectedSlotPrices(updatedPrices);
-        }
-        
-        return slotStillAvailable;
-      });
-      
-      // Update selected slots if any were removed
-      if (updatedSelectedSlots.length !== selectedSlots.length) {
-        setSelectedSlots(updatedSelectedSlots);
-      }
+      setSelectedSlots([]);
+      setSelectedSlotPrices({});
     } catch (error) {
       console.error('Error fetching availability:', error);
       toast({
@@ -417,7 +322,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     } finally {
       setLoading(prev => ({ ...prev, availability: false }));
     }
-  }, [selectedCourt, selectedDate, courtRate, selectedSlots, selectedSlotPrices]);
+  };
 
   const formatTime = (time: string) => {
     const [hour, minute] = time.split(':').map(n => parseInt(n));
@@ -503,99 +408,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     setCurrentStep(currentStep - 1);
   };
 
-  const createRazorpayOrder = async () => {
-    setLoading(prev => ({ ...prev, payment: true }));
-    try {
-      const totalAmount = calculateTotalPrice();
-      const receipt = `booking_${Date.now()}`;
-      
-      const response = await supabase.functions.invoke('create-razorpay-order', {
-        body: {
-          amount: totalAmount,
-          receipt: receipt,
-          notes: {
-            court_id: selectedCourt,
-            date: selectedDate,
-            slots: selectedSlots.join(', '),
-          }
-        }
-      });
-      
-      if (response.error) {
-        throw new Error(response.error);
-      }
-      
-      return response.data;
-    } catch (error) {
-      console.error('Error creating Razorpay order:', error);
-      toast({
-        title: "Payment Error",
-        description: "Could not initialize payment. Please try again.",
-        variant: "destructive",
-      });
-      return null;
-    } finally {
-      setLoading(prev => ({ ...prev, payment: false }));
-    }
-  };
-
-  const handlePayment = async () => {
-    if (!user || !selectedCourt || !selectedDate || selectedSlots.length === 0) {
-      toast({
-        title: "Missing information",
-        description: "Please complete all booking details.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    try {
-      // Create Razorpay order
-      const orderData = await createRazorpayOrder();
-      if (!orderData) return;
-      
-      const { order, key_id } = orderData;
-      
-      // Initialize Razorpay options
-      const options = {
-        key: key_id, 
-        amount: order.amount,
-        currency: order.currency,
-        name: venues.find(v => v.id === selectedVenue)?.name || "Sports Venue",
-        description: `Court Booking for ${selectedDate}`,
-        order_id: order.id,
-        prefill: {
-          name: name,
-          email: user.email,
-          contact: phone,
-        },
-        notes: {
-          address: "Sports Venue Address"
-        },
-        theme: {
-          color: "#10b981"
-        },
-        handler: function(response: any) {
-          // On successful payment, call the booking function
-          handleBooking(response.razorpay_payment_id, response.razorpay_order_id);
-        }
-      };
-      
-      // Open Razorpay checkout
-      const razorpayInstance = new window.Razorpay(options);
-      razorpayInstance.open();
-      
-    } catch (error) {
-      console.error("Payment initialization error:", error);
-      toast({
-        title: "Payment Error",
-        description: "Failed to initialize payment. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleBooking = async (paymentId: string, orderId: string) => {
+  const handleBooking = async () => {
     if (!selectedCourt || !selectedDate || selectedSlots.length === 0) {
       toast({
         title: "Missing information",
@@ -616,44 +429,18 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       return;
     }
     
-    // Prevent double submissions
-    if (isSubmitting || bookingInProgress) {
-      toast({
-        title: "Booking in progress",
-        description: "Please wait while we process your booking.",
-      });
-      return;
-    }
-    
-    setIsSubmitting(true);
-    setBookingInProgress(true);
     setLoading(prev => ({ ...prev, booking: true }));
     
     try {
-      // First refresh availability to ensure selected slots are still available
-      await fetchAvailability();
-      
-      // If any selected slots were removed during the refresh, stop the booking process
-      if (selectedSlots.length === 0) {
-        toast({
-          title: "Booking failed",
-          description: "Your selected slots are no longer available. Please select new time slots.",
-          variant: "destructive",
-        });
-        setCurrentStep(2);
-        setLoading(prev => ({ ...prev, booking: false }));
-        setIsSubmitting(false);
-        setBookingInProgress(false);
-        return;
-      }
-      
       const sortedSlots = [...selectedSlots].sort((a, b) => {
         const startTimeA = convertTo24Hour(a.split(' - ')[0]);
         const startTimeB = convertTo24Hour(b.split(' - ')[0]);
         return startTimeA.localeCompare(startTimeB);
       });
       
-      // Identify continuous blocks to minimize the number of bookings
+      // Since slots can now be non-continuous, we need to create separate bookings for each slot
+      // But let's first identify continuous blocks to minimize the number of bookings
+      
       const bookingBlocks = [];
       let currentBlock = [sortedSlots[0]];
       
@@ -674,9 +461,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       // Add the last block
       bookingBlocks.push(currentBlock);
       
-      // Use a transaction to ensure all bookings succeed or fail together
-      const bookingResults = [];
-      
+      // Create a booking for each continuous block
       for (const block of bookingBlocks) {
         const startTime = convertTo24Hour(block[0].split(' - ')[0]);
         const endTime = convertTo24Hour(block[block.length - 1].split(' - ')[1]);
@@ -686,74 +471,40 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
           return total + selectedSlotPrices[slot];
         }, 0);
         
-        try {
-          // Use our enhanced create_booking_with_lock function for concurrency safety
-          const { data, error } = await supabase.rpc('create_booking_with_lock', {
-            p_court_id: selectedCourt,
-            p_user_id: user.id,
-            p_booking_date: selectedDate,
-            p_start_time: startTime,
-            p_end_time: endTime,
-            p_total_price: blockPrice,
-            p_payment_reference: paymentId,
-            p_payment_status: 'completed'
-          });
+        const { data, error } = await supabase
+          .from('bookings')
+          .insert({
+            court_id: selectedCourt,
+            user_id: user.id,
+            booking_date: selectedDate,
+            start_time: startTime,
+            end_time: endTime,
+            total_price: blockPrice,
+            status: 'confirmed'
+          })
+          .select();
           
-          if (error) {
-            throw new Error(error.message || 'Error creating booking');
-          }
-          
-          bookingResults.push(data);
-        } catch (error: any) {
-          // If there's a conflict or lock issue, propagate the error
-          if (error.message?.includes('conflicts with an existing reservation') || 
-              error.message?.includes('already been booked') ||
-              error.message?.includes('Another user is currently booking')) {
-            throw new Error(error.message);
-          }
+        if (error) {
           throw error;
         }
       }
       
       toast({
         title: "Booking successful!",
-        description: `You have successfully booked ${bookingResults.length} slot(s).`,
+        description: "You have successfully booked your slots.",
       });
       
       navigate('/profile');
       onClose();
     } catch (error: any) {
       console.error('Error creating booking:', error);
-      
-      // Special handling for conflict errors
-      if (error.message?.includes('conflicts with an existing reservation') || 
-          error.message?.includes('already been booked')) {
-        toast({
-          title: "Booking unavailable",
-          description: "Someone just booked one of your selected slots. Please refresh and select available times.",
-          variant: "destructive",
-        });
-      } else if (error.message?.includes('Another user is currently booking')) {
-        toast({
-          title: "Booking in progress",
-          description: "Another user is currently booking this time slot. Please wait a moment and try again.",
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Booking failed",
-          description: error.message || "There was an issue creating your booking. Please try again.",
-          variant: "destructive",
-        });
-      }
-      
-      // Refresh availability and go back to step 2
-      setCurrentStep(2);
-      setRefreshKey(prev => prev + 1);
+      toast({
+        title: "Booking failed",
+        description: error.message || "There was an issue creating your booking. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(prev => ({ ...prev, booking: false }));
-      setIsSubmitting(false);
-      setBookingInProgress(false);
     }
   };
 
@@ -898,15 +649,6 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
             
             <div className="mb-4">
               <p className="font-medium text-gray-700">Selected Date: <span className="text-sport-green">{selectedDate}</span></p>
-              <div className="flex items-center text-xs mt-1 text-blue-600">
-                <span>Availability automatically refreshes every 15 seconds.</span>
-                <button 
-                  onClick={() => setRefreshKey(prev => prev + 1)}
-                  className="ml-2 text-blue-700 underline"
-                >
-                  Refresh now
-                </button>
-              </div>
             </div>
             
             {loading.availability ? (
@@ -1025,53 +767,36 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
                 {phone && <p><span className="font-medium">Phone:</span> {phone}</p>}
                 <p className="text-sm text-gray-600">You're signed in. Your booking will be linked to your account.</p>
               </div>
-
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
-                <h4 className="text-sm font-medium text-blue-800 flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Payment Information
-                </h4>
-                <p className="mt-2 text-sm text-blue-700">
-                  You'll be redirected to Razorpay's secure payment gateway to complete your booking payment.
-                </p>
-              </div>
             </div>
           </div>
         )}
 
         <div className="mt-10 flex justify-between">
           {currentStep > 1 ? (
-            <Button
+            <button
               onClick={handlePreviousStep}
-              variant="outline"
-              disabled={isSubmitting || bookingInProgress}
               className="py-3 px-6 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors font-medium"
             >
               Previous
-            </Button>
+            </button>
           ) : (
             <div></div>
           )}
           
           {currentStep < 3 ? (
-            <Button
+            <button
               onClick={handleNextStep}
-              variant="default"
-              disabled={isSubmitting || bookingInProgress}
               className="py-3 px-6 bg-sport-green text-white rounded-md hover:bg-sport-green-dark transition-colors font-medium"
             >
               Next
-            </Button>
+            </button>
           ) : (
-            <Button
-              onClick={handlePayment}
-              disabled={isSubmitting || bookingInProgress || loading.booking || loading.payment}
-              variant="default"
+            <button
+              onClick={handleBooking}
+              disabled={loading.booking}
               className="py-3 px-6 bg-sport-green text-white rounded-md hover:bg-sport-green-dark transition-colors flex items-center font-medium"
             >
-              {loading.booking || loading.payment ? (
+              {loading.booking ? (
                 <>
                   <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -1080,9 +805,9 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
                   Processing...
                 </>
               ) : (
-                'Pay & Book Now'
+                'Book Now'
               )}
-            </Button>
+            </button>
           )}
         </div>
       </div>
