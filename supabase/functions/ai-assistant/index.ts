@@ -83,20 +83,6 @@ serve(async (req) => {
     if (messages && messages.length > 0) {
       const latestUserMsg = messages[messages.length - 1].content?.toLowerCase() || '';
       
-      const challengeRegex = /\bchallenge( mode| feature| wala| ka| kya hai| kya hota hai| section)?\b/i;
-
-      if (challengeRegex.test(latestUserMsg)) {
-        return new Response(
-          JSON.stringify({
-            message: {
-              role: "assistant",
-              content: "Challenge mode is under development and will be coming soon! Stay tuned for updates."
-            }
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
       // Very basic Hinglish detection (presence of common Hindi words/patterns)
       const hindiPatterns = ['kya', 'hai', 'main', 'mujhe', 'aap', 'kaise', 'nahi', 'karo', 'kar', 'mein'];
       const mightBeHinglish = hindiPatterns.some(pattern => 
@@ -190,18 +176,26 @@ serve(async (req) => {
           required: ["court_id", "date", "start_time", "end_time"]
         }
       },
-       {
-         name: "get_venue_contact",
-         description: "Get contact details (phone, location, etc.) for a specific venue by name.",
-         parameters: {
-           type: "object",
-           properties: {
-      venue_name: { type: "string", description: "Name of the venue" }
-    },
-    required: ["venue_name"]
-  }
-}
-
+      {
+        name: "get_venue_contact",
+        description: "Get contact details (phone, location, etc.) for a specific venue by name.",
+        parameters: {
+          type: "object",
+          properties: {
+            venue_name: { type: "string", description: "Name of the venue" }
+          },
+          required: ["venue_name"]
+        }
+      },
+      {
+        name: "get_challenge_mode_status",
+        description: "Get the current status of the Challenge Mode feature.",
+        parameters: {
+          type: "object",
+          properties: {},
+          required: []
+        }
+      }
     ];
     
     // Only include admin functions if the user has admin role
@@ -244,6 +238,18 @@ serve(async (req) => {
         }
       });
     }
+
+    // Place this after the functions array and before handleFunctionCall
+    const challengeModeFunction = {
+      name: "get_challenge_mode_status",
+      description: "Get the current status of the Challenge Mode feature.",
+      parameters: {
+        type: "object",
+        properties: {},
+        required: []
+      }
+    };
+    functions.push(challengeModeFunction);
 
     try {
       // Call OpenAI API
@@ -374,6 +380,8 @@ async function handleFunctionCall(functionCall: any, supabase: any) {
 
     case "book_court":
       return await bookCourt(supabase, userId, args.court_id, args.date, args.start_time, args.end_time);
+    case "get_challenge_mode_status":
+      return await getChallengeModeStatus();
     default:
       throw new Error(`Unknown function: ${name}`);
   }
@@ -1076,4 +1084,10 @@ async function bookCourt(supabase: any, userId: string, courtId: string, date: s
       message: "Failed to book the court. " + (error.message || "Please try again later.")
     };
   }
+}
+
+async function getChallengeModeStatus() {
+  return {
+    content: "Challenge mode is under development and will be coming soon! Stay tuned for updates."
+  };
 }
