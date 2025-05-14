@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/components/ui/use-toast';
 
 // Define message types
 export type MessageRole = 'user' | 'assistant' | 'system';
@@ -19,7 +20,16 @@ export function useChatAssistant() {
 
   // Send a message to the chat assistant
   const sendMessage = async (content: string): Promise<ChatMessage | null> => {
-    if (!content.trim() || !user) return null;
+    if (!content.trim() || !user) {
+      if (!user) {
+        toast({
+          title: "Authentication Required",
+          description: "Please sign in to use the chat assistant",
+          variant: "destructive"
+        });
+      }
+      return null;
+    }
     
     // Create the user message
     const userMessage: ChatMessage = {
@@ -41,6 +51,11 @@ export function useChatAssistant() {
       // Add the new user message
       messageHistory.push({ role: 'user', content: userMessage.content });
       
+      console.log('Sending message to chat assistant:', {
+        messages: messageHistory,
+        userId: user.id
+      });
+      
       // Call the Supabase Edge Function
       const { data, error } = await supabase.functions.invoke('chat-assistant', {
         body: { 
@@ -48,6 +63,8 @@ export function useChatAssistant() {
           userId: user.id
         }
       });
+      
+      console.log('Response from chat assistant:', data, error);
       
       if (error) {
         console.error("Error calling chat-assistant function:", error);
@@ -78,6 +95,12 @@ export function useChatAssistant() {
       };
       
       setMessages(prev => [...prev, errorMessage]);
+      toast({
+        title: "Chat Error",
+        description: error.message || "Failed to communicate with the assistant",
+        variant: "destructive"
+      });
+      
       return errorMessage;
     } finally {
       setIsLoading(false);

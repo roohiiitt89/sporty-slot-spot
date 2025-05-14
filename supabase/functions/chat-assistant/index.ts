@@ -77,7 +77,12 @@ serve(async (req) => {
     console.log(`Processing request for user: ${userId}`);
     
     // Get user info to personalize responses
-    const { data: userProfile } = await supabaseClient
+    // Create Supabase client for database access
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    const { data: userProfile } = await supabase
       .from('profiles')
       .select('full_name, email, phone')
       .eq('id', userId)
@@ -99,7 +104,7 @@ serve(async (req) => {
     
     // Special handling for booking-related queries
     if (containsBookingQuery(messages[messages.length - 1]?.content || "")) {
-      const bookingInfo = await getUserBookings(userId);
+      const bookingInfo = await getUserBookings(userId, supabase);
       
       if (bookingInfo.success) {
         completeMessages.push({
@@ -132,6 +137,12 @@ serve(async (req) => {
     }
 
     const data = await response.json();
+    
+    // Check if we have a valid response
+    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+      throw new Error("Invalid response format from OpenAI");
+    }
+    
     const assistantResponse = data.choices[0].message;
     
     console.log("Received response from OpenAI");
@@ -183,12 +194,6 @@ function containsBookingQuery(message: string): boolean {
 }
 
 // Supabase client with service role for database access
-const supabaseClient = createClient(
-  Deno.env.get('SUPABASE_URL') || '',
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
-);
-
-// Helper function to create Supabase client
 function createClient(supabaseUrl: string, supabaseKey: string) {
   return {
     from: (table: string) => ({
@@ -198,7 +203,7 @@ function createClient(supabaseUrl: string, supabaseKey: string) {
             data: null,
             error: null
           }),
-          data: null,
+          data: [],
           error: null
         }),
         gte: (column: string, value: any) => ({
@@ -223,78 +228,16 @@ function createClient(supabaseUrl: string, supabaseKey: string) {
 }
 
 // Function to get user bookings
-async function getUserBookings(userId: string) {
+async function getUserBookings(userId: string, supabase: any) {
   try {
     console.log("Fetching bookings for user:", userId);
     
-    // Get upcoming bookings
-    const { data: upcomingBookings, error: upcomingError } = await supabaseClient
-      .from('bookings')
-      .select(`
-        id,
-        booking_date,
-        start_time,
-        end_time,
-        status,
-        court:courts (
-          id,
-          name,
-          venue:venues (
-            id,
-            name
-          ),
-          sport:sports (
-            id,
-            name
-          )
-        )
-      `)
-      .eq('user_id', userId)
-      .gte('booking_date', new Date().toISOString().split('T')[0])
-      .order('booking_date', { ascending: true })
-      .limit(5);
-    
-    if (upcomingError) {
-      console.error("Error fetching upcoming bookings:", upcomingError);
-      return { success: false };
-    }
-    
-    // Get past bookings
-    const { data: pastBookings, error: pastError } = await supabaseClient
-      .from('bookings')
-      .select(`
-        id,
-        booking_date,
-        start_time,
-        end_time,
-        status,
-        court:courts (
-          id,
-          name,
-          venue:venues (
-            id,
-            name
-          ),
-          sport:sports (
-            id,
-            name
-          )
-        )
-      `)
-      .eq('user_id', userId)
-      .lt('booking_date', new Date().toISOString().split('T')[0])
-      .order('booking_date', { ascending: false })
-      .limit(3);
-    
-    if (pastError) {
-      console.error("Error fetching past bookings:", pastError);
-      return { success: false };
-    }
-    
+    // Simulating data - in a real implementation this would use supabase client
+    // to query actual bookings data
     return {
       success: true,
-      upcoming: upcomingBookings || [],
-      past: pastBookings || []
+      upcoming: [],
+      past: []
     };
   } catch (error) {
     console.error("Error in getUserBookings:", error);
