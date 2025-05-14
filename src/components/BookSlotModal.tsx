@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, Clock, MapPin, Calendar, User, CreditCard, Loader, ChevronRight, Check, ChevronLeft, Activity, RefreshCw, Info, AlertCircle } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
@@ -8,7 +9,6 @@ import { format, parseISO } from 'date-fns';
 import SportDisplayName from './SportDisplayName';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RealtimeChannel } from '@supabase/supabase-js';
 
 declare global {
   interface Window {
@@ -140,50 +140,44 @@ useEffect(() => {
     fetchVenues();
     fetchSports();
     
+  
+
     if (venueId) {
       setSelectedVenue(venueId);
       fetchVenueDetails(venueId);
     }
+ 
 
-    // Subscribe to both bookings and blocked_slots changes with improved error handling
-    const bookingChannel = supabase
-      .channel('booking-updates')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'bookings',
-        filter: selectedCourt 
-          ? `court_id=eq.${selectedCourt}`
-          : undefined
-      }, (payload) => {
-        try {
-          console.log('Booking change detected:', payload);
-          if (
-            payload.new && 
-            typeof payload.new === 'object' &&
-            'court_id' in payload.new &&
-            'booking_date' in payload.new &&
-            payload.new.court_id === selectedCourt &&
-            payload.new.booking_date === selectedDate
-          ) {
-            setRefreshKey(prev => prev + 1);
-          }
-        } catch (error) {
-          console.error('Error handling booking change:', error);
-        }
-      })
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          console.log('Successfully subscribed to booking changes');
-        } else {
-          console.error('Failed to subscribe to booking changes:', status);
-        }
-      });
+  // Only subscribe to changes for the CURRENTLY SELECTED court and date
+  const bookingChannel = supabase
+    .channel('booking-updates')
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'bookings',
+      filter: selectedCourt && selectedDate 
+        ? `court_id=eq.${selectedCourt},booking_date=eq.${selectedDate}`
+        : undefined
+    }, (payload) => {
+      console.log('Relevant booking change detected:', payload);
+      // Only refresh if the change matches our current selection
+      if (
+        payload.new && 
+        typeof payload.new === 'object' &&
+        'court_id' in payload.new &&
+        'booking_date' in payload.new &&
+        payload.new.court_id === selectedCourt &&
+        payload.new.booking_date === selectedDate
+      ) {
+        setRefreshKey(prev => prev + 1);
+      }
+    })
+    .subscribe();
 
-    return () => {
-      supabase.removeChannel(bookingChannel);
-    };
-  }, [user, selectedCourt, selectedDate]);
+  return () => {
+    supabase.removeChannel(bookingChannel);
+  };
+}, [user, selectedCourt, selectedDate]); // Only resubscribe when these change
     
   useEffect(() => {
     const loadRazorpayScript = () => {
