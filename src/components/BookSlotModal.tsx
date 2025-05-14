@@ -61,11 +61,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
   const [selectedVenue, setSelectedVenue] = useState(venueId || '');
   const [selectedSport, setSelectedSport] = useState(sportId || '');
   const [selectedCourt, setSelectedCourt] = useState('');
-  const [selectedDate, setSelectedDate] = useState(() => {
-  const today = new Date();
-  return today.toISOString().split('T')[0];
-});
-
+  const [selectedDate, setSelectedDate] = useState('');
   const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
   const [selectedSlotPrices, setSelectedSlotPrices] = useState<Record<string, number>>({});
   const [availableTimeSlots, setAvailableTimeSlots] = useState<TimeSlot[]>([]);
@@ -130,7 +126,8 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     fetchVenues();
     fetchSports();
     
-    
+    const today = new Date();
+   setSelectedDate(today.toISOString().split('T')[0]);
 
     if (venueId) {
       setSelectedVenue(venueId);
