@@ -117,9 +117,10 @@ Always maintain a polite and helpful tone in either language.
 async function getVenueContact(supabase: SupabaseClient, venue_name: string): Promise<VenueContactResponse> {
   try {
     // Clean up the venue name for better matching
-    const cleanVenueName = venue_name.trim().replace(/[\/\\]/g, ' ');
+    const cleanVenueName = venue_name.trim().replace(/[\/\\]/g, ' ').replace(/box/i, 'BOX');
     
-    const { data: venue, error } = await supabase
+    // First try exact match
+    let { data: venues, error } = await supabase
       .from('venues')
       .select(`
         id,
@@ -133,20 +134,51 @@ async function getVenueContact(supabase: SupabaseClient, venue_name: string): Pr
           sport:sports(name)
         )
       `)
-      .or(`name.ilike.%${cleanVenueName}%,name.ilike.%${venue_name}%`)
-      .single();
+      .or(`name.ilike.${cleanVenueName},name.ilike.%${cleanVenueName}%,name.ilike.%${venue_name}%`)
+      .order('name', { ascending: true });
 
-    if (error) throw error;
-
-    if (!venue) {
-      return {
-        success: false,
-        message: `For venue "${venue_name}", you can contact them in two ways:\n\n` +
-                "1. Use the chat option available below the 'Book Now' button on the venue details page\n" +
-                "2. Check the contact number on the venue details page\n\n" +
-                "All contact information is available on the venue details page for quick access."
-      };
+    if (error) {
+      console.error('Error fetching venue:', error);
+      throw error;
     }
+
+    // If no exact match found, try fuzzy match
+    if (!venues || venues.length === 0) {
+      const { data: fuzzyVenues, error: fuzzyError } = await supabase
+        .from('venues')
+        .select(`
+          id,
+          name,
+          contact_number,
+          has_chat_support,
+          business_hours,
+          address,
+          rating,
+          sports:venue_sports(
+            sport:sports(name)
+          )
+        `)
+        .textSearch('name', cleanVenueName, {
+          type: 'websearch',
+          config: 'english'
+        });
+
+      if (fuzzyError) throw fuzzyError;
+      
+      if (!fuzzyVenues || fuzzyVenues.length === 0) {
+        return {
+          success: false,
+          message: `For venue "${venue_name}", you can contact them in two ways:\n\n` +
+                  "1. Use the chat option available below the 'Book Now' button on the venue details page\n" +
+                  "2. Check the contact number on the venue details page\n\n" +
+                  "All contact information is available on the venue details page for quick access."
+        };
+      }
+      
+      venues = fuzzyVenues;
+    }
+
+    const venue = venues[0]; // Get the first matching venue
 
     // Format sports list
     const sports = venue.sports
@@ -179,7 +211,7 @@ async function getVenueContact(supabase: SupabaseClient, venue_name: string): Pr
       }
     };
   } catch (error) {
-    console.error('Error fetching venue contact:', error);
+    console.error('Error in getVenueContact:', error);
     return {
       success: false,
       message: `For venue "${venue_name}", you can contact them in two ways:\n\n` +
