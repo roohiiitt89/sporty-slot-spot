@@ -508,82 +508,66 @@ const VenueDetails: React.FC = () => {
     <div className="min-h-screen bg-navy-dark">
       <Header />
       
-      {/* Hero Section with Image Carousel */}
-      <div className="relative w-full h-[60vh] md:h-[70vh] lg:h-[80vh] mb-4 md:mb-8">
-        {/* Back Button - Separate for desktop */}
-        <div className="hidden md:block absolute top-4 left-0 right-0 z-20">
-          <div className="container mx-auto px-4">
-            <button
-              onClick={() => navigate('/venues')}
-              className="flex items-center text-white/90 hover:text-white transition-colors bg-black/30 backdrop-blur-sm rounded-lg px-4 py-2"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Venues
-            </button>
-          </div>
-        </div>
+      {/* Back Button */}
+      <div className="container mx-auto px-4 py-4">
+        <button
+          onClick={() => navigate('/venues')}
+          className="flex items-center text-gray-400 hover:text-white transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to Venues
+        </button>
+      </div>
 
+      {/* Hero Section with Image Carousel */}
+      <div className="relative w-full h-[40vh] md:h-[50vh] lg:h-[60vh] mb-8 overflow-hidden">
         <Carousel className="w-full h-full">
           <CarouselContent>
             {venueImages.map((image, index) => (
               <CarouselItem key={index} className="w-full h-full">
-                <div className="relative w-full h-full bg-navy-dark">
+                <div className="relative w-full h-full">
                   <img
                     src={image}
                     alt={`${venue?.name} - View ${index + 1}`}
-                    className="w-full h-full object-cover object-center brightness-[0.85]"
+                    className="w-full h-full object-cover"
                     loading={index === 0 ? 'eager' : 'lazy'}
                   />
-                  {/* Different overlays for mobile and desktop */}
-                  <div className="absolute inset-0 md:hidden bg-gradient-to-t from-black via-transparent to-black/30" />
-                  <div className="hidden md:block absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/30" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-navy-dark via-navy-dark/70 to-transparent" />
                 </div>
               </CarouselItem>
             ))}
           </CarouselContent>
-          {/* Carousel Controls - Adjusted for both views */}
-          <div className="absolute top-1/2 left-0 right-0 transform -translate-y-1/2 flex justify-between px-2 md:px-8 z-20">
-            <CarouselPrevious className="h-8 w-8 md:h-10 md:w-10 rounded-full bg-black/50 hover:bg-black/70 text-white border border-white/20" />
-            <CarouselNext className="h-8 w-8 md:h-10 md:w-10 rounded-full bg-black/50 hover:bg-black/70 text-white border border-white/20" />
+          <div className="absolute bottom-20 md:bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2 z-20">
+            <CarouselPrevious className="h-8 w-8 rounded-full bg-black/50 hover:bg-black/70 text-white border-white/20" />
+            <CarouselNext className="h-8 w-8 rounded-full bg-black/50 hover:bg-black/70 text-white border-white/20" />
           </div>
         </Carousel>
         
-        {/* Venue Title Overlay - Optimized for both views */}
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/80 to-transparent md:via-black/50 md:to-transparent pt-12 md:pt-24">
-          <div className="container mx-auto px-4 pb-4 md:pb-8">
-            {/* Back button - Mobile only */}
-            <button
-              onClick={() => navigate('/venues')}
-              className="md:hidden flex items-center text-gray-300 hover:text-white transition-colors mb-3 text-sm"
-            >
-              <ArrowLeft className="w-4 h-4 mr-1" />
-              Back to Venues
-            </button>
-            
-            <div className="max-w-4xl">
-              <h1 className="text-2xl md:text-5xl lg:text-6xl font-bold text-white mb-3 md:mb-4 drop-shadow-lg">
-                {venue?.name}
-              </h1>
-              <div className="flex flex-col md:flex-row gap-2 md:gap-6 text-gray-200">
-                <div className="flex items-center">
-                  <MapPin className="w-4 h-4 md:w-5 md:h-5 mr-1.5 text-[#2def80]" />
-                  <span className="text-sm md:text-lg">{venue?.location}</span>
-                </div>
-                <div className="flex items-center">
-                  <Star className="w-4 h-4 md:w-5 md:h-5 mr-1.5 text-[#2def80]" />
-                  <span className="text-sm md:text-lg">{venue?.rating?.toFixed(1) || '4.5'}/5.0</span>
-                </div>
-                {distance !== null && (
-                  <div className="flex items-center">
-                    <Navigation className="w-4 h-4 md:w-5 md:h-5 mr-1.5 text-[#2def80]" />
-                    <span className="text-sm md:text-lg">
-                      {distance < 1 
-                        ? `${(distance * 1000).toFixed(0)}m away` 
-                        : `${distance.toFixed(1)}km away`}
-                    </span>
-                  </div>
-                )}
+        {/* Venue Title Overlay - Improved mobile visibility */}
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-navy-dark via-navy-dark/90 to-transparent">
+          <div className="container mx-auto p-4 md:p-6">
+            <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold text-white mb-2 drop-shadow-lg">
+              {venue?.name}
+            </h1>
+            <div className="flex flex-col md:flex-row md:items-center text-gray-200 md:space-x-4 space-y-2 md:space-y-0">
+              <div className="flex items-center">
+                <MapPin className="w-4 h-4 mr-1 drop-shadow" />
+                <span className="text-sm md:text-base drop-shadow-lg">{venue?.location}</span>
               </div>
+              <div className="flex items-center">
+                <Star className="w-4 h-4 mr-1 text-[#2def80] drop-shadow" />
+                <span className="text-sm md:text-base drop-shadow-lg">{venue?.rating?.toFixed(1) || '4.5'}</span>
+              </div>
+              {distance !== null && (
+                <div className="flex items-center">
+                  <Navigation className="w-4 h-4 mr-1 text-[#2def80] drop-shadow" />
+                  <span className="text-sm md:text-base drop-shadow-lg">
+                    {distance < 1 
+                      ? `${(distance * 1000).toFixed(0)}m away` 
+                      : `${distance.toFixed(1)}km away`}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>

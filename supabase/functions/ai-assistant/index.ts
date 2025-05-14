@@ -1,1083 +1,714 @@
+import { useState, useRef, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { MessageCircle, X, Send, Mic, ThumbsUp, ThumbsDown, User, Bot, Settings, Sparkles } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { cn } from '@/lib/utils';
+import { toast } from '@/components/ui/use-toast';
+import { motion, AnimatePresence } from 'framer-motion';
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+type MessageRole = 'user' | 'assistant' | 'system';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
-// Extract OpenAI API key from environment variables
-const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY') || '';
-
-// System prompt to restrict the scope of the assistant
-const SYSTEM_PROMPT = `
-You are a helpful assistant embedded in a sports slot booking website called Grid2Play. Your job is to help users with venue selection, slot availability, bookings, cancellations, payments, and recommendations for sports-related activities on this platform.
-
-If the user asks anything unrelated to this platform (e.g., homework, coding help, chatting, etc.), politely say:
-'Sorry, I can only help with sports slot booking queries on this site.' Do not answer off-topic queries.
-
-Keep responses concise, focusing on helping users:
-1. Find available slots at venues
-2. Book courts for their preferred sports
-3. Check their booking history
-4. Get recommendations based on their preferences
-5. Understand venue policies and amenities
-6. Navigate payment options
-
-You can use functions to access real data from our database when needed.
-
-IMPORTANT: You already know who the user is. DO NOT ask users for their user ID, email, or any identifying information.
-Instead, use the authenticated user information already provided to this function.
-`;
-
-// Hindi-English mixed system prompt for bilingual responses
-const HINGLISH_SYSTEM_PROMPT = `
-${SYSTEM_PROMPT}
-
-If the user writes in Hinglish (Hindi-English mix), please respond in Hinglish as well. 
-Be friendly and conversational. Use phrases like:
-- "Kya help chahiye aapko?" (What help do you need?)
-- "Main check kar raha hoon" (I'm checking)
-- "Yeh raha aapka booking details" (Here are your booking details)
-
-Always maintain a polite and helpful tone in either language.
-`;
-
-serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  try {
-    if (!OPENAI_API_KEY) {
-      return new Response(
-        JSON.stringify({ 
-          message: { 
-            role: "assistant", 
-            content: "I'm currently unavailable. Please contact the administrator to set up my integration." 
-          }
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-    
-    const { messages, userId, role } = await req.json();
-    
-    // Check if user is authenticated
-    if (!userId) {
-      return new Response(
-        JSON.stringify({ 
-          message: { 
-            role: "assistant", 
-            content: "Please sign in to use booking features. कृपया साइन इन करें।" 
-          }
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Detect language - check if the latest user message might be in Hinglish
-    let selectedSystemPrompt = SYSTEM_PROMPT;
-    if (messages && messages.length > 0) {
-      const latestUserMsg = messages[messages.length - 1].content || '';
-      
-      // Very basic Hinglish detection (presence of common Hindi words/patterns)
-      const hindiPatterns = ['kya', 'hai', 'main', 'mujhe', 'aap', 'kaise', 'nahi', 'karo', 'kar', 'mein'];
-      const mightBeHinglish = hindiPatterns.some(pattern => 
-        latestUserMsg.toLowerCase().includes(pattern)
-      );
-      
-      if (mightBeHinglish) {
-        selectedSystemPrompt = HINGLISH_SYSTEM_PROMPT;
-      }
-    }
-
-    // Create Supabase client for database access
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-    const supabase = createClient(supabaseUrl, supabaseKey);
-    
-    // Prepare complete message history with system prompt
-    const completeMessages = [
-      { role: "system", content: selectedSystemPrompt },
-      ...messages
-    ];
-    
-    // Add user authentication context to the system message
-    if (userId) {
-      completeMessages.unshift({
-        role: "system", 
-        content: `The current user has user_id: ${userId}. Use this to fetch their data without asking them for it.`
-      });
-    }
-
-
-
-
-    
-    // Define available functions
-    const functions = [
-      {
-        name: "get_available_slots",
-        description: "Get available slots for a specific venue, court, and date",
-        parameters: {
-          type: "object",
-          properties: {
-            venue_id: { type: "string", description: "UUID of the venue" },
-            court_id: { type: "string", description: "UUID of the court (optional)" },
-            date: { type: "string", description: "Date in YYYY-MM-DD format" }
-          },
-          required: ["venue_id", "date"]
-        }
-      },
-      {
-        name: "get_user_bookings",
-        description: "Get a summary of user's bookings (past and upcoming)",
-        parameters: {
-          type: "object",
-          properties: {
-            limit: { type: "number", description: "Number of bookings to return" }
-          },
-          required: []
-        }
-      },
-      {
-        name: "get_court_availability",
-        description: "Get detailed availability for a specific court on a date",
-        parameters: {
-          type: "object",
-          properties: {
-            court_id: { type: "string", description: "UUID of the court" },
-            date: { type: "string", description: "Date in YYYY-MM-DD format" }
-          },
-          required: ["court_id", "date"]
-        }
-      },
-      {
-        name: "recommend_courts",
-        description: "Get court recommendations based on user preferences and history",
-        parameters: {
-          type: "object",
-          properties: {
-            sport_id: { type: "string", description: "UUID of the sport (optional)" }
-          },
-          required: []
-        }
-      },
-      {
-        name: "book_court",
-        description: "Book a court for a specific date and time slot",
-        parameters: {
-          type: "object",
-          properties: {
-            court_id: { type: "string", description: "UUID of the court" },
-            date: { type: "string", description: "Date in YYYY-MM-DD format" },
-            start_time: { type: "string", description: "Start time in HH:MM format" },
-            end_time: { type: "string", description: "End time in HH:MM format" }
-          },
-          required: ["court_id", "date", "start_time", "end_time"]
-        }
-      },
-       {
-         name: "get_venue_contact",
-         description: "Get contact details (phone, location, etc.) for a specific venue by name.",
-         parameters: {
-           type: "object",
-           properties: {
-      venue_name: { type: "string", description: "Name of the venue" }
-    },
-    required: ["venue_name"]
-  }
+interface ChatMessage {
+  id: string;
+  role: MessageRole;
+  content: string;
+  timestamp: Date;
+  reactions?: {
+    thumbsUp?: boolean;
+    thumbsDown?: boolean;
+  };
 }
 
-    ];
-    
-    // Only include admin functions if the user has admin role
-    if (role === 'admin' || role === 'super_admin') {
-      functions.push({
-        name: "admin_summary",
-        description: "Get administrative summary for a venue (requires admin role)",
-        parameters: {
-          type: "object",
-          properties: {
-            venue_id: { type: "string", description: "UUID of the venue" }
-          },
-          required: ["venue_id"]
-        }
-      });
-      
-      functions.push({
-        name: "get_venue_admins",
-        description: "List users who can manage a venue (admin only)",
-        parameters: {
-          type: "object",
-          properties: {
-            venue_id: { type: "string", description: "UUID of the venue" }
-          },
-          required: ["venue_id"]
-        }
-      });
-      
-      functions.push({
-        name: "get_bookings_by_date_range",
-        description: "Get bookings within a date range for reporting (admin only)",
-        parameters: {
-          type: "object",
-          properties: {
-            start_date: { type: "string", description: "Start date in YYYY-MM-DD format" },
-            end_date: { type: "string", description: "End date in YYYY-MM-DD format" },
-            venue_id: { type: "string", description: "UUID of the venue (optional)" }
-          },
-          required: ["start_date", "end_date"]
-        }
+const NewAIChatWidget = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [inputMessage, setInputMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isFirstInteraction, setIsFirstInteraction] = useState(true);
+  const [isListening, setIsListening] = useState(false);
+  const { user, userRole, isSessionExpired, logout } = useAuth();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const recognitionRef = useRef<any>(null);
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
+  const [consentGiven, setConsentGiven] = useState<boolean | null>(null);
+
+  // Check notification permission
+  useEffect(() => {
+    if ('Notification' in window) {
+      setNotificationPermission(Notification.permission);
+    }
+  }, []);
+
+  // Request notification permission if needed
+  const requestNotificationPermission = async () => {
+    if ('Notification' in window && notificationPermission !== 'granted') {
+      const permission = await Notification.requestPermission();
+      setNotificationPermission(permission);
+      return permission === 'granted';
+    }
+    return notificationPermission === 'granted';
+  };
+
+  // Show notification when new message arrives and tab is not active
+  const showNotification = (message: string) => {
+    if (document.hidden && notificationPermission === 'granted') {
+      new Notification('Grid2Play Assistant', {
+        body: message,
+        icon: '/favicon.ico'
       });
     }
+  };
 
-    try {
-      // Call OpenAI API
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${OPENAI_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: completeMessages,
-          temperature: 0.7,
-          tools: functions.map(fn => ({ type: "function", function: fn })),
-          tool_choice: "auto",
-        }),
-      });
+  // Check for session expiration
+  useEffect(() => {
+    if (isSessionExpired && isOpen) {
+      setMessages(prev => [...prev, {
+        id: 'session-expired-' + Date.now(),
+        role: 'assistant',
+        content: "Your session has expired. Please log in again to continue chatting.",
+        timestamp: new Date()
+      }]);
+    }
+  }, [isSessionExpired, isOpen]);
 
-      const data = await response.json();
-      console.log("OpenAI API response:", JSON.stringify(data));
+  // Load conversation history from localStorage and check for analytics consent
+  useEffect(() => {
+    if (user) {
+      const savedChat = localStorage.getItem(`ai_chat_history_${user.id}`);
+      const savedConsent = localStorage.getItem(`ai_chat_consent_${user.id}`);
       
-      // Check if the response contains a function call
-      const responseMessage = data.choices[0].message;
-      let result = { message: responseMessage };
-      
-      // If the model wants to call a function
-      if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
-        const toolCall = responseMessage.tool_calls[0];
-        const functionName = toolCall.function.name;
-        const functionArgs = JSON.parse(toolCall.function.arguments);
-        
-        // Execute the function
-        const functionResult = await handleFunctionCall({
-          name: functionName,
-          arguments: functionArgs,
-          userId: userId
-        }, supabase);
-        
-        // Make a second call to OpenAI with the function result
-        const secondResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${OPENAI_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "gpt-4o-mini",
-            messages: [
-              ...completeMessages,
-              responseMessage,
-              {
-                role: "function",
-                name: functionName,
-                content: JSON.stringify(functionResult)
-              }
-            ],
-            temperature: 0.7
-          }),
-        });
-        
-        const secondData = await secondResponse.json();
-        result = { 
-          message: secondData.choices[0].message, 
-          functionCall: {
-            name: functionName,
-            arguments: functionArgs,
-            result: functionResult
-          }
-        };
+      if (savedConsent !== null) {
+        setConsentGiven(savedConsent === 'true');
       }
 
-      return new Response(JSON.stringify(result), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      if (savedChat) {
+        try {
+          const parsedChat = JSON.parse(savedChat);
+          setMessages(parsedChat.map((msg: any) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp)
+          })));
+        } catch (e) {
+          console.error("Failed to parse chat history", e);
+        }
+      }
+    }
+  }, [user]);
+
+  // Save conversation history to localStorage
+  useEffect(() => {
+    if (user && messages.length > 0) {
+      localStorage.setItem(
+        `ai_chat_history_${user.id}`,
+        JSON.stringify(messages.map(msg => ({
+          ...msg,
+          timestamp: msg.timestamp.toISOString()
+        })))
+      );
+
+      // Send anonymized logs to backend if consent given
+      if (consentGiven) {
+        sendAnonymizedLogs();
+      }
+    }
+  }, [messages, user, consentGiven]);
+
+  // Send anonymized chat logs to backend
+  const sendAnonymizedLogs = async () => {
+    try {
+      const logs = messages.map(msg => ({
+        role: msg.role,
+        content: msg.content,
+        timestamp: msg.timestamp.toISOString(),
+        reactions: msg.reactions
+      }));
+
+      await supabase.functions.invoke('log-chat-analytics', {
+        body: {
+          userId: user?.id, // Still tracked but anonymized in backend processing
+          messages: logs,
+          userAgent: navigator.userAgent
+        }
       });
     } catch (error) {
-      console.error("Error calling OpenAI API:", error);
-      return new Response(
-        JSON.stringify({ 
-          message: { 
-            role: "assistant", 
-            content: "I'm having trouble connecting to my brain right now. Please try again in a moment." 
-          }
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200  // Return 200 even on API error to handle gracefully
-        }
-      );
+      console.error("Failed to send analytics", error);
     }
-  } catch (error) {
-    console.error("General error:", error);
-    return new Response(JSON.stringify({ 
-      message: { 
-        role: "assistant", 
-        content: "Sorry, I encountered an error processing your request. Please try again later." 
+  };
+
+  // Initialize voice recognition
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        recognitionRef.current = new SpeechRecognition();
+        recognitionRef.current.continuous = false;
+        recognitionRef.current.interimResults = false;
+        recognitionRef.current.lang = 'en-US';
+
+        recognitionRef.current.onresult = (event: any) => {
+          const transcript = event.results[0][0].transcript;
+          setInputMessage(prev => prev + ' ' + transcript);
+          setIsListening(false);
+        };
+
+        recognitionRef.current.onerror = (event: any) => {
+          console.error('Speech recognition error', event.error);
+          setIsListening(false);
+          toast({
+            title: "Voice input failed",
+            description: event.error,
+            variant: "destructive"
+          });
+        };
       }
-    }), {
-      status: 200,  // Return 200 for graceful handling
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
-  }
-});
+    }
 
-async function handleFunctionCall(functionCall: any, supabase: any) {
-  const { name, arguments: args, userId } = functionCall;
-  
-  console.log(`Handling function call: ${name} with args:`, args);
-  
-  switch (name) {
-    case "get_available_slots":
-      return await getAvailableSlots(supabase, args.venue_id, args.court_id, args.date);
-    case "get_user_bookings":
-      // Important change: Use the userId from the auth context instead of requiring it as an argument
-      return await getUserBookings(supabase, userId, args.limit || 10);
-    case "admin_summary":
-      return await getAdminSummary(supabase, args.venue_id);
-    case "get_court_availability":
-      return await getCourtAvailability(supabase, args.court_id, args.date);
-    case "recommend_courts":
-      return await recommendCourts(supabase, userId, args.sport_id);
-    case "get_venue_admins":
-      return await getVenueAdmins(supabase, args.venue_id);
-    case "get_bookings_by_date_range":
-      return await getBookingsByDateRange(supabase, args.start_date, args.end_date, args.venue_id);
-    
-     case "get_venue_contact":
-        return await getVenueContact(supabase, args.venue_name);
-
-
-
-    case "book_court":
-      return await bookCourt(supabase, userId, args.court_id, args.date, args.start_time, args.end_time);
-    default:
-      throw new Error(`Unknown function: ${name}`);
-  }
-}
-
-async function getUserBookings(supabase: any, user_id: string, limit: number = 10) {
-  if (!user_id) {
-    return { 
-      success: false, 
-      message: "User is not authenticated. Please log in to view your bookings." 
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
     };
-  }
+  }, []);
 
-  try {
-    console.log("Fetching bookings for user:", user_id);
+  // Welcome message setup
+  useEffect(() => {
+    if (isOpen && isFirstInteraction && messages.length === 0) {
+      const welcomeMessage: ChatMessage = {
+        id: 'welcome-' + Date.now(),
+        role: 'assistant',
+        content: user ? 
+          `Hello${user.user_metadata?.name ? ' ' + user.user_metadata.name : ''}! How can I help you with sports bookings today?` : 
+          'Please sign in to use the chat assistant.',
+        timestamp: new Date()
+      };
+      setMessages([welcomeMessage]);
+      setIsFirstInteraction(false);
+
+      // Show analytics consent prompt if not already set
+      if (user && consentGiven === null) {
+        setTimeout(() => {
+          setMessages(prev => [...prev, {
+            id: 'consent-prompt-' + Date.now(),
+            role: 'assistant',
+            content: "To help improve our service, may we use anonymized chat data for quality improvement? This won't include personal information.",
+            timestamp: new Date()
+          }]);
+        }, 1500);
+      }
+    }
+  }, [isOpen, isFirstInteraction, user, messages.length, consentGiven]);
+
+  // Scroll to bottom of chat
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isOpen]);
+
+  // Focus input when chat opens
+  useEffect(() => {
+    if (isOpen && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isOpen]);
+
+  // Handle tab visibility changes for notifications
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && messages.length > 0) {
+        document.title = "Grid2Play Assistant";
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [messages]);
+
+  const handleSendMessage = async () => {
+    if (!inputMessage.trim()) return;
     
-    // First, retrieve user information to personalize the response
-    const { data: profileData, error: profileError } = await supabase
-      .from('profiles')
-      .select('full_name, email')
-      .eq('id', user_id)
-      .limit(1);
-    
-    if (profileError) {
-      console.error("Error fetching user profile:", profileError);
+    if (isSessionExpired) {
+      toast({
+        title: "Session Expired",
+        description: "Please log in again to continue chatting",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!user) {
+      toast({
+        title: "Not Signed In",
+        description: "Please sign in to use the chat assistant",
+        variant: "destructive"
+      });
+      return;
     }
     
-    const userName = profileData && profileData.length > 0 ? profileData[0].full_name : "User";
-    
-    // Get upcoming bookings
-    const { data: upcomingBookings, error: upcomingError } = await supabase
-      .from('bookings')
-      .select(`
-        id,
-        booking_date,
-        start_time,
-        end_time,
-        status,
-        total_price,
-        payment_status,
-        court:courts (
-          id,
-          name,
-          venue:venues (
-            id,
-            name
-          ),
-          sport:sports (
-            id,
-            name
-          )
-        )
-      `)
-      .eq('user_id', user_id)
-      .in('status', ['confirmed', 'pending'])
-      .gte('booking_date', new Date().toISOString().split('T')[0])
-      .order('booking_date', { ascending: true })
-      .limit(limit);
-    
-    if (upcomingError) throw upcomingError;
-
-
-
- 
-
-
-    if (functionCall.name === "get_venue_contact") {
-  const { venue_name } = functionCall.arguments;
-  const { data: venue, error } = await supabase
-    .from("venues")
-    .select("name, location, contact_number, opening_hours")
-    .ilike("name", `%${venue_name}%`)
-    .limit(1)
-    .maybeSingle();
-
-  if (error || !venue) {
-    return {
-      content: `Sorry, I couldn't find contact details for "${venue_name}".`
+    const userMessage: ChatMessage = {
+      id: 'user-' + Date.now(),
+      role: 'user',
+      content: inputMessage.trim(),
+      timestamp: new Date()
     };
-  }
-
-  let reply = `You can chat with the "${venue.name}" venue owner directly within the site using the "Chat with Venue" feature.`;
-  if (venue.contact_number) {
-    reply += ` Or call the venue owner at ${venue.contact_number}.`;
-  }
-  if (venue.location) {
-    reply += `\nLocation: ${venue.location}`;
-  }
-  if (venue.opening_hours) {
-    reply += `\nOpening Hours: ${venue.opening_hours}`;
-  }
-
-  return { content: reply };
-}
-
-
-
-
-
-
     
-    // Get past bookings
-    const { data: pastBookings, error: pastError } = await supabase
-      .from('bookings')
-      .select(`
-        id,
-        booking_date,
-        start_time,
-        end_time,
-        status,
-        total_price,
-        payment_status,
-        court:courts (
-          id,
-          name,
-          venue:venues (
-            id,
-            name
-          ),
-          sport:sports (
-            id,
-            name
-          )
-        )
-      `)
-      .eq('user_id', user_id)
-      .or('status.eq.completed,status.eq.cancelled')
-      .lt('booking_date', new Date().toISOString().split('T')[0])
-      .order('booking_date', { ascending: false })
-      .limit(limit);
+    setMessages(prev => [...prev, userMessage]);
+    setInputMessage('');
+    setIsLoading(true);
     
-    if (pastError) throw pastError;
-    
-    return {
-      success: true,
-      user_name: userName,
-      upcoming: upcomingBookings || [],
-      past: pastBookings || []
-    };
-  } catch (error) {
-    console.error("Error in getUserBookings:", error);
-    return { 
-      success: false, 
-      message: "Failed to fetch user bookings", 
-      error: error.message 
-    };
-  }
-}
-
-// Function implementations
-async function getAvailableSlots(supabase: any, venue_id: string, court_id: string | undefined, date: string) {
-  try {
-    let query;
-    
-    if (court_id) {
-      // If court_id is provided, get slots for that specific court
-      const { data, error } = await supabase
-        .from('courts')
-        .select(`
-          id,
-          name,
-          venue:venues (
-            id,
-            name
-          ),
-          sport:sports (
-            id,
-            name
-          )
-        `)
-        .eq('id', court_id);
+    try {
+      const messageHistory = messages
+        .filter(msg => msg.role !== 'system')
+        .map(({ role, content }) => ({ role, content }));
+      
+      messageHistory.push({ role: 'user', content: userMessage.content });
+      
+      const { data, error } = await supabase.functions.invoke('chat-assistant', {
+        body: { 
+          messages: messageHistory,
+          userId: user.id,
+          context: {
+            userRole,
+            previousMessages: messages.slice(-10) // Send last 10 messages for context
+          }
+        }
+      });
       
       if (error) throw error;
       
-      if (!data || data.length === 0) {
-        return { success: false, message: "Court not found" };
+      if (data?.message) {
+        const assistantMessage: ChatMessage = {
+          id: 'assistant-' + Date.now(),
+          role: 'assistant',
+          content: data.message.content,
+          timestamp: new Date()
+        };
+        
+        setMessages(prev => [...prev, assistantMessage]);
+        
+        // Show notification if tab is not active
+        if (document.hidden) {
+          const canNotify = await requestNotificationPermission();
+          if (canNotify) {
+            showNotification(data.message.content.substring(0, 100));
+          } else {
+            document.title = "New message! - Grid2Play Assistant";
+          }
+        }
+      } else {
+        throw new Error("Invalid response format");
       }
+    } catch (error: any) {
+      console.error("Chat error:", error);
+      setMessages(prev => [...prev, {
+        id: 'error-' + Date.now(),
+        role: 'assistant',
+        content: "Sorry, I encountered an error. Please try again later.",
+        timestamp: new Date()
+      }]);
       
-      const { data: slots, error: slotsError } = await supabase
-        .rpc('get_available_slots', {
-          p_court_id: court_id,
-          p_date: date
-        });
-      
-      if (slotsError) throw slotsError;
-      
-      return {
-        success: true,
-        court: data[0],
-        date: date,
-        slots: slots || []
-      };
+      toast({
+        title: "Chat Error",
+        description: error.message || "Failed to communicate with assistant",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  const toggleVoiceInput = () => {
+    if (!recognitionRef.current) {
+      toast({
+        title: "Voice input not supported",
+        description: "Your browser doesn't support speech recognition",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
     } else {
-      // If only venue_id is provided, get available slots for all courts in the venue
-      const { data: courts, error: courtsError } = await supabase
-        .from('courts')
-        .select(`
-          id,
-          name,
-          sport:sports (
-            id,
-            name
-          )
-        `)
-        .eq('venue_id', venue_id)
-        .eq('is_active', true);
-      
-      if (courtsError) throw courtsError;
-      
-      if (!courts || courts.length === 0) {
-        return { success: false, message: "No courts found for this venue" };
-      }
-      
-      // Get venue details
-      const { data: venue, error: venueError } = await supabase
-        .from('venues')
-        .select('id, name')
-        .eq('id', venue_id)
-        .limit(1);
-      
-      if (venueError) throw venueError;
-      
-      const allSlots = [];
-      
-      // For each court, get available slots
-      for (const court of courts) {
-        const { data: slots, error: slotsError } = await supabase
-          .rpc('get_available_slots', {
-            p_court_id: court.id,
-            p_date: date
-          });
-        
-        if (slotsError) throw slotsError;
-        
-        // Add available slots to result
-        if (slots && slots.length > 0) {
-          const availableSlots = slots.filter((slot: any) => slot.is_available);
-          if (availableSlots.length > 0) {
-            allSlots.push({
-              court_id: court.id,
-              court_name: court.name,
-              sport_name: court.sport.name,
-              slots: availableSlots
-            });
+      recognitionRef.current.start();
+      setIsListening(true);
+    }
+  };
+
+  const handleReaction = (messageId: string, reaction: 'thumbsUp' | 'thumbsDown') => {
+    setMessages(prev => prev.map(msg => {
+      if (msg.id === messageId) {
+        return {
+          ...msg,
+          reactions: {
+            ...msg.reactions,
+            [reaction]: !msg.reactions?.[reaction],
+            [reaction === 'thumbsUp' ? 'thumbsDown' : 'thumbsUp']: false
           }
-        }
+        };
       }
-      
-      return {
-        success: true,
-        venue: venue && venue.length > 0 ? venue[0] : null,
-        date: date,
-        courts_with_slots: allSlots
-      };
-    }
-  } catch (error) {
-    console.error("Error in getAvailableSlots:", error);
-    return { success: false, message: "Failed to fetch available slots", error: error.message };
-  }
-}
+      return msg;
+    }));
 
-async function getAdminSummary(supabase: any, venue_id: string) {
-  try {
-    // Get total bookings for the venue
-    const { data: bookingsCount, error: bookingsError } = await supabase
-      .from('bookings')
-      .select('id', { count: true })
-      .eq('court.venue_id', venue_id);
-    
-    if (bookingsError) throw bookingsError;
-    
-    // Get total revenue
-    const { data: revenue, error: revenueError } = await supabase
-      .from('bookings')
-      .select('total_price')
-      .eq('court.venue_id', venue_id)
-      .eq('payment_status', 'completed');
-    
-    if (revenueError) throw revenueError;
-    
-    const totalRevenue = revenue ? revenue.reduce((sum: number, booking: any) => sum + (booking.total_price || 0), 0) : 0;
-    
-    // Get upcoming bookings
-    const { data: upcomingBookings, error: upcomingError } = await supabase
-      .from('bookings')
-      .select(`
-        id,
-        booking_date,
-        start_time,
-        end_time,
-        status,
-        court:courts (
-          id,
-          name
-        )
-      `)
-      .eq('court.venue_id', venue_id)
-      .in('status', ['confirmed', 'pending'])
-      .gte('booking_date', new Date().toISOString().split('T')[0])
-      .order('booking_date', { ascending: true })
-      .limit(10);
-    
-    if (upcomingError) throw upcomingError;
-    
-    // Get most active courts
-    const { data: activeCourts, error: courtsError } = await supabase
-      .from('bookings')
-      .select(`
-        court_id,
-        court:courts (
-          id,
-          name
-        ),
-        count
-      `)
-      .eq('court.venue_id', venue_id)
-      .group('court_id, court.id, court.name')
-      .order('count', { ascending: false })
-      .limit(5);
-    
-    if (courtsError) throw courtsError;
-    
-    return {
-      success: true,
-      total_bookings: bookingsCount?.length || 0,
-      total_revenue: totalRevenue,
-      upcoming_bookings: upcomingBookings || [],
-      active_courts: activeCourts || []
-    };
-  } catch (error) {
-    console.error("Error in getAdminSummary:", error);
-    return { success: false, message: "Failed to fetch admin summary", error: error.message };
-  }
-}
-
-async function getCourtAvailability(supabase: any, court_id: string, date: string) {
-  try {
-    // Get court details
-    const { data: court, error: courtError } = await supabase
-      .from('courts')
-      .select(`
-        id,
-        name,
-        venue:venues (
-          id,
-          name
-        ),
-        sport:sports (
-          id,
-          name
-        ),
-        hourly_rate
-      `)
-      .eq('id', court_id)
-      .limit(1);
-    
-    if (courtError) throw courtError;
-    
-    if (!court || court.length === 0) {
-      return { success: false, message: "Court not found" };
-    }
-    
-    // Get template slots for the day
-    const { data: slots, error: slotsError } = await supabase
-      .rpc('get_available_slots', {
-        p_court_id: court_id,
-        p_date: date
-      });
-    
-    if (slotsError) throw slotsError;
-    
-    // Get existing bookings for the court on the date
-    const { data: bookings, error: bookingsError } = await supabase
-      .from('bookings')
-      .select(`
-        id,
-        start_time,
-        end_time,
-        status
-      `)
-      .eq('court_id', court_id)
-      .eq('booking_date', date)
-      .in('status', ['confirmed', 'pending']);
-    
-    if (bookingsError) throw bookingsError;
-    
-    return {
-      success: true,
-      court: court[0],
-      date,
-      availability: slots || [],
-      bookings: bookings || []
-    };
-  } catch (error) {
-    console.error("Error in getCourtAvailability:", error);
-    return { success: false, message: "Failed to fetch court availability", error: error.message };
-  }
-}
-
-async function recommendCourts(supabase: any, user_id: string, sport_id?: string) {
-  try {
-    // Get user's booking history to determine preferences
-    const { data: bookingHistory, error: historyError } = await supabase
-      .from('bookings')
-      .select(`
-        court:courts (
-          id,
-          name,
-          venue_id,
-          sport_id,
-          venue:venues (
-            id,
-            name,
-            location
-          ),
-          sport:sports (
-            id,
-            name
-          )
-        )
-      `)
-      .eq('user_id', user_id)
-      .order('created_at', { ascending: false })
-      .limit(20);
-    
-    if (historyError) throw historyError;
-    
-    // Get user's profile for location preferences
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('id', user_id)
-      .limit(1);
-    
-    if (profileError) throw profileError;
-    
-    // Build query for recommended courts
-    let query = supabase
-      .from('courts')
-      .select(`
-        id,
-        name,
-        hourly_rate,
-        venue:venues (
-          id,
-          name,
-          location,
-          rating
-        ),
-        sport:sports (
-          id,
-          name
-        )
-      `)
-      .eq('is_active', true);
-    
-    // Apply sport filter if provided
-    if (sport_id) {
-      query = query.eq('sport_id', sport_id);
-    }
-    
-    // Get recommended courts
-    const { data: courts, error: courtsError } = await query
-      .order('venue.rating', { ascending: false })
-      .limit(5);
-    
-    if (courtsError) throw courtsError;
-    
-    // Analyze user preferences
-    const sportPreferences = new Map();
-    const venuePreferences = new Map();
-    
-    if (bookingHistory) {
-      bookingHistory.forEach((booking: any) => {
-        const court = booking.court;
-        if (court) {
-          // Count sport preferences
-          if (court.sport_id) {
-            sportPreferences.set(
-              court.sport_id, 
-              (sportPreferences.get(court.sport_id) || 0) + 1
-            );
-          }
-          
-          // Count venue preferences
-          if (court.venue_id) {
-            venuePreferences.set(
-              court.venue_id, 
-              (venuePreferences.get(court.venue_id) || 0) + 1
-            );
-          }
-        }
-      });
-    }
-    
-    // Convert Maps to arrays and sort by count
-    const topSports = [...sportPreferences.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .map(([id, count]) => ({ id, count }));
-      
-    const topVenues = [...venuePreferences.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .map(([id, count]) => ({ id, count }));
-    
-    return {
-      success: true,
-      recommended_courts: courts || [],
-      preferences: {
-        top_sports: topSports.slice(0, 3),
-        top_venues: topVenues.slice(0, 3),
+    // Send feedback to backend
+    supabase.functions.invoke('chat-feedback', {
+      body: {
+        messageId,
+        reaction,
+        userId: user?.id
       }
-    };
-  } catch (error) {
-    console.error("Error in recommendCourts:", error);
-    return { success: false, message: "Failed to generate court recommendations", error: error.message };
-  }
-}
+    }).catch(console.error);
+  };
 
-async function getVenueAdmins(supabase: any, venue_id: string) {
-  try {
-    // Get venue admins
-    const { data: admins, error: adminsError } = await supabase
-      .from('venue_admins')
-      .select(`
-        id,
-        admin:profiles!user_id (
-          id,
-          full_name,
-          email,
-          phone
-        )
-      `)
-      .eq('venue_id', venue_id);
-    
-    if (adminsError) throw adminsError;
-    
-    // Get venue details
-    const { data: venue, error: venueError } = await supabase
-      .from('venues')
-      .select('id, name')
-      .eq('id', venue_id)
-      .limit(1);
-    
-    if (venueError) throw venueError;
-    
-    return {
-      success: true,
-      venue: venue && venue.length > 0 ? venue[0] : null,
-      admins: admins ? admins.map((admin: any) => admin.admin) : []
-    };
-  } catch (error) {
-    console.error("Error in getVenueAdmins:", error);
-    return { success: false, message: "Failed to fetch venue admins", error: error.message };
-  }
-}
-
-async function getBookingsByDateRange(supabase: any, start_date: string, end_date: string, venue_id?: string) {
-  try {
-    // Build query for bookings in date range
-    let query = supabase
-      .from('bookings')
-      .select(`
-        id,
-        booking_date,
-        start_time,
-        end_time,
-        status,
-        payment_status,
-        total_price,
-        user:profiles!user_id (
-          id,
-          full_name,
-          phone
-        ),
-        court:courts (
-          id,
-          name,
-          venue:venues (
-            id,
-            name
-          ),
-          sport:sports (
-            id,
-            name
-          )
-        )
-      `)
-      .gte('booking_date', start_date)
-      .lte('booking_date', end_date);
-    
-    // Apply venue filter if provided
-    if (venue_id) {
-      query = query.eq('court.venue_id', venue_id);
+  const handleConsent = (given: boolean) => {
+    setConsentGiven(given);
+    if (user) {
+      localStorage.setItem(`ai_chat_consent_${user.id}`, String(given));
     }
-    
-    // Get bookings
-    const { data, error } = await query
-      .order('booking_date', { ascending: true })
-      .order('start_time', { ascending: true });
-    
-    if (error) throw error;
-    
-    // Calculate summary statistics
-    let totalBookings = data ? data.length : 0;
-    let confirmedBookings = 0;
-    let cancelledBookings = 0;
-    let totalRevenue = 0;
-    
-    if (data) {
-      data.forEach((booking: any) => {
-        if (booking.status === 'confirmed' || booking.status === 'completed') {
-          confirmedBookings++;
-        } else if (booking.status === 'cancelled') {
-          cancelledBookings++;
-        }
-        
-        if (booking.payment_status === 'completed' && booking.total_price) {
-          totalRevenue += parseFloat(booking.total_price);
-        }
-      });
-    }
-    
-    return {
-      success: true,
-      start_date,
-      end_date,
-      venue_id,
-      bookings: data || [],
-      summary: {
-        total_bookings: totalBookings,
-        confirmed_bookings: confirmedBookings,
-        cancelled_bookings: cancelledBookings,
-        total_revenue: totalRevenue.toFixed(2)
-      }
-    };
-  } catch (error) {
-    console.error("Error in getBookingsByDateRange:", error);
-    return { success: false, message: "Failed to fetch bookings by date range", error: error.message };
-  }
-}
+    setMessages(prev => [...prev, {
+      id: 'consent-response-' + Date.now(),
+      role: 'user',
+      content: given ? "Yes, I agree" : "No, I don't agree",
+      timestamp: new Date()
+    }]);
+  };
 
-// New function to handle booking a court through AI
-async function bookCourt(supabase: any, userId: string, courtId: string, date: string, startTime: string, endTime: string) {
-  try {
-    // Check if the slot is available
-    const { data: availabilityData, error: availabilityError } = await supabase
-      .rpc('get_available_slots', {
-        p_court_id: courtId,
-        p_date: date
-      });
-    
-    if (availabilityError) throw availabilityError;
-    
-    // Find the requested slot in available slots
-    const requestedSlot = availabilityData?.find((slot: any) => 
-      slot.start_time === startTime && 
-      slot.end_time === endTime
+  const formatMessageContent = (content: string) => {
+    // Enhanced formatting with markdown support
+    const formatted = content
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
+      .replace(/\*(.*?)\*/g, '<em>$1</em>') // Italics
+      .replace(/```([^`]+)```/g, '<pre class="bg-gray-800/50 p-2 rounded my-1 overflow-x-auto"><code>$1</code></pre>') // Code blocks
+      .replace(/`([^`]+)`/g, '<code class="bg-gray-800/50 px-1 rounded">$1</code>') // Inline code
+      .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-emerald-400 hover:underline">$1</a>') // Links
+      .replace(/\b(tennis|football|basketball|badminton)\b/gi, '<span class="text-emerald-300">$1</span>')
+      .replace(/\n/g, '<br />');
+
+    return { __html: formatted };
+  };
+
+  const renderExampleQueries = () => {
+    const examples = [
+      "Show my upcoming bookings",
+      "Find available football courts tomorrow",
+      "What sports can I play at Grid2Play?",
+      "How do I cancel a booking?"
+    ];
+
+    return (
+      <div className="flex flex-col gap-2 mb-4">
+        <p className="text-sm text-emerald-300">Try asking:</p>
+        <div className="flex flex-wrap gap-2">
+          {examples.map((example, index) => (
+            <button
+              key={index}
+              className="text-xs bg-emerald-900/50 text-emerald-100 px-3 py-1 rounded-full hover:bg-emerald-800/80 transition-colors border border-emerald-800/30"
+              onClick={() => {
+                setInputMessage(example);
+                inputRef.current?.focus();
+              }}
+            >
+              {example}
+            </button>
+          ))}
+        </div>
+      </div>
     );
-    
-    if (!requestedSlot || !requestedSlot.is_available) {
-      return {
-        success: false,
-        message: "The requested time slot is not available. Please choose another time."
-      };
-    }
-    
-    // Get court details for pricing
-    const { data: court, error: courtError } = await supabase
-      .from('courts')
-      .select('id, name, hourly_rate, venue:venues(id, name)')
-      .eq('id', courtId)
-      .single();
-    
-    if (courtError) throw courtError;
-    
-    // Calculate price based on time difference
-    const startParts = startTime.split(':').map(Number);
-    const endParts = endTime.split(':').map(Number);
-    const startMinutes = startParts[0] * 60 + startParts[1];
-    const endMinutes = endParts[0] * 60 + endParts[1];
-    const hours = (endMinutes - startMinutes) / 60;
-    const totalPrice = hours * court.hourly_rate;
-    
-    // Create booking using the database function
-    const { data: bookingId, error: bookingError } = await supabase
-      .rpc('create_booking_with_lock', {
-        p_court_id: courtId,
-        p_user_id: userId,
-        p_booking_date: date,
-        p_start_time: startTime,
-        p_end_time: endTime,
-        p_total_price: totalPrice
-      });
-    
-    if (bookingError) throw bookingError;
-    
-    return {
-      success: true,
-      booking_id: bookingId,
-      court_name: court.name,
-      venue_name: court.venue?.name,
-      date: date,
-      start_time: startTime,
-      end_time: endTime,
-      total_price: totalPrice
-    };
-  } catch (error) {
-    console.error("Error in bookCourt:", error);
-    return { 
-      success: false, 
-      message: "Failed to book the court. " + (error.message || "Please try again later.")
-    };
-  }
-}
+  };
+
+  const renderConsentButtons = () => {
+    return (
+      <div className="flex gap-2 mt-2">
+        <button
+          onClick={() => handleConsent(true)}
+          className="text-xs bg-emerald-800/50 text-emerald-100 px-3 py-1 rounded hover:bg-emerald-700/80 transition-colors border border-emerald-700/30"
+        >
+          Yes, I agree
+        </button>
+        <button
+          onClick={() => handleConsent(false)}
+          className="text-xs bg-gray-800/50 text-gray-100 px-3 py-1 rounded hover:bg-gray-700/80 transition-colors border border-gray-700/30"
+        >
+          No, thanks
+        </button>
+      </div>
+    );
+  };
+
+  if (!user) return null;
+
+  return (
+    <>
+      <motion.button
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        className={cn(
+          "fixed bottom-6 right-6 rounded-full w-14 h-14 p-0 shadow-xl z-50",
+          "flex items-center justify-center group",
+          "bg-gradient-to-r from-emerald-600 to-emerald-500",
+          "border-2 border-emerald-400/20",
+          "hover:shadow-emerald-500/20 hover:shadow-lg",
+          "transition-all duration-300",
+          "focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2",
+          isOpen ? "rotate-90" : "rotate-0"
+        )}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        {isOpen ? (
+          <X className="h-6 w-6 text-white" />
+        ) : (
+          <div className="relative">
+            <MessageCircle className="h-6 w-6 text-white" />
+            <span className="absolute -top-1 -right-1 h-3 w-3 bg-emerald-400 rounded-full border-2 border-white animate-pulse" />
+          </div>
+        )}
+      </motion.button>
+
+      <motion.div
+        initial={false}
+        animate={isOpen ? {
+          scale: 1,
+          opacity: 1,
+          y: 0,
+        } : {
+          scale: 0.95,
+          opacity: 0,
+          y: 20,
+        }}
+        className={cn(
+          "fixed bottom-24 right-6 w-[90vw] sm:w-[400px] max-h-[600px] rounded-2xl shadow-2xl z-40 overflow-hidden",
+          "bg-gradient-to-b from-gray-900 via-gray-900 to-black",
+          "border border-emerald-500/20",
+          !isOpen && "pointer-events-none"
+        )}
+      >
+        <div className="p-4 border-b border-emerald-800/30 bg-gradient-to-r from-emerald-900/20 to-transparent backdrop-blur-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="p-2 rounded-full bg-emerald-900/30 border border-emerald-800/50">
+                  <Sparkles className="h-5 w-5 text-emerald-400" />
+                </div>
+                <span className="absolute -bottom-1 -right-1 h-3 w-3 bg-emerald-500 rounded-full border-2 border-gray-900" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-white flex items-center gap-2">
+                  Grid2Play Assistant
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-900/50 border border-emerald-700/50 text-emerald-400">
+                    Active
+                  </span>
+                </h3>
+                <p className="text-xs text-emerald-300/80">Smart Booking Assistant</p>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-lg text-gray-400 hover:text-emerald-400"
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex flex-col h-[400px] overflow-y-auto p-4 bg-gradient-to-b from-gray-900/50 to-black/50">
+          <AnimatePresence>
+            {messages.map((message) => (
+              <motion.div
+                key={message.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className={cn(
+                  "mb-4 max-w-[80%] group",
+                  message.role === "user" ? "self-end ml-auto" : "self-start mr-auto"
+                )}
+              >
+                <div className="flex items-start gap-2">
+                  {message.role === "user" ? (
+                    <div className="flex-shrink-0 mt-1">
+                      <div className="p-1.5 rounded-full bg-emerald-900/50 border border-emerald-700/50">
+                        <User className="h-3 w-3 text-emerald-400" />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex-shrink-0 mt-1">
+                      <div className="p-1.5 rounded-full bg-gray-800/50 border border-gray-700/50">
+                        <Bot className="h-3 w-3 text-gray-300" />
+                      </div>
+                    </div>
+                  )}
+                  <div
+                    className={cn(
+                      "rounded-2xl p-4 shadow-lg relative group",
+                      "transition-all duration-200",
+                      message.role === "user"
+                        ? "bg-gradient-to-br from-emerald-600/90 to-emerald-700/90 text-white"
+                        : "bg-gradient-to-br from-gray-800/90 to-gray-900/90 text-gray-100",
+                      "border border-opacity-20 hover:border-opacity-40",
+                      message.role === "user"
+                        ? "border-emerald-400"
+                        : "border-gray-500"
+                    )}
+                  >
+                    <div className="whitespace-pre-wrap">{message.content}</div>
+                    
+                    {message.timestamp && (
+                      <div className={cn(
+                        "text-xs mt-2 opacity-60",
+                        message.role === "user" ? "text-emerald-200" : "text-gray-400"
+                      )}>
+                        {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    )}
+
+                    {message.role === 'assistant' && (
+                      <div className="absolute -bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 rounded-full bg-gray-800/80 hover:bg-emerald-900/80"
+                          onClick={() => handleReaction(message.id, 'thumbsUp')}
+                        >
+                          <ThumbsUp className={cn(
+                            "h-3 w-3",
+                            message.reactions?.thumbsUp ? "text-emerald-400" : "text-gray-400"
+                          )} />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 rounded-full bg-gray-800/80 hover:bg-red-900/80"
+                          onClick={() => handleReaction(message.id, 'thumbsDown')}
+                        >
+                          <ThumbsDown className={cn(
+                            "h-3 w-3",
+                            message.reactions?.thumbsDown ? "text-red-400" : "text-gray-400"
+                          )} />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+
+          {isLoading && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="self-start mr-auto mb-4"
+            >
+              <div className="bg-gray-800/80 rounded-xl p-3 border border-gray-700/50">
+                <div className="flex items-center gap-3">
+                  <div className="flex space-x-1">
+                    <motion.div
+                      animate={{ scale: [1, 1.2, 1] }}
+                      transition={{ repeat: Infinity, duration: 1, delay: 0 }}
+                      className="w-2 h-2 rounded-full bg-emerald-400"
+                    />
+                    <motion.div
+                      animate={{ scale: [1, 1.2, 1] }}
+                      transition={{ repeat: Infinity, duration: 1, delay: 0.2 }}
+                      className="w-2 h-2 rounded-full bg-emerald-400"
+                    />
+                    <motion.div
+                      animate={{ scale: [1, 1.2, 1] }}
+                      transition={{ repeat: Infinity, duration: 1, delay: 0.4 }}
+                      className="w-2 h-2 rounded-full bg-emerald-400"
+                    />
+                  </div>
+                  <span className="text-sm text-emerald-400 font-medium">Thinking...</span>
+                </div>
+              </div>
+            </motion.div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+
+        <div className="border-t border-emerald-800/30 p-4 bg-gradient-to-t from-black to-gray-900/80 backdrop-blur-sm">
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={toggleVoiceInput}
+              className={cn(
+                "h-[44px] w-[44px] rounded-xl",
+                "bg-gray-800/80 text-gray-400 border-gray-700/50",
+                "hover:bg-emerald-900/50 hover:text-emerald-400 hover:border-emerald-700/50",
+                isListening && "animate-pulse bg-red-900/50 text-red-400 border-red-700/50"
+              )}
+            >
+              <Mic className="h-5 w-5" />
+            </Button>
+
+            <div className="relative flex-1">
+              <textarea
+                ref={inputRef}
+                className={cn(
+                  "w-full resize-none rounded-xl px-4 py-3 h-[44px] max-h-[120px]",
+                  "bg-gray-800/80 text-white placeholder-gray-500",
+                  "border border-gray-700/50",
+                  "focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none",
+                  "transition-all duration-200"
+                )}
+                placeholder={isListening ? "Listening..." : "Type your message..."}
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                onKeyDown={handleKeyPress}
+                disabled={isLoading || !user || isSessionExpired}
+                rows={1}
+              />
+              <div className="absolute right-2 bottom-2 text-xs text-gray-500">
+                {inputMessage.length}/500
+              </div>
+            </div>
+
+            <Button
+              onClick={handleSendMessage}
+              disabled={!inputMessage.trim() || isLoading || !user || isSessionExpired}
+              className={cn(
+                "h-[44px] w-[44px] rounded-xl",
+                "bg-gradient-to-r from-emerald-600 to-emerald-500",
+                "text-white border-none",
+                "hover:opacity-90 disabled:opacity-50",
+                "transition-all duration-200"
+              )}
+            >
+              <Send className="h-5 w-5" />
+            </Button>
+          </div>
+
+          {isSessionExpired && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-2 text-center"
+            >
+              <Button
+                variant="link"
+                onClick={() => window.location.reload()}
+                className="text-xs text-emerald-400 hover:text-emerald-300"
+              >
+                Session expired. Click here to refresh and log in again.
+              </Button>
+            </motion.div>
+          )}
+        </div>
+      </motion.div>
+    </>
+  );
+};
+
+export default NewAIChatWidget;
