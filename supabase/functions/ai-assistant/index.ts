@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -7,523 +8,112 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Environment variables
+// Extract OpenAI API key from environment variables
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY') || '';
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-const RAZORPAY_KEY_ID = Deno.env.get('RAZORPAY_KEY_ID') || '';
-const RAZORPAY_KEY_SECRET = Deno.env.get('RAZORPAY_KEY_SECRET') || '';
 
-// Enhanced system prompt with payment instructions
+// System prompt to restrict the scope of the assistant
 const SYSTEM_PROMPT = `
-You are Grid2Play's expert sports slot booking assistant with payment capabilities.
+You are a helpful assistant embedded in a sports slot booking website called Grid2Play. Your job is to help users with venue selection, slot availability, bookings, cancellations, payments, and recommendations for sports-related activities on this platform.
 
-KEY FEATURES:
-1. Check slot availability for venues/courts
-2. Book courts for specific time slots
-3. Process payments via Razorpay
-4. View/modify/cancel bookings
-5. Answer venue/sport-specific questions
+If the user asks anything unrelated to this platform (e.g., homework, coding help, chatting, etc.), politely say:
+'Sorry, I can only help with sports slot booking queries on this site.' Do not answer off-topic queries.
 
-PAYMENT FLOW:
-1. Show available slots first
-2. Confirm booking details
-3. Provide "Pay Now (₹amount)" button
-4. Complete payment via Razorpay
+Keep responses concise, focusing on helping users:
+1. Find available slots at venues
+2. Book courts for their preferred sports
+3. Check their booking history
+4. Get recommendations based on their preferences
+5. Understand venue policies and amenities
+6. Navigate payment options
 
-RULES:
-- Use only real data from our database
-- Verify slot availability before booking
-- For payments, return Razorpay order object
-- Never ask for credit card details
-- Maintain polite, helpful tone in English/Hinglish
+You can use functions to access real data from our database when needed.
+
+IMPORTANT: You already know who the user is. DO NOT ask users for their user ID, email, or any identifying information.
+Instead, use the authenticated user information already provided to this function.
 `;
 
+// Hindi-English mixed system prompt for bilingual responses
 const HINGLISH_SYSTEM_PROMPT = `
 ${SYSTEM_PROMPT}
 
-Respond in Hinglish when user does. Use phrases like:
-- "Aapka slot available hai" (Your slot is available)
-- "Payment karein: Pay Now (₹amount)"
-- "Booking confirm ho gayi!" (Booking confirmed!)
+If the user writes in Hinglish (Hindi-English mix), please respond in Hinglish as well. 
+Be friendly and conversational. Use phrases like:
+- "Kya help chahiye aapko?" (What help do you need?)
+- "Main check kar raha hoon" (I'm checking)
+- "Yeh raha aapka booking details" (Here are your booking details)
+
+Always maintain a polite and helpful tone in either language.
 `;
 
-// Main server function
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Initial checks
     if (!OPENAI_API_KEY) {
-      return errorResponse("Assistant is currently unavailable");
+      return new Response(
+        JSON.stringify({ 
+          message: { 
+            role: "assistant", 
+            content: "I'm currently unavailable. Please contact the administrator to set up my integration." 
+          }
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
     
     const { messages, userId, role } = await req.json();
     
+    // Check if user is authenticated
     if (!userId) {
-      return errorResponse("Please sign in to use booking features. कृपया साइन इन करें।");
-    }
-
-    // Initialize Supabase client
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    
-    // Detect language
-    const selectedSystemPrompt = detectHinglish(messages[messages.length - 1]?.content || "") 
-      ? HINGLISH_SYSTEM_PROMPT 
-      : SYSTEM_PROMPT;
-
-    // Prepare message history
-    const completeMessages = [
-      { 
-        role: "system", 
-        content: `${selectedSystemPrompt}\nCurrent user ID: ${userId}` 
-      },
-      ...messages
-    ];
-
-    // ================== SLOT AVAILABILITY ==================
-    if (containsSlotQuery(messages[messages.length - 1]?.content || "")) {
-      try {
-        const { venueId, sportId, courtId, date } = extractBookingParams(
-          messages[messages.length - 1]?.content || ""
-        );
-
-        if (venueId && sportId) {
-          const slotsInfo = courtId 
-            ? await getAvailableSlots(supabase, courtId, date)
-            : await getVenueSlots(supabase, venueId, sportId, date);
-
-          if (slotsInfo.success) {
-            completeMessages.push({
-              role: "system",
-              content: `SLOT_AVAILABILITY: ${JSON.stringify(slotsInfo)}`
-            });
+      return new Response(
+        JSON.stringify({ 
+          message: { 
+            role: "assistant", 
+            content: "Please sign in to use booking features. कृपया साइन इन करें।" 
           }
-        }
-      } catch (error) {
-        console.error("Slot check error:", error);
-      }
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    // ================== BOOKING CREATION ==================
-    if (containsBookingCreationQuery(messages[messages.length - 1]?.content || "")) {
-      try {
-        const { courtId, date, startTime, endTime } = extractBookingParams(
-          messages[messages.length - 1]?.content || ""
-        );
-
-        if (courtId && date && startTime && endTime) {
-          const bookingResult = await createBookingWithPayment(
-            supabase,
-            userId,
-            { courtId, date, startTime, endTime }
-          );
-          
-          if (bookingResult.success) {
-            completeMessages.push({
-              role: "system",
-              content: `BOOKING_CREATED: ${JSON.stringify(bookingResult)}`
-            });
-          }
-        }
-      } catch (error) {
-        console.error("Booking error:", error);
-      }
-    }
-
-    // ================== FUNCTION HANDLING ==================
-    const functions = [
-      // ... (keep all your existing function definitions)
-      // Add new payment-related function
-      {
-        name: "process_payment",
-        description: "Process payment for a booking via Razorpay",
-        parameters: {
-          type: "object",
-          properties: {
-            booking_id: { type: "string" },
-            amount: { type: "number" },
-            currency: { type: "string", enum: ["INR"] }
-          },
-          required: ["booking_id", "amount"]
-        }
-      }
-    ];
-
-    // Initial OpenAI call
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-4",
-        messages: completeMessages,
-        temperature: 0.7,
-        tools: functions.map(fn => ({ type: "function", function: fn })),
-        tool_choice: "auto",
-      }),
-    });
-
-    const data = await response.json();
-    const responseMessage = data.choices[0].message;
-    let result = { message: responseMessage };
-    
-    // Handle function calls
-    if (responseMessage.tool_calls?.length > 0) {
-      const toolCall = responseMessage.tool_calls[0];
-      const functionName = toolCall.function.name;
-      const functionArgs = JSON.parse(toolCall.function.arguments);
+    // Detect language - check if the latest user message might be in Hinglish
+    let selectedSystemPrompt = SYSTEM_PROMPT;
+    if (messages && messages.length > 0) {
+      const latestUserMsg = messages[messages.length - 1].content || '';
       
-      const functionResult = await handleFunctionCall(
-        { name: functionName, arguments: functionArgs, userId },
-        supabase
+      // Very basic Hinglish detection (presence of common Hindi words/patterns)
+      const hindiPatterns = ['kya', 'hai', 'main', 'mujhe', 'aap', 'kaise', 'nahi', 'karo', 'kar', 'mein'];
+      const mightBeHinglish = hindiPatterns.some(pattern => 
+        latestUserMsg.toLowerCase().includes(pattern)
       );
       
-      // Second OpenAI call with function result
-      const secondResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${OPENAI_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-4",
-          messages: [
-            ...completeMessages,
-            responseMessage,
-            {
-              role: "function",
-              name: functionName,
-              content: JSON.stringify(functionResult)
-            }
-          ],
-          temperature: 0.7
-        }),
-      });
-      
-      const secondData = await secondResponse.json();
-      result = { 
-        message: secondData.choices[0].message, 
-        functionCall: {
-          name: functionName,
-          arguments: functionArgs,
-          result: functionResult
-        }
-      };
-    }
-
-    return new Response(JSON.stringify(result), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
-    
-  } catch (error) {
-    console.error("Error:", error);
-    return errorResponse("Sorry, I encountered an error. Please try again.");
-  }
-});
-
-// ================== CORE FUNCTIONS ==================
-
-async function handleFunctionCall(functionCall: any, supabase: any) {
-  const { name, arguments: args, userId } = functionCall;
-  
-  console.log(`Handling function call: ${name}`, args);
-  
-  switch (name) {
-    // ... (keep all your existing function cases)
-    case "process_payment":
-      return await processPayment(supabase, args.booking_id, args.amount, args.currency || "INR");
-    default:
-      throw new Error(`Unknown function: ${name}`);
-  }
-}
-
-// ================== BOOKING & PAYMENT FUNCTIONS ==================
-
-async function createBookingWithPayment(
-  supabase: any,
-  userId: string,
-  { courtId, date, startTime, endTime }: {
-    courtId: string;
-    date: string;
-    startTime: string;
-    endTime: string;
-  }
-) {
-  try {
-    // 1. Verify slot availability
-    const { data: availability, error: availabilityError } = await supabase
-      .rpc('get_available_slots', {
-        p_court_id: courtId,
-        p_date: date
-      });
-
-    if (availabilityError) throw availabilityError;
-
-    const slotAvailable = availability.some((slot: any) => 
-      slot.start_time === startTime && 
-      slot.end_time === endTime && 
-      slot.is_available
-    );
-
-    if (!slotAvailable) {
-      return { 
-        success: false, 
-        message: "Slot not available. Please choose another time." 
-      };
-    }
-
-    // 2. Get court pricing
-    const { data: court, error: courtError } = await supabase
-      .from('courts')
-      .select('id, name, hourly_rate, venue:venues(id, name)')
-      .eq('id', courtId)
-      .single();
-
-    if (courtError || !court) throw courtError || new Error("Court not found");
-
-    // 3. Calculate price
-    const durationHours = (
-      (new Date(`${date}T${endTime}`).getTime() - 
-       new Date(`${date}T${startTime}`).getTime()) / 
-      (1000 * 60 * 60)
-    );
-    const amount = Math.round(durationHours * court.hourly_rate * 100);
-
-    // 4. Create booking record
-    const { data: booking, error: bookingError } = await supabase
-      .from('bookings')
-      .insert({
-        user_id: userId,
-        court_id: courtId,
-        booking_date: date,
-        start_time: startTime,
-        end_time: endTime,
-        total_price: amount / 100,
-        status: 'pending_payment',
-        payment_status: 'pending'
-      })
-      .select()
-      .single();
-
-    if (bookingError) throw bookingError;
-
-    // 5. Create Razorpay order
-    const razorpayOrder = await createRazorpayOrder({
-      amount,
-      currency: 'INR',
-      booking_id: booking.id,
-      user_id: userId,
-      description: `${court.name} on ${date} (${startTime}-${endTime})`
-    });
-
-    // 6. Update booking with payment reference
-    const { error: updateError } = await supabase
-      .from('bookings')
-      .update({ payment_reference: razorpayOrder.id })
-      .eq('id', booking.id);
-
-    if (updateError) throw updateError;
-
-    return {
-      success: true,
-      booking,
-      payment: formatPaymentResponse(razorpayOrder, court, booking)
-    };
-
-  } catch (error) {
-    console.error("Booking error:", error);
-    return { 
-      success: false, 
-      message: "Booking failed. " + (error.message || "Please try again."),
-      error: error.message 
-    };
-  }
-}
-
-async function createRazorpayOrder(orderDetails: {
-  amount: number;
-  currency: string;
-  booking_id: string;
-  user_id: string;
-  description: string;
-}) {
-  const authString = btoa(`${RAZORPAY_KEY_ID}:${RAZORPAY_KEY_SECRET}`);
-  
-  const response = await fetch("https://api.razorpay.com/v1/orders", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Basic ${authString}`
-    },
-    body: JSON.stringify({
-      amount: orderDetails.amount,
-      currency: orderDetails.currency,
-      receipt: `booking_${orderDetails.booking_id}`,
-      notes: {
-        booking_id: orderDetails.booking_id,
-        user_id: orderDetails.user_id
-      },
-      description: orderDetails.description
-    })
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error?.description || "Payment processing failed");
-  }
-
-  return await response.json();
-}
-
-function formatPaymentResponse(order: any, court: any, booking: any) {
-  return {
-    provider: "razorpay",
-    order_id: order.id,
-    amount: order.amount / 100, // Convert back to rupees
-    currency: order.currency,
-    key: RAZORPAY_KEY_ID,
-    name: "Grid2Play Booking",
-    description: `Booking for ${court.name}`,
-    prefill: {
-      name: "",
-      email: "",
-      contact: ""
-    },
-    theme: {
-      color: "#3399cc"
-    },
-    booking_details: {
-      court: court.name,
-      date: booking.booking_date,
-      time: `${booking.start_time}-${booking.end_time}`,
-      booking_id: booking.id
-    }
-  };
-}
-
-async function processPayment(
-  supabase: any,
-  bookingId: string,
-  amount: number,
-  currency: string = "INR"
-) {
-  try {
-    // Verify booking exists and amount matches
-    const { data: booking, error: bookingError } = await supabase
-      .from('bookings')
-      .select('id, total_price, status')
-      .eq('id', bookingId)
-      .single();
-
-    if (bookingError || !booking) throw bookingError || new Error("Booking not found");
-    if (booking.status !== 'pending_payment') throw new Error("Booking already processed");
-    if (Math.round(booking.total_price * 100) !== amount) throw new Error("Amount mismatch");
-
-    // Create Razorpay order
-    const order = await createRazorpayOrder({
-      amount: amount * 100, // Convert to paise
-      currency,
-      booking_id: bookingId,
-      user_id: "", // Will be added from booking
-      description: `Payment for booking ${bookingId}`
-    });
-
-    return {
-      success: true,
-      payment: formatPaymentResponse(order, { name: "" }, booking)
-    };
-  } catch (error) {
-    console.error("Payment error:", error);
-    return {
-      success: false,
-      message: "Payment processing failed",
-      error: error.message
-    };
-  }
-}
-
-// ================== HELPER FUNCTIONS ==================
-
-function extractBookingParams(content: string) {
-  const lowerContent = content.toLowerCase();
-  
-  // Extract IDs
-  const venueId = extractId(content, 'venue');
-  const sportId = extractId(content, 'sport');
-  const courtId = extractId(content, 'court');
-  
-  // Extract date
-  let date = new Date().toISOString().split('T')[0]; // Default to today
-  if (lowerContent.includes('tomorrow')) {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    date = tomorrow.toISOString().split('T')[0];
-  } else {
-    const dateMatch = content.match(/(\d{4}-\d{2}-\d{2})/);
-    if (dateMatch) date = dateMatch[1];
-  }
-  
-  // Extract time
-  let startTime = '', endTime = '';
-  const timeMatch = content.match(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/);
-  if (timeMatch) {
-    startTime = timeMatch[1];
-    endTime = timeMatch[2];
-  }
-
-  return { venueId, sportId, courtId, date, startTime, endTime };
-}
-
-function extractId(content: string, type: string) {
-  const regex = new RegExp(`${type}\\s*(id)?\\s*[:=]?\\s*([a-f0-9-]{36})`, 'i');
-  const match = content.match(regex);
-  return match?.[2] || '';
-}
-
-function detectHinglish(message: string): boolean {
-  const hindiPatterns = ['kya', 'hai', 'main', 'mujhe', 'aap', 'kaise', 'nahi', 'karo', 'kar', 'mein'];
-  return hindiPatterns.some(pattern => message.toLowerCase().includes(pattern));
-}
-
-function containsSlotQuery(message: string): boolean {
-  const keywords = [
-    /slot/i, /available/i, /timing/i, /book a court/i, 
-    /reserve a court/i, /time available/i, /khali slot/i
-  ];
-  return keywords.some(keyword => keyword.test(message));
-}
-
-function containsBookingCreationQuery(message: string): boolean {
-  const keywords = [
-    /book now/i, /confirm booking/i, /pay for slot/i, 
-    /reserve court/i, /make payment/i, /proceed to pay/i
-  ];
-  return keywords.some(keyword => keyword.test(message));
-}
-
-function errorResponse(message: string) {
-  return new Response(
-    JSON.stringify({ 
-      message: { 
-        role: "assistant", 
-        content: message 
+      if (mightBeHinglish) {
+        selectedSystemPrompt = HINGLISH_SYSTEM_PROMPT;
       }
-    }),
-    { 
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 200
     }
-  );
-}
 
-// ================== EXISTING DATABASE FUNCTIONS ==================
-// ... (include all your existing database functions exactly as they are)
-// getUserBookings, getAvailableSlots, getAdminSummary, etc.
+    // Create Supabase client for database access
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    // Prepare complete message history with system prompt
+    const completeMessages = [
+      { role: "system", content: selectedSystemPrompt },
+      ...messages
+    ];
+    
+    // Add user authentication context to the system message
+    if (userId) {
+      completeMessages.unshift({
+        role: "system", 
+        content: `The current user has user_id: ${userId}. Use this to fetch their data without asking them for it.`
+      });
+    }
+    
     // Define available functions
     const functions = [
       {
