@@ -61,7 +61,7 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
           
-          {/* New AI Chat Widget (shown on all pages for authenticated users) */}
+          {/* Only show the new AI Chat Widget */}
           <NewAIChatWidget />
         </AuthProvider>
       </BrowserRouter>

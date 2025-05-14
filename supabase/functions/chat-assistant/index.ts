@@ -1,6 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -34,6 +35,11 @@ Examples of what you can help with:
 `;
 
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY') || '';
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+
+// Create Supabase client
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 // Main handler for the edge function
 serve(async (req) => {
@@ -58,7 +64,8 @@ serve(async (req) => {
     }
 
     // Parse request body
-    const { messages = [], userId = null } = await req.json();
+    const requestBody = await req.json();
+    const { messages = [], userId = null } = requestBody;
     
     // Check if user is authenticated
     if (!userId) {
@@ -77,16 +84,15 @@ serve(async (req) => {
     console.log(`Processing request for user: ${userId}`);
     
     // Get user info to personalize responses
-    // Create Supabase client for database access
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-    const supabase = createClient(supabaseUrl, supabaseKey);
-    
-    const { data: userProfile } = await supabase
+    const { data: userProfile, error: userError } = await supabase
       .from('profiles')
       .select('full_name, email, phone')
       .eq('id', userId)
       .single();
+
+    if (userError) {
+      console.error("Error fetching user profile:", userError);
+    }
 
     const userName = userProfile?.full_name || "User";
     
@@ -104,13 +110,17 @@ serve(async (req) => {
     
     // Special handling for booking-related queries
     if (containsBookingQuery(messages[messages.length - 1]?.content || "")) {
-      const bookingInfo = await getUserBookings(userId, supabase);
-      
-      if (bookingInfo.success) {
-        completeMessages.push({
-          role: "system",
-          content: `User has ${bookingInfo.upcoming.length} upcoming bookings and ${bookingInfo.past.length} past bookings.`
-        });
+      try {
+        const bookingInfo = await getUserBookings(userId);
+        
+        if (bookingInfo.success) {
+          completeMessages.push({
+            role: "system",
+            content: `User has ${bookingInfo.upcoming.length} upcoming bookings and ${bookingInfo.past.length} past bookings. Upcoming bookings: ${JSON.stringify(bookingInfo.upcoming)}`
+          });
+        }
+      } catch (error) {
+        console.error("Error getting booking information:", error);
       }
     }
 
@@ -193,51 +203,65 @@ function containsBookingQuery(message: string): boolean {
   return bookingKeywords.some(keyword => keyword.test(message));
 }
 
-// Supabase client with service role for database access
-function createClient(supabaseUrl: string, supabaseKey: string) {
-  return {
-    from: (table: string) => ({
-      select: (columns: string = '*') => ({
-        eq: (column: string, value: any) => ({
-          single: () => ({
-            data: null,
-            error: null
-          }),
-          data: [],
-          error: null
-        }),
-        gte: (column: string, value: any) => ({
-          order: (column: string, { ascending = true }: { ascending: boolean } = { ascending: true }) => ({
-            limit: (limit: number) => ({
-              data: [],
-              error: null
-            })
-          })
-        }),
-        lt: (column: string, value: any) => ({
-          order: (column: string, { ascending = true }: { ascending: boolean } = { ascending: true }) => ({
-            limit: (limit: number) => ({
-              data: [],
-              error: null
-            })
-          })
-        })
-      })
-    })
-  };
-}
-
-// Function to get user bookings
-async function getUserBookings(userId: string, supabase: any) {
+// Function to get user bookings using Supabase client
+async function getUserBookings(userId: string) {
   try {
     console.log("Fetching bookings for user:", userId);
     
-    // Simulating data - in a real implementation this would use supabase client
-    // to query actual bookings data
+    // Get current date in YYYY-MM-DD format
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Get upcoming bookings
+    const { data: upcomingBookings, error: upcomingError } = await supabase
+      .from('bookings')
+      .select(`
+        id,
+        booking_date,
+        start_time,
+        end_time,
+        total_price,
+        status,
+        courts(name, venue_id),
+        venues:courts(name)
+      `)
+      .eq('user_id', userId)
+      .gte('booking_date', today)
+      .order('booking_date', { ascending: true })
+      .limit(5);
+      
+    if (upcomingError) throw upcomingError;
+    
+    // Get past bookings
+    const { data: pastBookings, error: pastError } = await supabase
+      .from('bookings')
+      .select(`
+        id,
+        booking_date,
+        start_time,
+        end_time,
+        total_price,
+        status
+      `)
+      .eq('user_id', userId)
+      .lt('booking_date', today)
+      .order('booking_date', { ascending: false })
+      .limit(5);
+      
+    if (pastError) throw pastError;
+    
+    // Format bookings for better readability in assistant responses
+    const formattedUpcoming = upcomingBookings.map(booking => ({
+      date: booking.booking_date,
+      time: `${booking.start_time} - ${booking.end_time}`,
+      court: booking.courts?.name || 'Unknown court',
+      venue: booking.venues?.name || 'Unknown venue',
+      status: booking.status
+    }));
+    
     return {
       success: true,
-      upcoming: [],
-      past: []
+      upcoming: formattedUpcoming,
+      past: pastBookings
     };
   } catch (error) {
     console.error("Error in getUserBookings:", error);

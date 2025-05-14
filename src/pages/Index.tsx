@@ -544,8 +544,7 @@ const Index: React.FC = () => {
 
       {isBookModalOpen && <BookSlotModal onClose={() => setIsBookModalOpen(false)} />}
       
-      {/* Add AI Chat Widget */}
-      <AIChatWidget />
+      {/* Remove old AIChatWidget reference */}
     </div>;
 };
 export default Index;
