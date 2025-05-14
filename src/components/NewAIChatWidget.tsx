@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { MessageCircle, X, Send } from 'lucide-react';
@@ -151,12 +150,12 @@ const NewAIChatWidget = () => {
 
     return (
       <div className="flex flex-col gap-2 mb-4">
-        <p className="text-sm text-muted-foreground">Try asking:</p>
+        <p className="text-sm text-emerald-300">Try asking:</p>
         <div className="flex flex-wrap gap-2">
           {examples.map((example, index) => (
             <button
               key={index}
-              className="text-xs bg-accent px-3 py-1 rounded-full hover:bg-accent/80 transition-colors"
+              className="text-xs bg-emerald-900/50 text-emerald-100 px-3 py-1 rounded-full hover:bg-emerald-800/80 transition-colors border border-emerald-800/30"
               onClick={() => {
                 setInputMessage(example);
                 if (inputRef.current) {
@@ -180,37 +179,57 @@ const NewAIChatWidget = () => {
   return (
     <>
       {/* Chat toggle button */}
-      <Button
+      <button
         className={cn(
-          "fixed bottom-4 right-4 rounded-full size-14 p-0 shadow-lg z-50",
-          isOpen ? "bg-destructive hover:bg-destructive/90" : "bg-primary hover:bg-primary/90"
+          "fixed bottom-6 right-6 rounded-full w-14 h-14 p-0 shadow-xl z-50 flex items-center justify-center",
+          "bg-black border-2 border-emerald-800 hover:bg-gray-900 transition-all duration-300",
+          "focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2 focus:ring-offset-black",
+          isOpen ? "rotate-90" : "rotate-0"
         )}
         onClick={() => setIsOpen(!isOpen)}
       >
-        {isOpen ? <X size={24} /> : <MessageCircle size={24} />}
-      </Button>
+        {isOpen ? (
+          <X className="h-6 w-6 text-emerald-400" />
+        ) : (
+          <MessageCircle className="h-6 w-6 text-emerald-400" />
+        )}
+        {isLoading && (
+          <span className="absolute -top-1 -right-1 flex h-4 w-4">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500"></span>
+          </span>
+        )}
+      </button>
 
       {/* Chat dialog */}
       <div 
         className={cn(
-          "fixed bottom-24 right-4 w-[90vw] sm:w-[400px] max-h-[600px] bg-background rounded-lg shadow-xl z-40 border overflow-hidden transition-all duration-300 ease-in-out",
+          "fixed bottom-24 right-6 w-[90vw] sm:w-[400px] max-h-[600px] rounded-lg shadow-2xl z-40 border overflow-hidden transition-all duration-300 ease-in-out",
+          "bg-gray-900 border-emerald-800/30 backdrop-blur-sm",
           isOpen 
             ? "scale-100 opacity-100 translate-y-0" 
             : "scale-95 opacity-0 translate-y-4 pointer-events-none"
         )}
       >
         {/* Chat header */}
-        <div className="p-4 border-b bg-primary text-primary-foreground">
-          <h3 className="font-semibold">Grid2Play Assistant</h3>
-          <p className="text-xs opacity-80">Ask about bookings, venues, and sports</p>
+        <div className="p-4 border-b border-emerald-800/30 bg-gradient-to-r from-black to-emerald-900/20">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-full bg-emerald-900/30 border border-emerald-800/50">
+              <MessageCircle className="h-5 w-5 text-emerald-400" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-white">Grid2Play Assistant</h3>
+              <p className="text-xs text-emerald-300/80">Ask about bookings, venues, and sports</p>
+            </div>
+          </div>
         </div>
 
         {/* Messages container */}
-        <div className="flex flex-col h-[400px] overflow-y-auto p-4">
+        <div className="flex flex-col h-[400px] overflow-y-auto p-4 bg-gradient-to-b from-gray-900/80 to-gray-900">
           {messages.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center text-muted-foreground">
+            <div className="flex-1 flex items-center justify-center text-emerald-300/70">
               <div className="text-center">
-                <p className="mb-4">How can I help with your sports bookings?</p>
+                <p className="mb-4 text-lg font-medium">How can I help with your sports bookings?</p>
                 {renderExampleQueries()}
               </div>
             </div>
@@ -219,7 +238,7 @@ const NewAIChatWidget = () => {
               <div
                 key={index}
                 className={cn(
-                  "mb-4 max-w-[80%]",
+                  "mb-4 max-w-[80%] animate-fade-in",
                   message.role === "user" 
                     ? "self-end ml-auto" 
                     : "self-start mr-auto"
@@ -227,30 +246,35 @@ const NewAIChatWidget = () => {
               >
                 <div
                   className={cn(
-                    "rounded-lg p-3",
+                    "rounded-lg p-3 shadow-sm",
+                    "transition-all duration-200",
                     message.role === "user" 
-                      ? "bg-primary text-primary-foreground" 
-                      : "bg-muted"
+                      ? "bg-emerald-800/90 text-white border border-emerald-700/50" 
+                      : "bg-gray-800/90 text-gray-100 border border-gray-700/50"
                   )}
                 >
-                  {message.content}
+                  <div className="whitespace-pre-wrap">{message.content}</div>
+                  {message.timestamp && (
+                    <div className={cn(
+                      "text-xs mt-1 text-right",
+                      message.role === "user" ? "text-emerald-200/70" : "text-gray-400"
+                    )}>
+                      {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  )}
                 </div>
-                {message.timestamp && (
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </div>
-                )}
               </div>
             ))
           )}
           {isLoading && (
             <div className="self-start mr-auto mb-4">
-              <div className="bg-muted rounded-lg p-3 flex items-center">
-                <span className="flex gap-1">
-                  <span className="w-2 h-2 rounded-full bg-primary animate-pulse" style={{ animationDelay: '0ms' }}></span>
-                  <span className="w-2 h-2 rounded-full bg-primary animate-pulse" style={{ animationDelay: '300ms' }}></span>
-                  <span className="w-2 h-2 rounded-full bg-primary animate-pulse" style={{ animationDelay: '600ms' }}></span>
-                </span>
+              <div className="bg-gray-800/80 rounded-lg p-3 border border-gray-700/50 flex items-center gap-2">
+                <div className="flex space-x-1">
+                  <div className="w-2 h-2 rounded-full bg-emerald-400 animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                  <div className="w-2 h-2 rounded-full bg-emerald-400 animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                  <div className="w-2 h-2 rounded-full bg-emerald-400 animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                </div>
+                <span className="text-sm text-emerald-300">Thinking...</span>
               </div>
             </div>
           )}
@@ -258,12 +282,16 @@ const NewAIChatWidget = () => {
         </div>
 
         {/* Input area */}
-        <div className="border-t p-4 bg-background">
+        <div className="border-t border-emerald-800/30 p-4 bg-gray-900/80 backdrop-blur-sm">
           {messages.length === 0 && renderExampleQueries()}
           <div className="flex gap-2">
             <textarea
               ref={inputRef}
-              className="flex-1 resize-none border rounded-md px-3 py-2 h-[40px] max-h-[120px] focus:outline-none focus:ring-2 focus:ring-primary"
+              className={cn(
+                "flex-1 resize-none rounded-lg px-4 py-3 h-[44px] max-h-[120px] focus:outline-none",
+                "bg-gray-800/80 text-white placeholder-gray-500 border border-gray-700/50",
+                "focus:border-emerald-700 focus:ring-1 focus:ring-emerald-700/30 transition-all"
+              )}
               placeholder="Type your message..."
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
@@ -271,13 +299,18 @@ const NewAIChatWidget = () => {
               disabled={isLoading || !user}
               rows={1}
             />
-            <Button
+            <button
               onClick={handleSendMessage}
               disabled={!inputMessage.trim() || isLoading || !user}
-              className="h-[40px] px-3"
+              className={cn(
+                "h-[44px] w-[44px] rounded-lg flex items-center justify-center transition-all",
+                "bg-emerald-800/90 text-emerald-100 border border-emerald-700/50",
+                "hover:bg-emerald-700/80 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed",
+                "focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2 focus:ring-offset-gray-900"
+              )}
             >
-              <Send size={18} />
-            </Button>
+              <Send className="h-5 w-5" />
+            </button>
           </div>
         </div>
       </div>
