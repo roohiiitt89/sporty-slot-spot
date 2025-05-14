@@ -148,6 +148,10 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       console.log('Relevant booking change detected:', payload);
       // Only refresh if the change matches our current selection
       if (
+        payload.new && 
+        typeof payload.new === 'object' &&
+        'court_id' in payload.new &&
+        'booking_date' in payload.new &&
         payload.new.court_id === selectedCourt &&
         payload.new.booking_date === selectedDate
       ) {
@@ -1487,3 +1491,5 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
 };
 
 export default BookSlotModal;
+
+</edits_to_apply>

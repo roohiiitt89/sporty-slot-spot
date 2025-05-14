@@ -1,4 +1,5 @@
-import { Faq3 } from "@/components/blocks/faq3";
+
+import { Faq3 } from "@/components/ui/faq3";
 
 const demoData = {
   heading: "Grid2Play FAQs",
