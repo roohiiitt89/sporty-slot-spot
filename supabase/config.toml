@@ -1,6 +1,5 @@
-
-# A string used to distinguish different Supabase projects on the same host. Defaults to the
-# working directory name when running `supabase init`.
+# A string used to distinguish different Supabase projects on the same host.
+# Defaults to the working directory name when running `supabase init`.
 project_id = "lrtirloetmulgmdxnusl"
 
 [api]
@@ -37,10 +36,6 @@ port = 54324
 [auth]
 enabled = true
 site_url = "http://localhost:3000"
-# Prevent emails being sent from auth, especially useful for local development
-autoconfirm = true
-sms_provider = ""
-sms_template = ""
 
 [auth.email]
 enable_signup = true
@@ -51,9 +46,7 @@ enable_confirmations = true
 enabled = true
 file_size_limit = "50MiB"
 
-[edge_functions]
-enabled = true
-
+# Removed the invalid edge_functions section here
 [analytics]
 enabled = false
 port = 54327
