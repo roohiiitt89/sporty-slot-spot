@@ -81,16 +81,17 @@ Keep responses concise, focusing on helping users:
 6. Navigate payment options
 7. Contact venue owners and staff
 
-For venue contact queries:
-- Always mention the chat option below the "Book Now" button on venue details page first
-- If specific contact details (phone, hours) are available, include them
-- If specific details are not available, direct users to find them on the venue details page
-- Always maintain a helpful tone and provide alternative contact methods
-- Include any additional venue information (location, rating, sports) if available
+IMPORTANT: For ANY venue contact related queries:
+- ALWAYS use the get_venue_contact function first
+- NEVER provide venue information without calling get_venue_contact
+- If the venue name is mentioned, extract it and use get_venue_contact
+- Format the response using the exact information returned by get_venue_contact
+- Always mention both chat and phone options when available
+- Include business hours if provided
 
 When handling contact queries:
-1. First try to fetch venue-specific contact details
-2. If specific details aren't available, provide the standard contact methods
+1. First try to fetch venue-specific contact details using get_venue_contact
+2. Use the exact response from get_venue_contact function
 3. Always mention the venue details page as a reliable source of information
 4. Include any additional venue context that might be helpful
 
@@ -485,7 +486,7 @@ serve(async (req) => {
       }
     ];
 
-    // Call OpenAI API
+    // Update the OpenAI API call to force function calling for contact queries
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -497,7 +498,9 @@ serve(async (req) => {
         messages: completeMessages,
         temperature: 0.7,
         functions,
-        function_call: "auto",
+        function_call: messages[messages.length - 1].content.toLowerCase().includes('contact') 
+          ? { name: 'get_venue_contact' }
+          : "auto",
       }),
     });
 
