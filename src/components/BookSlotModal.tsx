@@ -132,11 +132,9 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       setSelectedVenue(venueId);
       fetchVenueDetails(venueId);
     }
-    
-   useEffect(() => {
-   if (!user) return;
+ 
 
-     // Only subscribe to changes for the CURRENTLY SELECTED court and date
+  // Only subscribe to changes for the CURRENTLY SELECTED court and date
   const bookingChannel = supabase
     .channel('booking-updates')
     .on('postgres_changes', {
@@ -161,7 +159,8 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
   return () => {
     supabase.removeChannel(bookingChannel);
   };
-}, [user, selectedCourt, selectedDate]);
+}, [user, selectedCourt, selectedDate]); // Only resubscribe when these change
+    
   useEffect(() => {
     const loadRazorpayScript = () => {
       return new Promise((resolve) => {
