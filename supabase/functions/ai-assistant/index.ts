@@ -117,45 +117,6 @@ serve(async (req) => {
 
 
 
-
-    // Venue contact intent detection
-if (messages && messages.length > 0) {
-  const latestMsg = messages[messages.length - 1].content.toLowerCase();
-  const contactRegex = /(?:contact|call|get in touch with|reach)\s+(?:the\s+)?(.+?)\s+(?:venue|center|place|club|facility)?[?.]?$/i;
-  const match = latestMsg.match(contactRegex);
-
-  if (match) {
-    const venueName = match[1].trim();
-    const { data: venue, error } = await supabase
-      .from("venues")
-      .select("name, contact_number")
-      .ilike("name", `%${venueName}%`)
-      .limit(1)
-      .maybeSingle();
-
-    if (error) {
-      return new Response(JSON.stringify({ message: { content: "Sorry, I couldn't fetch venue details right now." } }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
-    if (!venue) {
-      return new Response(JSON.stringify({ message: { content: `Sorry, I couldn't find a venue named "${venueName}".` } }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
-
-    let reply = `You can chat with the "${venue.name}" venue owner directly within the site using the "Chat with Venue" feature.`;
-    if (venue.contact_number) {
-      reply += ` Or call the venue owner at ${venue.contact_number}.`;
-    } else {
-      reply += ` However, no phone number is available for this venue.`;
-    }
-
-    return new Response(JSON.stringify({ message: { content: reply } }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-  }
-}
-
-
-
-
-
-
     
     // Define available functions
     const functions = [
@@ -219,7 +180,19 @@ if (messages && messages.length > 0) {
           },
           required: ["court_id", "date", "start_time", "end_time"]
         }
-      }
+      },
+       {
+         name: "get_venue_contact",
+         description: "Get contact details (phone, location, etc.) for a specific venue by name.",
+         parameters: {
+           type: "object",
+           properties: {
+      venue_name: { type: "string", description: "Name of the venue" }
+    },
+    required: ["venue_name"]
+  }
+}
+
     ];
     
     // Only include admin functions if the user has admin role
@@ -386,6 +359,12 @@ async function handleFunctionCall(functionCall: any, supabase: any) {
       return await getVenueAdmins(supabase, args.venue_id);
     case "get_bookings_by_date_range":
       return await getBookingsByDateRange(supabase, args.start_date, args.end_date, args.venue_id);
+    
+     case "get_venue_contact":
+        return await getVenueContact(supabase, args.venue_name);
+
+
+
     case "book_court":
       return await bookCourt(supabase, userId, args.court_id, args.date, args.start_time, args.end_time);
     default:
@@ -448,6 +427,46 @@ async function getUserBookings(supabase: any, user_id: string, limit: number = 1
       .limit(limit);
     
     if (upcomingError) throw upcomingError;
+
+
+
+ 
+
+
+    if (functionCall.name === "get_venue_contact") {
+  const { venue_name } = functionCall.arguments;
+  const { data: venue, error } = await supabase
+    .from("venues")
+    .select("name, location, contact_number, opening_hours")
+    .ilike("name", `%${venue_name}%`)
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !venue) {
+    return {
+      content: `Sorry, I couldn't find contact details for "${venue_name}".`
+    };
+  }
+
+  let reply = `You can chat with the "${venue.name}" venue owner directly within the site using the "Chat with Venue" feature.`;
+  if (venue.contact_number) {
+    reply += ` Or call the venue owner at ${venue.contact_number}.`;
+  }
+  if (venue.location) {
+    reply += `\nLocation: ${venue.location}`;
+  }
+  if (venue.opening_hours) {
+    reply += `\nOpening Hours: ${venue.opening_hours}`;
+  }
+
+  return { content: reply };
+}
+
+
+
+
+
+
     
     // Get past bookings
     const { data: pastBookings, error: pastError } = await supabase
