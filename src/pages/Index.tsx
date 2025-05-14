@@ -395,40 +395,75 @@ const Index: React.FC = () => {
             </p>
           </div>
           
-          <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 ${visibleSections.athletes ? 'animate-reveal' : 'opacity-0'}`}>
-            {athletesBenefits.map((benefit, index) => <div key={index} className="group" style={{
-            animationDelay: `${0.15 * (index + 1)}s`
-          }}>
+          {/* Desktop Grid */}
+          <div className={`hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-6 ${visibleSections.athletes ? 'animate-reveal' : 'opacity-0'}`}>
+            {athletesBenefits.map((benefit, index) => (
+              <div key={index} className="group" style={{
+                animationDelay: `${0.15 * (index + 1)}s`
+              }}>
                 <div className="overflow-hidden rounded-lg bg-navy relative h-80">
-                  <img src={benefit.image} alt={benefit.title} className="w-full h-full object-cover filter grayscale group-hover:grayscale-0 transition-all duration-500" />
-                  
-                  <div className="absolute inset-0 bg-gradient-to-t from-navy to-transparent opacity-70"></div>
-                  
+                  <img 
+                    src={benefit.image} 
+                    alt={benefit.title} 
+                    className="w-full h-full object-cover filter grayscale group-hover:grayscale-0 transition-all duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-navy to-transparent opacity-70" />
                   <div className="absolute inset-0">
                     <svg className="w-full h-full opacity-0 group-hover:opacity-40 transition-opacity duration-700" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
                       <circle cx="20" cy="20" r="2" fill="#4CAF50" className="animate-pulse-light" />
                       <circle cx="80" cy="30" r="2" fill="#4CAF50" className="animate-pulse-light" style={{
-                    animationDelay: '0.5s'
-                  }} />
+                        animationDelay: '0.5s'
+                      }} />
                       <circle cx="65" cy="65" r="2" fill="#4CAF50" className="animate-pulse-light" style={{
-                    animationDelay: '1s'
-                  }} />
+                        animationDelay: '1s'
+                      }} />
                       <circle cx="30" cy="75" r="2" fill="#4CAF50" className="animate-pulse-light" style={{
-                    animationDelay: '1.5s'
-                  }} />
+                        animationDelay: '1.5s'
+                      }} />
                       <line x1="20" y1="20" x2="80" y2="30" stroke="#4CAF50" strokeWidth="0.5" strokeDasharray="2" />
                       <line x1="80" y1="30" x2="65" y2="65" stroke="#4CAF50" strokeWidth="0.5" strokeDasharray="2" />
                       <line x1="65" y1="65" x2="30" y2="75" stroke="#4CAF50" strokeWidth="0.5" strokeDasharray="2" />
                       <line x1="30" y1="75" x2="20" y2="20" stroke="#4CAF50" strokeWidth="0.5" strokeDasharray="2" />
                     </svg>
                   </div>
-                  
                   <div className="absolute inset-0 p-6 flex flex-col justify-end">
                     <h3 className="text-xl font-bold text-white mb-2">{benefit.title}</h3>
                     <p className="text-gray-300 opacity-0 group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">{benefit.description}</p>
                   </div>
                 </div>
-              </div>)}
+              </div>
+            ))}
+          </div>
+
+          {/* Mobile Carousel */}
+          <div className={`md:hidden ${visibleSections.athletes ? 'animate-reveal' : 'opacity-0'}`}>
+            <Carousel className="w-full">
+              <CarouselContent>
+                {athletesBenefits.map((benefit, index) => (
+                  <CarouselItem key={index} className="pl-1 md:basis-1/2 lg:basis-1/3">
+                    <div className="relative h-[400px] rounded-lg overflow-hidden bg-navy">
+                      <img 
+                        src={benefit.image} 
+                        alt={benefit.title}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-navy via-navy/50 to-transparent" />
+                      <div className="absolute inset-x-0 bottom-0 p-4 md:p-6">
+                        <div className="bg-navy/80 backdrop-blur-sm rounded-lg p-4 border border-indigo/20">
+                          <h3 className="text-lg font-bold text-white mb-2">{benefit.title}</h3>
+                          <p className="text-sm text-gray-300">{benefit.description}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 flex gap-2">
+                <CarouselPrevious className="relative inset-0 translate-y-0 h-8 w-8 rounded-full bg-navy hover:bg-indigo text-white" />
+                <CarouselNext className="relative inset-0 translate-y-0 h-8 w-8 rounded-full bg-navy hover:bg-indigo text-white" />
+              </div>
+            </Carousel>
           </div>
           
           <div className="mt-10 text-center">
