@@ -1,49 +1,92 @@
 
-import React from 'react';
-import { MapPin, Navigation } from 'lucide-react';
-import { useGeolocation } from '@/hooks/use-geolocation';
+import React, { useState } from 'react';
+import { MapPin } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 
-interface LocationPermissionRequestProps {
-  onPermissionGranted?: () => void;
+export interface LocationPermissionRequestProps {
+  onPermissionGranted: () => void;
+  onPermissionDenied?: () => void;
 }
 
-export function LocationPermissionRequest({ onPermissionGranted }: LocationPermissionRequestProps) {
-  const { hasPermission, requestPermission, isLoading } = useGeolocation();
+export const LocationPermissionRequest: React.FC<LocationPermissionRequestProps> = ({
+  onPermissionGranted,
+  onPermissionDenied
+}) => {
+  const [isRequesting, setIsRequesting] = useState(false);
 
   const handleRequestPermission = () => {
-    requestPermission();
-    if (onPermissionGranted) {
-      onPermissionGranted();
+    setIsRequesting(true);
+    
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        // Success callback
+        (position) => {
+          console.log('Location permission granted:', position);
+          setIsRequesting(false);
+          if (onPermissionGranted) {
+            onPermissionGranted();
+          }
+        },
+        // Error callback
+        (error) => {
+          console.error('Error getting location:', error);
+          setIsRequesting(false);
+          if (onPermissionDenied) {
+            onPermissionDenied();
+          }
+        },
+        { timeout: 10000, maximumAge: 60000 }
+      );
+    } else {
+      console.error('Geolocation is not supported by this browser');
+      setIsRequesting(false);
+      if (onPermissionDenied) {
+        onPermissionDenied();
+      }
     }
   };
 
-  // Don't show if we already have permission or if it's still determining
-  if (hasPermission === true || hasPermission === null) return null;
+  const handleSkip = () => {
+    if (onPermissionDenied) {
+      onPermissionDenied();
+    }
+  };
 
   return (
-    <Card className="bg-gradient-to-r from-navy-dark to-navy-light border-0 shadow-lg overflow-hidden">
-      <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-full bg-indigo/20 flex items-center justify-center">
-            <MapPin className="h-6 w-6 text-indigo-light" />
+    <Card className="border border-indigo-200/20 bg-indigo-50/5">
+      <CardContent className="p-6">
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+          <div className="flex-shrink-0 bg-indigo-100/20 p-3 rounded-full">
+            <MapPin className="h-6 w-6 text-indigo-500" />
           </div>
-          <div>
-            <h3 className="text-lg font-semibold text-white">Discover venues near you</h3>
-            <p className="text-gray-300">Allow location access to find the closest sports venues</p>
+          
+          <div className="flex-grow text-center sm:text-left">
+            <h3 className="font-medium text-gray-800">Discover venues near you</h3>
+            <p className="text-sm text-gray-600">
+              Allow location access to see sports venues in your area
+            </p>
+          </div>
+          
+          <div className="flex gap-3 mt-4 sm:mt-0">
+            <Button 
+              variant="outline"
+              onClick={handleSkip}
+              className="px-4"
+            >
+              Skip
+            </Button>
+            
+            <Button 
+              onClick={handleRequestPermission}
+              disabled={isRequesting}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4"
+            >
+              {isRequesting ? 'Requesting...' : 'Allow Location'}
+            </Button>
           </div>
         </div>
-        <button
-          onClick={handleRequestPermission}
-          disabled={isLoading}
-          className={`flex items-center gap-2 bg-indigo text-white px-4 py-2 rounded-md transition-all hover:bg-indigo-dark ${
-            isLoading ? 'opacity-75 cursor-not-allowed' : ''
-          }`}
-        >
-          <Navigation className="h-4 w-4" />
-          {isLoading ? 'Loading...' : 'Enable Location'}
-        </button>
       </CardContent>
     </Card>
   );
-}
+};

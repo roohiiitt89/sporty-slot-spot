@@ -48,7 +48,7 @@ const AvailabilityWidget: React.FC<AvailabilityWidgetProps> = ({
       } = await supabase.rpc('get_available_slots', {
         p_court_id: courtId,
         p_date: date
-      }).returns<GetAvailableSlotsResult>();
+      });
       
       console.log('Availability data received:', data);
       
@@ -69,7 +69,9 @@ const AvailabilityWidget: React.FC<AvailabilityWidgetProps> = ({
 
   useEffect(() => {
     // When courtId or date changes, we need to refetch availability
-    fetchAvailability();
+    if (courtId && date) {
+      fetchAvailability();
+    }
     
     // Reset state when key props change
     return () => {
@@ -81,7 +83,11 @@ const AvailabilityWidget: React.FC<AvailabilityWidgetProps> = ({
 
   useEffect(() => {
     // Set up real-time subscription for bookings changes
-    const bookingsChannel = supabase.channel('bookings_changes_' + courtId + '_' + date)
+    if (!courtId || !date) {
+      return;
+    }
+
+    const bookingsChannel = supabase.channel('bookings_changes')
       .on('postgres_changes', {
         event: '*',  // Listen for all events (INSERT, UPDATE, DELETE)
         schema: 'public',
@@ -101,7 +107,7 @@ const AvailabilityWidget: React.FC<AvailabilityWidgetProps> = ({
       });
     
     // Set up real-time subscription for blocked slots changes
-    const blockedSlotsChannel = supabase.channel('blocked_slots_changes_' + courtId + '_' + date)
+    const blockedSlotsChannel = supabase.channel('blocked_slots_changes')
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
