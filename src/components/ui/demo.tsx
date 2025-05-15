@@ -83,7 +83,7 @@ export function AuroraBackgroundDemo() {
           whileHover={{ scale: 1.08 }}
           whileTap={{ scale: 0.97 }}
           className="bg-emerald-800 hover:bg-emerald-700 transition text-white rounded-full w-fit px-6 sm:px-8 py-3 sm:py-4 text-lg sm:text-xl font-bold flex items-center gap-2 shadow-2xl border-2 border-emerald-900/60 mt-4"
-          onClick={() => navigate("/book")}
+          onClick={() => navigate('/venues')}
         >
           Book a Slot
           <ArrowRight className="ml-1 w-6 h-6" />
