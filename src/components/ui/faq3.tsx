@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import {
   Accordion,
   AccordionContent,
@@ -6,6 +7,8 @@ import {
 } from "@/components/ui/accordion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import HelpChatWidget from '@/components/HelpChatWidget';
+import { ArrowLeft } from 'lucide-react';
 
 interface FaqItem {
   id: string;
@@ -60,43 +63,44 @@ export const Faq3 = ({
   supportButtonText = "Contact Support",
   supportButtonUrl = "/contact",
 }: Faq3Props) => {
+  const [showSupportChat, setShowSupportChat] = useState(false);
   return (
-    <section className="py-16 md:py-24">
-      <div className="container space-y-12">
-        <div className="mx-auto flex max-w-3xl flex-col text-center">
-          <h2 className="mb-4 text-3xl font-bold md:text-4xl">{heading}</h2>
-          <p className="text-muted-foreground">{description}</p>
-        </div>
-
-        <Accordion type="single" collapsible className="mx-auto max-w-3xl">
-          {items.map((item) => (
-            <AccordionItem key={item.id} value={item.id}>
-              <AccordionTrigger className="text-left hover:no-underline">
-                <span className="font-medium">{item.question}</span>
-              </AccordionTrigger>
-              <AccordionContent>
-                <p className="text-muted-foreground">{item.answer}</p>
-              </AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
-
-        <div className="mx-auto max-w-3xl rounded-xl bg-secondary p-6 text-center">
-          <div className="flex justify-center gap-2 mb-6">
-            <Avatar className="border">
-              <AvatarImage src="/images/support-football.webp" />
-              <AvatarFallback>FB</AvatarFallback>
-            </Avatar>
-            <Avatar className="border">
-              <AvatarImage src="/images/support-tennis.webp" />
-              <AvatarFallback>TN</AvatarFallback>
-            </Avatar>
+    <section className="min-h-screen bg-navy-dark text-white py-16 px-4">
+      <div className="max-w-3xl mx-auto bg-navy rounded-xl shadow-lg p-8">
+        <button onClick={() => window.location.href = '/'} className="mb-6 flex items-center gap-2 text-indigo-light hover:text-white transition-colors">
+          <ArrowLeft className="w-5 h-5" /> Back to Home
+        </button>
+        <div className="space-y-12">
+          <div className="mx-auto flex max-w-3xl flex-col text-center">
+            <h2 className="mb-4 text-3xl font-bold md:text-4xl">{heading}</h2>
+            <p className="text-muted-foreground">{description}</p>
           </div>
-          <h3 className="mb-2 text-xl font-semibold">{supportHeading}</h3>
-          <p className="mb-6 text-muted-foreground">{supportDescription}</p>
-          <Button asChild>
-            <a href={supportButtonUrl}>{supportButtonText}</a>
-          </Button>
+          <Accordion type="single" collapsible className="mx-auto max-w-3xl">
+            {items.map((item) => (
+              <AccordionItem key={item.id} value={item.id}>
+                <AccordionTrigger className="text-left hover:no-underline">
+                  <span className="font-medium">{item.question}</span>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <p className="text-muted-foreground">{item.answer}</p>
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+          <div className="mx-auto max-w-3xl rounded-xl bg-secondary p-6 text-center">
+            <div className="flex justify-center gap-2 mb-6">
+              <Avatar className="border">
+                <AvatarImage src="/images/support-football.webp" />
+                <AvatarFallback>⚽️</AvatarFallback>
+              </Avatar>
+              <Avatar className="border">
+                <AvatarImage src="/images/support-tennis.webp" />
+                <AvatarFallback>🎾</AvatarFallback>
+              </Avatar>
+            </div>
+            <h3 className="mb-2 text-xl font-semibold">{supportHeading}</h3>
+            <p className="mb-6 text-muted-foreground">{supportDescription}</p>
+          </div>
         </div>
       </div>
     </section>
