@@ -21,6 +21,9 @@ import ChallengeDashboard from "./pages/challenge/ChallengeDashboard";
 import TeamDetails from "./pages/challenge/TeamDetails";
 import NewAIChatWidget from "./components/NewAIChatWidget";
 import Faq3Demo from "./pages/Faq3Demo";
+import Help from "./pages/Help";
+import Contact from "./pages/Contact";
+import Privacy from "./pages/Privacy";
 
 const queryClient = new QueryClient();
 
@@ -59,6 +62,9 @@ const App = () => (
             <Route path="/venues/:id" element={<VenueDetails />} />
             <Route path="/sports" element={<Sports />} />
             <Route path="/faq" element={<Faq3Demo />} />
+            <Route path="/help" element={<Help />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/privacy" element={<Privacy />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           
