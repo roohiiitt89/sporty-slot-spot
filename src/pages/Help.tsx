@@ -1,10 +1,13 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { HelpCircle, MessageSquare, Mail, Phone } from 'lucide-react';
+import { HelpCircle, MessageSquare, Mail, Phone, ArrowLeft } from 'lucide-react';
 
 const Help: React.FC = () => (
   <div className="min-h-screen bg-navy-dark text-white py-16 px-4">
     <div className="max-w-3xl mx-auto bg-navy rounded-xl shadow-lg p-8">
+      <button onClick={() => window.location.href = '/'} className="mb-6 flex items-center gap-2 text-indigo-light hover:text-white transition-colors">
+        <ArrowLeft className="w-5 h-5" /> Back to Home
+      </button>
       <h1 className="text-3xl font-bold mb-4 flex items-center gap-2">
         <HelpCircle className="w-8 h-8 text-indigo-light" /> Help Center
       </h1>
