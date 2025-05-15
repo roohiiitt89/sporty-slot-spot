@@ -29,7 +29,7 @@ const silhouettes = [
 
 export function AuroraBackgroundDemo() {
   const navigate = useNavigate();
-  const animatedWords = ["game on", "match", "training", "tournament"];
+  const animatedWords = ["Game on!", "Match!", "Court!", "Training!", "Tournament!"];
   return (
     <AuroraBackground className="bg-black dark:bg-black">
       {/* Animated sports silhouettes */}
