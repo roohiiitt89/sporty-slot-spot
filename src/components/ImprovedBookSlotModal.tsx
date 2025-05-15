@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { X } from 'lucide-react';
+import { X, Calendar as CalendarIcon } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
@@ -7,6 +7,9 @@ import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import SportDisplayName from './SportDisplayName';
 import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 
 // Declare Razorpay types based on their SDK
 declare global {
@@ -47,7 +50,7 @@ interface TimeSlot {
   price: string;
 }
 
-const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId }) => {
+const ImprovedBookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [venues, setVenues] = useState<Venue[]>([]);
@@ -57,7 +60,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
   const [selectedVenue, setSelectedVenue] = useState(venueId || '');
   const [selectedSport, setSelectedSport] = useState(sportId || '');
   const [selectedCourt, setSelectedCourt] = useState('');
-  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
   const [selectedSlotPrices, setSelectedSlotPrices] = useState<Record<string, number>>({});
   const [availableTimeSlots, setAvailableTimeSlots] = useState<TimeSlot[]>([]);
@@ -76,7 +79,6 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [bookingInProgress, setBookingInProgress] = useState(false);
-  const [razorpayOrderId, setRazorpayOrderId] = useState('');
 
   useEffect(() => {
     // Check if user is logged in, if not redirect to login
@@ -94,9 +96,6 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     fetchVenues();
     fetchSports();
     
-    const today = new Date();
-    setSelectedDate(today.toISOString().split('T')[0]);
-
     // If a venue ID was passed, ensure it's selected
     if (venueId) {
       setSelectedVenue(venueId);
@@ -109,8 +108,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
         event: '*',
         schema: 'public',
         table: 'bookings'
-      }, (payload) => {
-        console.log('Booking change detected:', payload);
+      }, () => {
         // Refresh availability data when a booking is created/updated/deleted
         if (selectedCourt && selectedDate) {
           setRefreshKey(prev => prev + 1);
@@ -139,7 +137,6 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       });
     };
 
-    // Load Razorpay script
     loadRazorpayScript();
   }, []);
 
@@ -164,13 +161,14 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
   // Effect for fetching availability with the refresh key
   useEffect(() => {
     if (selectedCourt && selectedDate) {
-      fetchAvailability();
+      const dateString = format(selectedDate, 'yyyy-MM-dd');
+      fetchAvailability(dateString);
     }
   }, [selectedCourt, selectedDate, refreshKey]);
 
   // Add periodic refresh of availability data
   useEffect(() => {
-    if (currentStep === 2 && selectedCourt && selectedDate) {
+    if (selectedCourt && selectedDate) {
       // Refresh availability data every 15 seconds
       const intervalId = setInterval(() => {
         setRefreshKey(prev => prev + 1);
@@ -178,7 +176,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       
       return () => clearInterval(intervalId);
     }
-  }, [currentStep, selectedCourt, selectedDate]);
+  }, [selectedCourt, selectedDate]);
 
   useEffect(() => {
     if (user) {
@@ -336,8 +334,8 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     }
   };
 
-  const fetchAvailability = useCallback(async () => {
-    if (!selectedCourt || !selectedDate) return;
+  const fetchAvailability = useCallback(async (dateString: string) => {
+    if (!selectedCourt) return;
     
     setLoading(prev => ({ ...prev, availability: true }));
     try {
@@ -345,7 +343,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       const { data, error } = await supabase
         .rpc('get_available_slots', { 
           p_court_id: selectedCourt, 
-          p_date: selectedDate 
+          p_date: dateString
         });
       
       if (error) {
@@ -417,7 +415,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     } finally {
       setLoading(prev => ({ ...prev, availability: false }));
     }
-  }, [selectedCourt, selectedDate, courtRate, selectedSlots, selectedSlotPrices]);
+  }, [selectedCourt, courtRate, selectedSlots, selectedSlotPrices]);
 
   const formatTime = (time: string) => {
     const [hour, minute] = time.split(':').map(n => parseInt(n));
@@ -485,8 +483,6 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
         });
         return;
       }
-      setCurrentStep(2);
-    } else if (currentStep === 2) {
       if (selectedSlots.length === 0) {
         toast({
           title: "No slots selected",
@@ -495,7 +491,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
         });
         return;
       }
-      setCurrentStep(3);
+      setCurrentStep(2);
     }
   };
 
@@ -515,7 +511,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
           receipt: receipt,
           notes: {
             court_id: selectedCourt,
-            date: selectedDate,
+            date: format(selectedDate, 'yyyy-MM-dd'),
             slots: selectedSlots.join(', '),
           }
         }
@@ -562,7 +558,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
         amount: order.amount,
         currency: order.currency,
         name: venues.find(v => v.id === selectedVenue)?.name || "Sports Venue",
-        description: `Court Booking for ${selectedDate}`,
+        description: `Court Booking for ${format(selectedDate, 'yyyy-MM-dd')}`,
         order_id: order.id,
         prefill: {
           name: name,
@@ -573,7 +569,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
           address: "Sports Venue Address"
         },
         theme: {
-          color: "#10b981"
+          color: "#4f46e5"
         },
         handler: function(response: any) {
           // On successful payment, call the booking function
@@ -631,7 +627,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     
     try {
       // First refresh availability to ensure selected slots are still available
-      await fetchAvailability();
+      await fetchAvailability(format(selectedDate, 'yyyy-MM-dd'));
       
       // If any selected slots were removed during the refresh, stop the booking process
       if (selectedSlots.length === 0) {
@@ -640,7 +636,6 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
           description: "Your selected slots are no longer available. Please select new time slots.",
           variant: "destructive",
         });
-        setCurrentStep(2);
         setLoading(prev => ({ ...prev, booking: false }));
         setIsSubmitting(false);
         setBookingInProgress(false);
@@ -691,7 +686,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
           const { data, error } = await supabase.rpc('create_booking_with_lock', {
             p_court_id: selectedCourt,
             p_user_id: user.id,
-            p_booking_date: selectedDate,
+            p_booking_date: format(selectedDate, 'yyyy-MM-dd'),
             p_start_time: startTime,
             p_end_time: endTime,
             p_total_price: blockPrice,
@@ -746,10 +741,6 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
           variant: "destructive",
         });
       }
-      
-      // Refresh availability and go back to step 2
-      setCurrentStep(2);
-      setRefreshKey(prev => prev + 1);
     } finally {
       setLoading(prev => ({ ...prev, booking: false }));
       setIsSubmitting(false);
@@ -761,6 +752,9 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
   if (!user) {
     return null;
   }
+
+  const formIsComplete = selectedVenue && selectedSport && selectedCourt;
+  const canBook = formIsComplete && selectedSlots.length > 0;
 
   return (
     <div className="modal-bg" onClick={onClose}>
@@ -775,212 +769,169 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
           </button>
         </div>
 
-        <div className="flex justify-center mb-8">
-          <div className="flex items-center">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-              currentStep === 1 ? 'bg-sport-green text-white' : 'bg-gray-200 text-gray-600'
-            }`}>
-              1
-            </div>
-            <div className="w-16 h-1 bg-gray-200">
-              <div className={`h-full ${currentStep > 1 ? 'bg-sport-green' : ''}`}></div>
-            </div>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-              currentStep === 2 ? 'bg-sport-green text-white' : currentStep > 2 ? 'bg-sport-green-light text-white' : 'bg-gray-200 text-gray-600'
-            }`}>
-              2
-            </div>
-            <div className="w-16 h-1 bg-gray-200">
-              <div className={`h-full ${currentStep > 2 ? 'bg-sport-green' : ''}`}></div>
-            </div>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-              currentStep === 3 ? 'bg-sport-green text-white' : 'bg-gray-200 text-gray-600'
-            }`}>
-              3
-            </div>
-          </div>
-        </div>
-
-        {currentStep === 1 && (
+        {currentStep === 1 ? (
+          /* Combined Step 1 & 2 - Venue, Sport, Court, Date and Time Selection */
           <div className="space-y-6">
-            <div>
-              <label className="block text-gray-700 mb-2 font-medium">Select Venue</label>
-              <select
-                value={selectedVenue}
-                onChange={e => setSelectedVenue(e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sport-green bg-white"
-                disabled={loading.venues || !!venueId}
-              >
-                <option value="">Select a venue</option>
-                {venues.map(venue => (
-                  <option key={venue.id} value={venue.id}>{venue.name}</option>
-                ))}
-              </select>
-              {loading.venues && <p className="mt-1 text-xs text-gray-500">Loading venues...</p>}
-            </div>
-            
-            <div>
-              <label className="block text-gray-700 mb-2 font-medium">Select Sport</label>
-              <select
-                value={selectedSport}
-                onChange={e => setSelectedSport(e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sport-green bg-white"
-                disabled={!selectedVenue || venueSports.length === 0}
-              >
-                <option value="">Select a sport</option>
-                {venueSports.map(sport => (
-                  <option key={sport.id} value={sport.id}>
-                    {selectedVenue ? (
-                      <SportDisplayName
-                        venueId={selectedVenue}
-                        sportId={sport.id}
-                        defaultName={sport.name}
-                      />
-                    ) : (
-                      sport.name
-                    )}
-                  </option>
-                ))}
-              </select>
-              {!selectedVenue && <p className="mt-1 text-xs text-gray-500">Please select a venue first</p>}
-              {selectedVenue && venueSports.length === 0 && <p className="mt-1 text-xs text-gray-500">No sports available for this venue</p>}
-            </div>
-            
-            <div>
-              <label className="block text-gray-700 mb-2 font-medium">Select Court</label>
-              <select
-                value={selectedCourt}
-                onChange={e => {
-                  setSelectedCourt(e.target.value);
-                  const court = courts.find(c => c.id === e.target.value);
-                  if (court) {
-                    setCourtRate(court.hourly_rate);
-                  }
-                }}
-                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sport-green bg-white"
-                disabled={loading.courts || !selectedVenue || !selectedSport}
-              >
-                <option value="">Select a court</option>
-                {courts.map(court => (
-                  <option key={court.id} value={court.id}>{court.name}</option>
-                ))}
-              </select>
-              {loading.courts && <p className="mt-1 text-xs text-gray-500">Loading courts...</p>}
-              {!loading.courts && courts.length === 0 && selectedVenue && selectedSport && (
-                <p className="mt-1 text-xs text-red-500">No courts available for this venue and sport combination.</p>
-              )}
-              {selectedCourt && courts.find(c => c.id === selectedCourt)?.court_group_id && (
-                <p className="mt-1 text-xs text-blue-600">
-                  Note: This court shares physical space with other sports. Bookings on one will affect availability on others.
-                </p>
-              )}
-            </div>
-            
-            <div>
-              <label className="block text-gray-700 mb-2 font-medium">Select Date</label>
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={e => setSelectedDate(e.target.value)}
-                min={new Date().toISOString().split('T')[0]}
-                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sport-green bg-white"
-              />
-            </div>
-          </div>
-        )}
-
-        {currentStep === 2 && (
-          <div>
-            <div className="mb-6">
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">Select Time Slots</h3>
-              <p className="text-gray-600">Click on the available slots to select them. You can select multiple slots, they don't need to be continuous.</p>
-            </div>
-            
-            <div className="mb-4">
-              <p className="font-medium text-gray-700">Selected Date: <span className="text-sport-green">{selectedDate}</span></p>
-              <div className="flex items-center text-xs mt-1 text-blue-600">
-                <span>Availability automatically refreshes every 15 seconds.</span>
-                <button 
-                  onClick={() => setRefreshKey(prev => prev + 1)}
-                  className="ml-2 text-blue-700 underline"
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-gray-700 mb-2 font-medium">Select Venue</label>
+                <select
+                  value={selectedVenue}
+                  onChange={e => setSelectedVenue(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo bg-white"
+                  disabled={loading.venues || !!venueId}
                 >
-                  Refresh now
-                </button>
+                  <option value="">Select a venue</option>
+                  {venues.map(venue => (
+                    <option key={venue.id} value={venue.id}>{venue.name}</option>
+                  ))}
+                </select>
+                {loading.venues && <p className="mt-1 text-xs text-gray-500">Loading venues...</p>}
+              </div>
+              
+              <div>
+                <label className="block text-gray-700 mb-2 font-medium">Select Sport</label>
+                <select
+                  value={selectedSport}
+                  onChange={e => setSelectedSport(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo bg-white"
+                  disabled={!selectedVenue || venueSports.length === 0}
+                >
+                  <option value="">Select a sport</option>
+                  {venueSports.map(sport => (
+                    <option key={sport.id} value={sport.id}>
+                      {selectedVenue && (
+                        <SportDisplayName
+                          venueId={selectedVenue}
+                          sportId={sport.id}
+                          defaultName={sport.name}
+                        />
+                      )}
+                    </option>
+                  ))}
+                </select>
+                {!selectedVenue && <p className="mt-1 text-xs text-gray-500">Please select a venue first</p>}
+              </div>
+              
+              <div>
+                <label className="block text-gray-700 mb-2 font-medium">Select Court</label>
+                <select
+                  value={selectedCourt}
+                  onChange={e => {
+                    setSelectedCourt(e.target.value);
+                    const court = courts.find(c => c.id === e.target.value);
+                    if (court) {
+                      setCourtRate(court.hourly_rate);
+                    }
+                  }}
+                  className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo bg-white"
+                  disabled={loading.courts || !selectedVenue || !selectedSport}
+                >
+                  <option value="">Select a court</option>
+                  {courts.map(court => (
+                    <option key={court.id} value={court.id}>{court.name}</option>
+                  ))}
+                </select>
+                {loading.courts && <p className="mt-1 text-xs text-gray-500">Loading courts...</p>}
+              </div>
+              
+              <div>
+                <label className="block text-gray-700 mb-2 font-medium">Select Date</label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full justify-start">
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {format(selectedDate, 'PPP')}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={selectedDate}
+                      onSelect={(date) => date && setSelectedDate(date)}
+                      initialFocus
+                      disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
-            
-            {loading.availability ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-sport-green mx-auto"></div>
-                <p className="mt-2 text-gray-600">Loading availability...</p>
-              </div>
-            ) : (
-              <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                  {availableTimeSlots.map((slot, index) => {
-                    const slotDisplay = `${formatTime(slot.start_time)} - ${formatTime(slot.end_time)}`;
-                    return (
-                      <div
-                        key={`${slot.start_time}-${slot.end_time}`}
-                        className={`
-                          p-3 rounded-md cursor-pointer transition-all text-center
-                          ${slot.is_available 
-                            ? selectedSlots.includes(slotDisplay) 
-                              ? 'bg-sport-green text-white border border-sport-green' 
-                              : 'bg-white border border-sport-green-light hover:bg-sport-green-light/10' 
-                            : 'bg-gray-200 text-gray-500 cursor-not-allowed border border-gray-300'}
-                        `}
-                        onClick={() => handleSlotClick(slot)}
-                      >
-                        <div>{slotDisplay}</div>
-                        <div className="font-semibold">₹{parseFloat(slot.price).toFixed(2)}</div>
+
+            {/* Time Slots */}
+            {formIsComplete && (
+              <div className="mt-6">
+                <h3 className="text-lg font-medium mb-2">Select Time Slots</h3>
+                
+                {loading.availability ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo mx-auto"></div>
+                    <p className="mt-2 text-gray-600">Loading availability...</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                      {availableTimeSlots.map((slot) => {
+                        const slotDisplay = `${formatTime(slot.start_time)} - ${formatTime(slot.end_time)}`;
+                        return (
+                          <div
+                            key={`${slot.start_time}-${slot.end_time}`}
+                            className={`
+                              p-3 rounded-md cursor-pointer transition-all text-center
+                              ${slot.is_available 
+                                ? selectedSlots.includes(slotDisplay) 
+                                  ? 'bg-indigo text-white border border-indigo' 
+                                  : 'bg-white border border-indigo-light hover:bg-indigo-light/10' 
+                                : 'bg-gray-200 text-gray-500 cursor-not-allowed border border-gray-300'}
+                            `}
+                            onClick={() => handleSlotClick(slot)}
+                          >
+                            <div>{slotDisplay}</div>
+                            <div className="font-semibold">₹{parseFloat(slot.price).toFixed(2)}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    
+                    {availableTimeSlots.length === 0 && (
+                      <div className="text-center py-8 bg-gray-50 rounded-md">
+                        <p className="text-gray-600">No available time slots found for this date.</p>
                       </div>
-                    );
-                  })}
-                </div>
-                
-                {availableTimeSlots.length === 0 && (
-                  <div className="text-center py-8 bg-gray-50 rounded-md">
-                    <p className="text-gray-600">No available time slots found for this date.</p>
-                  </div>
+                    )}
+                  </>
                 )}
-                
-                <div className="mt-6 flex flex-wrap items-center gap-4">
-                  <div className="flex items-center">
-                    <div className="w-4 h-4 bg-sport-green rounded-sm mr-2"></div>
-                    <span className="text-sm">Selected</span>
-                  </div>
-                  <div className="flex items-center">
-                    <div className="w-4 h-4 border border-sport-green-light bg-white rounded-sm mr-2"></div>
-                    <span className="text-sm">Available</span>
-                  </div>
-                  <div className="flex items-center">
-                    <div className="w-4 h-4 bg-gray-200 rounded-sm mr-2"></div>
-                    <span className="text-sm">Unavailable</span>
-                  </div>
-                </div>
-                
+
+                {/* Selected slots summary */}
                 {selectedSlots.length > 0 && (
                   <div className="mt-6 p-4 bg-gray-50 rounded-md border border-gray-200">
                     <h4 className="font-medium mb-2">Selected Slots:</h4>
                     <div className="flex flex-wrap gap-2">
                       {selectedSlots.sort().map(slot => (
-                        <span key={slot} className="bg-sport-green text-white px-2 py-1 rounded text-sm">
+                        <span key={slot} className="bg-indigo text-white px-2 py-1 rounded text-sm">
                           {slot} - ₹{selectedSlotPrices[slot]?.toFixed(2)}
                         </span>
                       ))}
                     </div>
-                    {selectedSlots.length > 0 && (
-                      <p className="mt-3 font-medium">Total Price: ₹{calculateTotalPrice().toFixed(2)}</p>
-                    )}
+                    <p className="mt-3 font-medium">Total Price: ₹{calculateTotalPrice().toFixed(2)}</p>
                   </div>
                 )}
-              </>
+              </div>
             )}
-          </div>
-        )}
 
-        {currentStep === 3 && (
+            {/* Payment and Booking Button */}
+            <div className="mt-6 flex justify-end">
+              <Button
+                onClick={handleNextStep}
+                disabled={!canBook || isSubmitting || bookingInProgress}
+                variant="default"
+                className="py-3 px-6 bg-indigo text-white rounded-md hover:bg-indigo-dark transition-colors flex items-center font-medium"
+              >
+                Review & Pay
+              </Button>
+            </div>
+          </div>
+        ) : (
+          /* Step 3 - Review and Payment */
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-6">
               <div>
@@ -998,13 +949,13 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
                     )}
                   </p>
                   <p><span className="font-medium">Court:</span> {courts.find(c => c.id === selectedCourt)?.name}</p>
-                  <p><span className="font-medium">Date:</span> {selectedDate}</p>
+                  <p><span className="font-medium">Date:</span> {format(selectedDate, 'PPP')}</p>
                   
                   <div>
                     <p className="font-medium">Selected Slots:</p>
                     <div className="flex flex-wrap gap-2 mt-1">
                       {selectedSlots.sort().map(slot => (
-                        <span key={slot} className="bg-sport-green text-white px-2 py-1 rounded text-sm">
+                        <span key={slot} className="bg-indigo text-white px-2 py-1 rounded text-sm">
                           {slot} - ₹{selectedSlotPrices[slot]?.toFixed(2)}
                         </span>
                       ))}
@@ -1055,21 +1006,12 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
             <div></div>
           )}
           
-          {currentStep < 3 ? (
-            <Button
-              onClick={handleNextStep}
-              variant="default"
-              disabled={isSubmitting || bookingInProgress}
-              className="py-3 px-6 bg-sport-green text-white rounded-md hover:bg-sport-green-dark transition-colors font-medium"
-            >
-              Next
-            </Button>
-          ) : (
+          {currentStep === 2 && (
             <Button
               onClick={handlePayment}
               disabled={isSubmitting || bookingInProgress || loading.booking || loading.payment}
               variant="default"
-              className="py-3 px-6 bg-sport-green text-white rounded-md hover:bg-sport-green-dark transition-colors flex items-center font-medium"
+              className="py-3 px-6 bg-indigo text-white rounded-md hover:bg-indigo-dark transition-colors flex items-center font-medium"
             >
               {loading.booking || loading.payment ? (
                 <>
@@ -1085,8 +1027,13 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
             </Button>
           )}
         </div>
+
+        {/* Support Email */}
+        <div className="mt-4 text-center text-sm text-gray-500">
+          Have questions? Contact <a href="mailto:support@grid2play.com" className="text-indigo hover:underline">support@grid2play.com</a>
+        </div>
       </div>
-      
+
       <style>
         {`
         .modal-bg {
@@ -1131,4 +1078,4 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
   );
 };
 
-export default BookSlotModal;
+export default ImprovedBookSlotModal;

@@ -1,29 +1,13 @@
 
-# A string used to distinguish different Supabase projects on the same host. Defaults to the
-# working directory name when running `supabase init`.
 project_id = "lrtirloetmulgmdxnusl"
 
 [api]
 enabled = true
 port = 54321
 schemas = ["public", "storage", "graphql_public"]
-extra_search_path = ["public", "extensions"]
-max_rows = 1000
 
 [db]
 port = 54322
-shadow_port = 54320
-major_version = 15
-
-[db.pooler]
-enabled = false
-port = 54329
-pool_mode = "transaction"
-default_pool_size = 15
-max_client_conn = 100
-
-[realtime]
-enabled = true
 
 [studio]
 enabled = true
@@ -34,27 +18,10 @@ api_url = "http://localhost"
 enabled = true
 port = 54324
 
-[auth]
-enabled = true
-site_url = "http://localhost:3000"
-# Prevent emails being sent from auth, especially useful for local development
-autoconfirm = true
-sms_provider = ""
-sms_template = ""
-
-[auth.email]
-enable_signup = true
-# Allow acting as specific users for development
-enable_confirmations = true
-
 [storage]
 enabled = true
-file_size_limit = "50MiB"
+port = 54325
 
-[edge_functions]
-enabled = true
-
-[analytics]
-enabled = false
-port = 54327
-vector_port = 54328
+[functions]
+[functions.create-razorpay-order]
+verify_jwt = true

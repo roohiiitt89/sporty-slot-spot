@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
@@ -8,27 +9,23 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
+
 interface SlotBlockingFormProps {
   courtId: string;
   courtName: string;
   date: string;
-  selectedSlot: {
-    start_time: string;
-    end_time: string;
-    is_available: boolean;
-  } | null;
+  selectedSlot: { start_time: string; end_time: string; is_available: boolean } | null;
   onBlockComplete: () => void;
 }
+
 const SlotBlockingForm: React.FC<SlotBlockingFormProps> = ({
   courtId,
   courtName,
   date,
   selectedSlot,
-  onBlockComplete
+  onBlockComplete,
 }) => {
-  const {
-    user
-  } = useAuth();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [reason, setReason] = useState('');
 
@@ -40,22 +37,24 @@ const SlotBlockingForm: React.FC<SlotBlockingFormProps> = ({
     const hour12 = hour % 12 || 12;
     return `${hour12}:${minutes} ${ampm}`;
   };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (!user?.id || !selectedSlot) {
       toast({
         title: 'Error',
         description: 'Missing required information',
-        variant: 'destructive'
+        variant: 'destructive',
       });
       return;
     }
+
     setLoading(true);
+    
     try {
       // Create blocked slot
-      const {
-        error
-      } = await supabase.from('blocked_slots').insert({
+      const { error } = await supabase.from('blocked_slots').insert({
         court_id: courtId,
         date,
         start_time: selectedSlot.start_time,
@@ -63,35 +62,43 @@ const SlotBlockingForm: React.FC<SlotBlockingFormProps> = ({
         reason: reason.trim() || 'Blocked by admin',
         created_by: user.id
       });
+      
       if (error) throw error;
+      
       toast({
         title: 'Success',
         description: `Slot blocked successfully`,
-        variant: 'default'
+        variant: 'default',
       });
-
+      
       // Reset form and notify parent
       setReason('');
       onBlockComplete();
+      
     } catch (err: any) {
       toast({
         title: 'Error',
         description: err.message || 'Failed to block slot',
-        variant: 'destructive'
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
     }
   };
+
   if (!selectedSlot) {
-    return <div className="p-4 bg-gray-100 rounded-md">
+    return (
+      <div className="p-4 bg-gray-100 rounded-md">
         <p className="text-center text-gray-600">Please select a time slot to block</p>
-      </div>;
+      </div>
+    );
   }
-  return <div className="bg-emerald-800 rounded-md shadow p-4">
+
+  return (
+    <div className="bg-white rounded-md shadow p-4">
       <h3 className="text-lg font-semibold mb-4">Block Time Slot</h3>
       
-      <div className="mb-4 p-3 bg-black rounded-md">
+      <div className="mb-4 p-3 bg-red-50 rounded-md">
         <p className="font-medium">Slot Details:</p>
         <p>Court: {courtName}</p>
         <p>Date: {format(new Date(date), 'EEEE, MMMM d, yyyy')}</p>
@@ -106,17 +113,34 @@ const SlotBlockingForm: React.FC<SlotBlockingFormProps> = ({
         <div className="space-y-4">
           <div>
             <Label htmlFor="reason">Reason for Blocking (Optional)</Label>
-            <Textarea id="reason" value={reason} onChange={e => setReason(e.target.value)} placeholder="Enter reason for blocking this slot" rows={3} />
+            <Textarea 
+              id="reason"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Enter reason for blocking this slot"
+              rows={3}
+            />
           </div>
           
-          <Button type="submit" variant="destructive" className="w-full" disabled={loading}>
-            {loading ? <span className="flex items-center">
+          <Button 
+            type="submit" 
+            variant="destructive"
+            className="w-full"
+            disabled={loading}
+          >
+            {loading ? (
+              <span className="flex items-center">
                 <span className="animate-spin mr-2 h-4 w-4 border-t-2 border-b-2 border-white rounded-full"></span>
                 Blocking...
-              </span> : <>Block Slot</>}
+              </span>
+            ) : (
+              <>Block Slot</>
+            )}
           </Button>
         </div>
       </form>
-    </div>;
+    </div>
+  );
 };
+
 export default SlotBlockingForm;
