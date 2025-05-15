@@ -29,15 +29,18 @@ CREATE POLICY "Users can request to join teams" ON public.team_join_requests
 
 -- Run the functions we defined
 \i supabase/functions/team-functions.sql
+\i supabase/functions/help-functions.sql
 
 -- Enable realtime for our tables
 BEGIN;
   SELECT
     pg_catalog.pg_extension_config_dump('_realtime', '');
-  ALTER PUBLICATION supabase_realtime ADD TABLE team_chats, team_join_requests;
+  ALTER PUBLICATION supabase_realtime ADD TABLE team_chats, team_join_requests, help_requests;
 COMMIT;
 
 -- Add needed indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_team_chats_team_id ON public.team_chats(team_id);
 CREATE INDEX IF NOT EXISTS idx_team_join_requests_team_id ON public.team_join_requests(team_id);
 CREATE INDEX IF NOT EXISTS idx_team_join_requests_status ON public.team_join_requests(status);
+CREATE INDEX IF NOT EXISTS idx_help_requests_user_id ON public.help_requests(user_id);
+CREATE INDEX IF NOT EXISTS idx_help_requests_status ON public.help_requests(status);

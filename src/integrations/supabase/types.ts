@@ -9,8 +9,97 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      admin_bookings: {
+        Row: {
+          admin_id: string
+          amount_collected: number | null
+          booking_id: string
+          created_at: string
+          customer_name: string
+          customer_phone: string | null
+          id: string
+          notes: string | null
+          payment_method: string
+          payment_status: string | null
+        }
+        Insert: {
+          admin_id: string
+          amount_collected?: number | null
+          booking_id: string
+          created_at?: string
+          customer_name: string
+          customer_phone?: string | null
+          id?: string
+          notes?: string | null
+          payment_method: string
+          payment_status?: string | null
+        }
+        Update: {
+          admin_id?: string
+          amount_collected?: number | null
+          booking_id?: string
+          created_at?: string
+          customer_name?: string
+          customer_phone?: string | null
+          id?: string
+          notes?: string | null
+          payment_method?: string
+          payment_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_bookings_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      blocked_slots: {
+        Row: {
+          court_id: string
+          created_at: string
+          created_by: string
+          date: string
+          end_time: string
+          id: string
+          reason: string | null
+          start_time: string
+        }
+        Insert: {
+          court_id: string
+          created_at?: string
+          created_by: string
+          date: string
+          end_time: string
+          id?: string
+          reason?: string | null
+          start_time: string
+        }
+        Update: {
+          court_id?: string
+          created_at?: string
+          created_by?: string
+          date?: string
+          end_time?: string
+          id?: string
+          reason?: string | null
+          start_time?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blocked_slots_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bookings: {
         Row: {
+          booked_by_admin_id: string | null
           booking_date: string
           court_id: string
           created_at: string
@@ -18,6 +107,7 @@ export type Database = {
           guest_name: string | null
           guest_phone: string | null
           id: string
+          payment_method: string | null
           payment_reference: string | null
           payment_status: string | null
           start_time: string
@@ -27,6 +117,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          booked_by_admin_id?: string | null
           booking_date: string
           court_id: string
           created_at?: string
@@ -34,6 +125,7 @@ export type Database = {
           guest_name?: string | null
           guest_phone?: string | null
           id?: string
+          payment_method?: string | null
           payment_reference?: string | null
           payment_status?: string | null
           start_time: string
@@ -43,6 +135,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          booked_by_admin_id?: string | null
           booking_date?: string
           court_id?: string
           created_at?: string
@@ -50,6 +143,7 @@ export type Database = {
           guest_name?: string | null
           guest_phone?: string | null
           id?: string
+          payment_method?: string | null
           payment_reference?: string | null
           payment_status?: string | null
           start_time?: string
@@ -110,7 +204,7 @@ export type Database = {
         Row: {
           court_group_id: string | null
           created_at: string
-          hourly_rate: number
+          hourly_rate: number | null
           id: string
           is_active: boolean
           name: string
@@ -122,7 +216,7 @@ export type Database = {
         Insert: {
           court_group_id?: string | null
           created_at?: string
-          hourly_rate?: number
+          hourly_rate?: number | null
           id?: string
           is_active?: boolean
           name: string
@@ -134,7 +228,7 @@ export type Database = {
         Update: {
           court_group_id?: string | null
           created_at?: string
-          hourly_rate?: number
+          hourly_rate?: number | null
           id?: string
           is_active?: boolean
           name?: string
@@ -166,6 +260,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      help_requests: {
+        Row: {
+          created_at: string
+          id: string
+          last_message_at: string
+          status: string
+          subject: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          status?: string
+          subject: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          status?: string
+          subject?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       match_chats: {
         Row: {
@@ -266,7 +390,7 @@ export type Database = {
           sender_id: string
           updated_at: string
           user_id: string
-          venue_id: string
+          venue_id: string | null
         }
         Insert: {
           content: string
@@ -276,7 +400,7 @@ export type Database = {
           sender_id?: string
           updated_at?: string
           user_id: string
-          venue_id: string
+          venue_id?: string | null
         }
         Update: {
           content?: string
@@ -286,7 +410,7 @@ export type Database = {
           sender_id?: string
           updated_at?: string
           user_id?: string
-          venue_id?: string
+          venue_id?: string | null
         }
         Relationships: [
           {
@@ -837,12 +961,14 @@ export type Database = {
       }
       venues: {
         Row: {
+          allow_cash_payments: boolean | null
           capacity: number | null
           contact_number: string | null
           created_at: string
           description: string | null
           id: string
           image_url: string | null
+          images: string[] | null
           is_active: boolean
           latitude: number | null
           location: string
@@ -853,12 +979,14 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          allow_cash_payments?: boolean | null
           capacity?: number | null
           contact_number?: string | null
           created_at?: string
           description?: string | null
           id?: string
           image_url?: string | null
+          images?: string[] | null
           is_active?: boolean
           latitude?: number | null
           location: string
@@ -869,12 +997,14 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          allow_cash_payments?: boolean | null
           capacity?: number | null
           contact_number?: string | null
           created_at?: string
           description?: string | null
           id?: string
           image_url?: string | null
+          images?: string[] | null
           is_active?: boolean
           latitude?: number | null
           location?: string
@@ -916,6 +1046,18 @@ export type Database = {
               p_guest_phone?: string
             }
         Returns: string
+      }
+      create_help_request: {
+        Args: { p_user_id: string; p_subject: string }
+        Returns: {
+          created_at: string
+          id: string
+          last_message_at: string
+          status: string
+          subject: string
+          updated_at: string
+          user_id: string
+        }
       }
       gbt_bit_compress: {
         Args: { "": unknown }
@@ -1149,6 +1291,8 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: {
           venue_id: string
+          venue_name: string
+          allow_cash_payments: boolean
         }[]
       }
       get_available_slots: {
@@ -1157,6 +1301,32 @@ export type Database = {
           start_time: string
           end_time: string
           is_available: boolean
+        }[]
+      }
+      get_help_requests: {
+        Args: { p_status?: string }
+        Returns: {
+          id: string
+          user_id: string
+          subject: string
+          status: string
+          created_at: string
+          updated_at: string
+          last_message_at: string
+          user_name: string
+          user_email: string
+        }[]
+      }
+      get_user_help_requests: {
+        Args: { p_user_id: string }
+        Returns: {
+          created_at: string
+          id: string
+          last_message_at: string
+          status: string
+          subject: string
+          updated_at: string
+          user_id: string
         }[]
       }
       has_role: {
@@ -1174,6 +1344,18 @@ export type Database = {
       is_venue_admin: {
         Args: { venue_id: string }
         Returns: boolean
+      }
+      update_help_request_status: {
+        Args: { p_help_request_id: string; p_status: string }
+        Returns: {
+          created_at: string
+          id: string
+          last_message_at: string
+          status: string
+          subject: string
+          updated_at: string
+          user_id: string
+        }
       }
     }
     Enums: {

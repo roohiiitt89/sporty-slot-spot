@@ -1,9 +1,26 @@
+
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Link, useLocation } from 'react-router-dom';
+import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
-import { LayoutGrid, Users, Calendar, Map, Dumbbell, ShieldCheckIcon, Info, BarChart, MessageCircle, Star } from 'lucide-react';
+import { 
+  LayoutGrid, 
+  Users, 
+  Calendar, 
+  Map, 
+  Dumbbell, 
+  ShieldCheckIcon, 
+  Info, 
+  BarChart, 
+  MessageCircle, 
+  Star, 
+  HelpCircle,
+  UserCircle,
+  LogOut
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 // Admin pages
 import VenueManagement from './VenueManagement';
@@ -15,12 +32,15 @@ import SportDisplayNames from './SportDisplayNames';
 import AnalyticsDashboard from './AnalyticsDashboard';
 import MessageManagement from './MessageManagement';
 import ReviewManagement from './ReviewManagement';
+import HelpRequestsManagement from './HelpRequestsManagement';
 
 const Dashboard: React.FC = () => {
-  const { user, userRole } = useAuth();
+  const { user, userRole, signOut } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [adminVenues, setAdminVenues] = useState<Array<{ venue_id: string }>>([]);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   useEffect(() => {
     const fetchUserRoleAndVenues = async () => {
@@ -51,6 +71,23 @@ const Dashboard: React.FC = () => {
     fetchUserRoleAndVenues();
   }, [user, userRole]);
 
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Logged out",
+        description: "You have been successfully logged out",
+      });
+    } catch (error) {
+      console.error('Error signing out:', error);
+      toast({
+        title: "Error",
+        description: "There was a problem signing out. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -70,11 +107,52 @@ const Dashboard: React.FC = () => {
     { path: '/admin/sport-display-names', icon: <Dumbbell className="mr-2" />, title: 'Sport Display Names' },
     { path: '/admin/messages', icon: <MessageCircle className="mr-2" />, title: 'Messages' },
     { path: '/admin/reviews', icon: <Star className="mr-2" />, title: 'Reviews' },
+    // Only show help requests for super_admin
+    ...(userRole === 'super_admin' ? [
+      { path: '/admin/help-requests', icon: <HelpCircle className="mr-2" />, title: 'Help Requests' }
+    ] : [])
   ];
 
   return (
     <div className="bg-slate min-h-screen">
-      <div className="container mx-auto px-4 py-8">
+      {/* Admin Header */}
+      <div className="bg-white shadow-md mb-6">
+        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+          <h1 className="font-bold text-xl text-indigo-600">Admin Dashboard</h1>
+          
+          {/* Profile Menu */}
+          <Popover open={profileOpen} onOpenChange={setProfileOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" className="flex items-center gap-2">
+                <UserCircle size={20} />
+                <span className="hidden sm:inline">{user?.email}</span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56 p-2" align="end">
+              <div className="flex flex-col space-y-1">
+                <Button 
+                  variant="ghost" 
+                  className="flex items-center justify-start" 
+                  onClick={() => navigate('/admin/profile')}
+                >
+                  <UserCircle className="mr-2 h-4 w-4" />
+                  <span>My Profile</span>
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  className="flex items-center justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+                  onClick={handleSignOut}
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Sign Out</span>
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
+      </div>
+      
+      <div className="container mx-auto px-4 py-4">
         <div className="flex flex-col md:flex-row gap-6">
           {/* Sidebar */}
           <div className="w-full md:w-1/5">
@@ -110,14 +188,6 @@ const Dashboard: React.FC = () => {
                   );
                 })}
               </nav>
-              <div className="mt-4 pt-4 border-t">
-                <Link 
-                  to="/" 
-                  className="block px-4 py-2 text-navy-dark hover:bg-slate-light rounded-md"
-                >
-                  Back to Site
-                </Link>
-              </div>
             </div>
           </div>
 
@@ -154,7 +224,7 @@ const Dashboard: React.FC = () => {
                         ) : (
                           // Only show relevant options for venue admin
                           navItems.slice(1)
-                            .filter(item => item.path !== '/admin/sports')
+                            .filter(item => item.path !== '/admin/sports' && item.path !== '/admin/help-requests')
                             .map((item) => (
                               <Link
                                 key={item.path}
@@ -205,6 +275,7 @@ const Dashboard: React.FC = () => {
                 <Route path="/analytics" element={<AnalyticsDashboard />} />
                 <Route path="/messages" element={<MessageManagement userRole={userRole} adminVenues={adminVenues} />} />
                 <Route path="/reviews" element={<ReviewManagement userRole={userRole} adminVenues={adminVenues} />} />
+                <Route path="/help-requests" element={<HelpRequestsManagement userRole={userRole} />} />
               </Routes>
             </div>
           </div>
