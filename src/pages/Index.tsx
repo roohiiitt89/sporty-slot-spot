@@ -11,7 +11,6 @@ import { StreakBar } from '@/components/StreakBar';
 import { LocationPermissionRequest } from '@/components/LocationPermissionRequest';
 import { NearbyVenues } from '@/components/NearbyVenues';
 import HomepageAvailabilityWidget from '@/components/HomepageAvailabilityWidget';
-import AIChatWidget from '@/components/AIChatWidget';
 import RotatingTypewriter from '@/components/RotatingTypewriter';
 import { Typewriter } from '@/components/Typewriter';
 import ProgressiveImage from '@/components/ProgressiveImage';
@@ -608,7 +607,6 @@ const Index: React.FC = () => {
 
       {isBookModalOpen && <BookSlotModal onClose={() => setIsBookModalOpen(false)} />}
       
-      {/* Remove old AIChatWidget reference */}
     </div>;
 };
 export default Index;
