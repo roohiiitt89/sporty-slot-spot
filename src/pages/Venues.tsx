@@ -39,6 +39,10 @@ const Venues: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [sortOption, setSortOption] = useState<'distance' | 'rating'>('distance');
 
+  // Detect mobile
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const containerClass = isMobile ? 'max-w-screen-sm mx-auto px-2' : 'container mx-auto px-4';
+
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const sportId = params.get('sport');
@@ -252,7 +256,7 @@ const Venues: React.FC = () => {
   });
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className={containerClass + ' min-h-screen bg-navy-dark'}>
       <Header />
       
       <div className="bg-gradient-to-b from-[#1e3b2c] to-black pt-32 pb-12 md:pb-16 relative">
