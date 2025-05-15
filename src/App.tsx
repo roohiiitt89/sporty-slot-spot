@@ -76,8 +76,12 @@ const App = () => {
               <Route path="*" element={<NotFound />} />
             </Routes>
             
-            {/* Only show the new AI Chat Widget */}
-            {(!isMobile || chatActive) && <NewAIChatWidget isOpen={chatActive} setIsOpen={setChatActive} />}
+            {/* Always mount the chat widget on mobile, but control visibility with isOpen */}
+            {isMobile ? (
+              <NewAIChatWidget isOpen={chatActive} setIsOpen={setChatActive} />
+            ) : (
+              <NewAIChatWidget />
+            )}
             <BottomNav onChatClick={handleChatClick} chatActive={chatActive} setChatActive={setChatActive} />
           </AuthProvider>
         </BrowserRouter>
