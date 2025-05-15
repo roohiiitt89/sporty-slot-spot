@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Calendar, Map, User, HelpCircle } from 'lucide-react';
+import { Home, Calendar, Map, User, MessageCircle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 const navItems = [
@@ -8,10 +8,9 @@ const navItems = [
   { to: '/bookings', label: 'Bookings', icon: <Calendar /> },
   { to: '/venues', label: 'Venues', icon: <Map /> },
   { to: '/profile', label: 'Profile', icon: <User /> },
-  { to: '/faq', label: 'Support', icon: <HelpCircle /> },
 ];
 
-const BottomNav: React.FC = () => {
+const BottomNav: React.FC<{ onChatClick?: () => void; chatActive?: boolean }> = ({ onChatClick, chatActive }) => {
   const { user } = useAuth();
   const location = useLocation();
 
@@ -35,6 +34,17 @@ const BottomNav: React.FC = () => {
           </Link>
         );
       })}
+      {/* Chat button replaces Support on mobile */}
+      <button
+        onClick={onChatClick}
+        className={`flex flex-col items-center justify-center flex-1 h-full text-xs transition-colors focus:outline-none ${
+          chatActive ? 'text-indigo-light' : 'text-gray-400 hover:text-white'
+        }`}
+        aria-label="Open Chat Assistant"
+      >
+        <span className="mb-1"><MessageCircle /></span>
+        Chat
+      </button>
     </nav>
   );
 };
