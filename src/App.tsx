@@ -20,7 +20,7 @@ import AdminHome from "./pages/admin/AdminHome";
 import Profile from "./pages/Profile";
 import ChallengeDashboard from "./pages/challenge/ChallengeDashboard";
 import TeamDetails from "./pages/challenge/TeamDetails";
-import HelpChatWidget from "./components/HelpChatWidget";
+import NewAIChatWidget from "./components/NewAIChatWidget";
 
 const queryClient = new QueryClient();
 
@@ -61,8 +61,8 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
           
-          {/* Global Help Chat Widget (shown on all pages for authenticated users) */}
-          <HelpChatWidget />
+          {/* Only show the new AI Chat Widget */}
+          <NewAIChatWidget />
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
