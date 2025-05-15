@@ -625,7 +625,7 @@ const Profile: React.FC = () => {
       </footer>
       {/* Show HelpChatWidget only for mobile and signed-in users, shifted up above BottomNav */}
       {isMobile && user && (
-        <div className="fixed right-4 bottom-32 z-50">
+        <div className="fixed right-4 bottom-48 z-50">
           <HelpChatWidget />
         </div>
       )}
