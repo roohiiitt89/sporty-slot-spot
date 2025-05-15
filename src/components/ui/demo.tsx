@@ -61,12 +61,14 @@ export function AuroraBackgroundDemo() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.7, duration: 0.8, ease: "easeOut" }}
-          className="text-3xl sm:text-5xl md:text-7xl font-extrabold text-center text-white w-full flex justify-center"
+          className="text-3xl sm:text-5xl md:text-7xl font-extrabold text-center text-white w-full flex justify-center relative"
         >
-          <span className="inline-block w-[12ch] text-center">
+          {/* Emerald blurred glow background */}
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[320px] h-[120px] bg-emerald-700/40 rounded-full blur-2xl z-0 pointer-events-none"></div>
+          <span className="inline-block w-[12ch] text-center relative z-10">
             <Typewriter
               texts={animatedWords}
-              delay={90}
+              delay={130}
             />
           </span>
         </motion.div>
