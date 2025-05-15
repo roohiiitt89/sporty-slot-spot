@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -21,6 +20,7 @@ import Profile from "./pages/Profile";
 import ChallengeDashboard from "./pages/challenge/ChallengeDashboard";
 import TeamDetails from "./pages/challenge/TeamDetails";
 import NewAIChatWidget from "./components/NewAIChatWidget";
+import Faq3Demo from "./pages/Faq3Demo";
 
 const queryClient = new QueryClient();
 
@@ -58,6 +58,7 @@ const App = () => (
             <Route path="/venues" element={<Venues />} />
             <Route path="/venues/:id" element={<VenueDetails />} />
             <Route path="/sports" element={<Sports />} />
+            <Route path="/faq" element={<Faq3Demo />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           
