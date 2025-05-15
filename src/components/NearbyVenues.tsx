@@ -89,48 +89,36 @@ export function NearbyVenues() {
 
         {locationLoading || loading ? <div className="flex justify-center items-center py-8 md:py-12">
             <Loader2 className="h-8 w-8 text-indigo animate-spin" />
-          </div> : venues.length > 0 ? <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-8">
-            {venues.map(venue => <div key={venue.id} onClick={() => navigate(`/venues/${venue.id}`)} className="cursor-pointer group transform transition-transform duration-200 hover:scale-[1.02]">
-                <Card className="bg-navy-light border-navy hover:border-indigo transition-all duration-300 overflow-hidden h-full shadow-lg">
-                  <div className={`${isMobile ? 'h-32' : 'h-48'} overflow-hidden relative`}>
-                    <img src={venue.image_url || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000'} alt={venue.name} className="w-full h-full object-cover transform transition-transform duration-700 group-hover:scale-110" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent opacity-60"></div>
-                    
-                    <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-md px-2 py-1 rounded-md flex items-center">
-                      <Star className="h-3 w-3 md:h-4 md:w-4 text-yellow-500 fill-current mr-1" />
-                      <span className="text-xs md:text-sm font-bold text-navy-dark">{venue.rating?.toFixed(1) || '4.5'}</span>
+          </div> : venues.length > 0 ? <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6">
+            {venues.map(venue => <div key={venue.id} onClick={() => navigate(`/venues/${venue.id}`)} className="cursor-pointer group transform transition-transform duration-200 hover:scale-[1.03]">
+                <Card className="bg-gradient-to-br from-black via-[#1E3B2C] to-black border border-[#2E7D32] hover:shadow-[0_0_16px_2px_#2E7D32] hover:border-[#2def80] transition-all duration-300 overflow-hidden h-full shadow-lg rounded-xl animate-fade-in">
+                  <div className={`${isMobile ? 'h-24' : 'h-32'} overflow-hidden relative`}>
+                    <img src={venue.image_url || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000'} alt={venue.name} className="w-full h-full object-cover transform transition-transform duration-700 group-hover:scale-105" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent opacity-80"></div>
+                    <div className="absolute top-2 right-2 bg-black/80 backdrop-blur px-2 py-0.5 rounded flex items-center shadow">
+                      <Star className="h-3 w-3 md:h-4 md:w-4 text-[#2E7D32] fill-current mr-1" />
+                      <span className="text-xs md:text-sm font-bold text-white">{venue.rating?.toFixed(1) || '4.5'}</span>
                     </div>
                   </div>
-                  
-                  <CardContent className="p-3 md:p-5 text-white">
-                    <h3 className="text-sm md:text-xl font-bold mb-1 md:mb-2 text-gradient group-hover:text-indigo-light transition-colors truncate">
-                      {venue.name}
-                    </h3>
-                    
-                    <div className="flex items-start gap-1 md:gap-2 mb-2 md:mb-3">
-                      <MapPin className="h-3 w-3 md:h-5 md:w-5 text-gray-400 flex-shrink-0 mt-0.5" />
-                      <span className="text-xs md:text-sm text-gray-300 line-clamp-1">
-                        {venue.location}
-                      </span>
+                  <CardContent className="p-2 md:p-3 text-white">
+                    <h3 className="text-xs md:text-base font-semibold mb-0.5 md:mb-1 truncate group-hover:text-[#2E7D32] transition-colors">{venue.name}</h3>
+                    <div className="flex items-center gap-1 mb-1">
+                      <MapPin className="h-3 w-3 md:h-4 md:w-4 text-gray-400 flex-shrink-0" />
+                      <span className="text-[10px] md:text-xs text-gray-300 truncate">{venue.location}</span>
                     </div>
-                    
-                    {venue.distance !== null && <div className="mt-2 md:mt-4 flex items-center justify-between">
-                        <div className="flex items-center bg-indigo/20 px-2 md:px-3 py-1 md:py-1.5 rounded-full">
-                          <Navigation className="h-3 w-3 md:h-4 md:w-4 text-indigo-light mr-1" />
-                          <span className="text-xs md:text-sm font-medium text-white">
-                            {venue.distance < 1 ? `${(venue.distance * 1000).toFixed(0)} m` : `${venue.distance.toFixed(1)} km`} away
-                          </span>
+                    {venue.distance !== null && <div className="mt-1 flex items-center justify-between">
+                        <div className="flex items-center bg-[#1E3B2C]/20 px-1.5 py-0.5 rounded-full">
+                          <Navigation className="h-3 w-3 text-[#2E7D32] mr-1" />
+                          <span className="text-[10px] md:text-xs font-medium text-white">{venue.distance < 1 ? `${(venue.distance * 1000).toFixed(0)} m` : `${venue.distance.toFixed(1)} km`} away</span>
                         </div>
-                        <span className="text-indigo-light text-xs md:text-sm group-hover:translate-x-1 transition-transform duration-300">
-                          Details →
-                        </span>
+                        <span className="text-[#2E7D32] text-[10px] md:text-xs group-hover:translate-x-1 transition-transform duration-300">Details →</span>
                       </div>}
                   </CardContent>
                 </Card>
               </div>)}
-          </div> : <div className="text-center py-8 md:py-12 bg-navy-light rounded-lg">
+          </div> : <div className="text-center py-8 md:py-12 bg-black rounded-lg">
             <p className="text-white text-lg mb-4">No nearby venues found</p>
-            <button onClick={() => navigate('/venues')} className="px-4 py-2 bg-indigo text-white rounded-md hover:bg-indigo-dark transition-colors">
+            <button onClick={() => navigate('/venues')} className="px-4 py-2 bg-[#1E3B2C] text-white rounded-md hover:bg-[#2E7D32] transition-colors">
               Browse All Venues
             </button>
           </div>}
