@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, Phone, Send } from 'lucide-react';
+import { Mail, Phone, Send, ArrowLeft } from 'lucide-react';
 
 const Contact: React.FC = () => {
   const [submitted, setSubmitted] = useState(false);
@@ -18,6 +18,9 @@ const Contact: React.FC = () => {
   return (
     <div className="min-h-screen bg-navy-dark text-white py-16 px-4">
       <div className="max-w-2xl mx-auto bg-navy rounded-xl shadow-lg p-8">
+        <button onClick={() => window.location.href = '/'} className="mb-6 flex items-center gap-2 text-indigo-light hover:text-white transition-colors">
+          <ArrowLeft className="w-5 h-5" /> Back to Home
+        </button>
         <h1 className="text-3xl font-bold mb-4 flex items-center gap-2">
           <Mail className="w-8 h-8 text-indigo-light" /> Contact Us
         </h1>
