@@ -82,10 +82,7 @@ const App = () => {
             ) : (
               <NewAIChatWidget />
             )}
-            {/* Only show BottomNav on mobile when chat is not open */}
-            {(!isMobile || !chatActive) && (
-              <BottomNav onChatClick={handleChatClick} chatActive={chatActive} setChatActive={setChatActive} />
-            )}
+            <BottomNav onChatClick={handleChatClick} chatActive={chatActive} setChatActive={setChatActive} />
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
