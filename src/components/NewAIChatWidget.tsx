@@ -479,7 +479,8 @@ const NewAIChatWidget: React.FC<NewAIChatWidgetProps> = ({ isOpen: isOpenProp, s
     );
   };
 
-  if (!user) return null;
+  // Only render the chat widget on mobile if isOpen is true
+  if (isMobile && !isOpen) return null;
 
   return (
     <>
