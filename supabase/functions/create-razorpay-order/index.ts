@@ -40,10 +40,7 @@ serve(async (req) => {
       throw new Error("Invalid amount");
     }
 
-    // Fix: The total amount should be in paise, but doesn't need additional multiplication 
-    // if already converted in BookSlotModal.tsx
-    const amountInPaise = Math.round(amount);
-    console.log(`Creating Razorpay order for amount: ${amountInPaise}`);
+    console.log(`Creating Razorpay order for amount: ${amount}`);
 
     // Create Basic Authorization header
     const auth = btoa(`${RAZORPAY_KEY_ID}:${RAZORPAY_KEY_SECRET}`);
@@ -56,7 +53,7 @@ serve(async (req) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        amount: amountInPaise, // Use the amount already in paise
+        amount: amount * 100, // Convert to paise (Razorpay uses smallest currency unit)
         currency: currency,
         receipt: receipt,
         notes: notes

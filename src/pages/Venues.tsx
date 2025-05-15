@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { MapPin, Star, Filter, Search, Navigation, Clock, ArrowUpDown } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -386,73 +387,79 @@ const Venues: React.FC = () => {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredVenues.map((venue) => (
               <div
                 key={venue.id}
-                className="relative bg-navy-light rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 border border-transparent group hover:border-gradient-to-r hover:from-[#2def80] hover:to-[#1e3b2c] h-[320px] flex flex-col"
-                style={{ minHeight: 0 }}
+                className="bg-navy-light rounded-lg overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 border border-navy/30 hover:border-[#1e3b2c]/50 h-full flex flex-col group"
               >
-                {/* Venue Image */}
-                <div className="h-32 md:h-36 w-full relative overflow-hidden flex-shrink-0">
+                <div className="h-48 relative overflow-hidden">
                   <img 
                     src={venue.image_url || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000'} 
                     alt={venue.name} 
-                    className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
-                    loading="lazy"
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent"></div>
-                  <div className="absolute top-2 right-2 bg-white/90 backdrop-blur px-2 py-0.5 rounded-full shadow flex items-center">
-                    <Star className="h-3.5 w-3.5 text-yellow-500 fill-yellow-500 mr-1" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
+                  
+                  <div className="absolute top-3 right-3 bg-white/90 backdrop-blur px-2 py-1 rounded-full shadow-sm flex items-center">
+                    <Star className="h-4 w-4 text-yellow-500 fill-yellow-500 mr-1" />
                     <span className="text-xs font-bold text-navy">{venue.rating?.toFixed(1) || '4.5'}</span>
                   </div>
                 </div>
-                {/* Venue Content */}
-                <div className="flex flex-col flex-grow px-3 py-2 md:px-4 md:py-3">
-                  <h3 className="text-base md:text-lg font-bold text-white mb-1 truncate group-hover:text-[#2def80] transition-colors">{venue.name}</h3>
-                  <div className="flex items-center gap-1 mb-1">
-                    <MapPin className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                    <span className="text-xs md:text-sm text-gray-300 truncate">{venue.location}</span>
+                
+                <div className="p-5 flex flex-col flex-grow">
+                  <h3 className="text-lg font-bold text-white mb-2 line-clamp-1 group-hover:text-[#2def80] transition-colors">
+                    {venue.name}
+                  </h3>
+                  
+                  <div className="flex items-start gap-2 mb-3">
+                    <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
+                    <span className="text-sm text-gray-300 line-clamp-2">{venue.location}</span>
                   </div>
+                  
                   {venue.distance !== null && (
-                    <div className="mb-1 flex items-center">
-                      <Navigation className="w-3.5 h-3.5 text-[#2def80] mr-1" />
-                      <span className="text-xs md:text-sm text-gray-300">
+                    <div className="mb-3 flex items-center">
+                      <Navigation className="w-4 h-4 text-[#2def80] mr-1" />
+                      <span className="text-sm text-gray-300">
                         {venue.distance < 1 
                           ? `${(venue.distance * 1000).toFixed(0)} m away` 
                           : `${venue.distance.toFixed(1)} km away`}
                       </span>
                     </div>
                   )}
+                  
                   {venue.facilities && venue.facilities.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mb-2">
-                      {venue.facilities.slice(0, 2).map(facility => (
-                        <span
-                          key={facility}
-                          className="inline-block text-[10px] md:text-xs bg-navy/60 text-[#2def80] px-2 py-0.5 rounded-full border border-[#1e3b2c]/30"
-                        >
-                          {facility}
-                        </span>
-                      ))}
-                      {venue.facilities.length > 2 && (
-                        <span className="inline-block text-[10px] md:text-xs text-gray-400">
-                          +{venue.facilities.length - 2} more
-                        </span>
-                      )}
+                    <div className="mb-4 flex-grow">
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {venue.facilities.slice(0, 3).map(facility => (
+                          <span
+                            key={facility}
+                            className="inline-block text-xs bg-navy/50 text-[#2def80] px-2 py-1 rounded-full border border-[#1e3b2c]/30"
+                          >
+                            {facility}
+                          </span>
+                        ))}
+                        {venue.facilities.length > 3 && (
+                          <span className="inline-block text-xs text-gray-400">
+                            +{venue.facilities.length - 3} more
+                          </span>
+                        )}
+                      </div>
                     </div>
                   )}
-                  <div className="mt-auto grid grid-cols-2 gap-1.5">
+                  
+                  <div className="mt-auto pt-4 grid grid-cols-2 gap-2">
                     <button
                       onClick={() => navigate(`/venues/${venue.id}`)}
-                      className="py-1.5 md:py-2 border border-[#1e3b2c] text-[#2def80] rounded-md text-xs md:text-sm font-medium hover:bg-[#1e3b2c]/20 transition-all"
+                      className="py-2 border border-[#1e3b2c] text-[#2def80] rounded-md text-sm font-medium hover:bg-[#1e3b2c]/20 transition-all"
                     >
                       Details
                     </button>
                     <button
                       onClick={() => setIsBookModalOpen(true)}
-                      className="py-1.5 md:py-2 bg-[#1e3b2c] text-white rounded-md text-xs md:text-sm font-medium hover:bg-[#2a4d3a] transition-colors"
+                      className="py-2 bg-[#1e3b2c] text-white rounded-md text-sm font-medium hover:bg-[#2a4d3a] transition-colors"
                     >
-                      Book
+                      Book Now
                     </button>
                   </div>
                 </div>

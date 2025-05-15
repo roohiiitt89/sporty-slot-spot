@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { RouteGuard } from "./components/RouteGuard";
 import Index from "./pages/Index";
@@ -16,11 +16,10 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import VerifyEmail from "./pages/VerifyEmail";
 import AdminDashboard from "./pages/admin/Dashboard";
-import AdminHome from "./pages/admin/AdminHome";
 import Profile from "./pages/Profile";
 import ChallengeDashboard from "./pages/challenge/ChallengeDashboard";
 import TeamDetails from "./pages/challenge/TeamDetails";
-import NewAIChatWidget from "./components/NewAIChatWidget";
+import HelpChatWidget from "./components/HelpChatWidget";
 
 const queryClient = new QueryClient();
 
@@ -39,8 +38,8 @@ const App = () => (
               <Route path="/verify-email" element={<VerifyEmail />} />
             </Route>
 
-            {/* Protected routes - only for normal users */}
-            <Route element={<RouteGuard requireAuth={true} adminOnly={false} />}>
+            {/* Protected routes */}
+            <Route element={<RouteGuard requireAuth={true} />}>
               <Route path="/profile" element={<Profile />} />
               <Route path="/bookings" element={<Bookings />} />
               <Route path="/challenge" element={<ChallengeDashboard />} />
@@ -48,12 +47,11 @@ const App = () => (
             </Route>
             
             {/* Admin routes - accessible to both admin and super_admin */}
-            <Route element={<RouteGuard requireAuth={true} requiredRole="admin" adminOnly={true} />}>
-              <Route path="/admin" element={<AdminHome />} />
+            <Route element={<RouteGuard requireAuth={true} requiredRole="admin" />}>
               <Route path="/admin/*" element={<AdminDashboard />} />
             </Route>
 
-            {/* Root path and content routes - also protected from admin access via RouteGuard logic */}
+            {/* Semi-public routes - accessible to all but with auth-aware features */}
             <Route path="/" element={<Index />} />
             <Route path="/venues" element={<Venues />} />
             <Route path="/venues/:id" element={<VenueDetails />} />
@@ -61,8 +59,8 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
           
-          {/* Only show the new AI Chat Widget */}
-          <NewAIChatWidget />
+          {/* Global Help Chat Widget (shown on all pages for authenticated users) */}
+          <HelpChatWidget />
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

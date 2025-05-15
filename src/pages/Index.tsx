@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, Suspense } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Calendar, MapPin, Clock, User, ChevronRight, Activity, Star } from 'lucide-react';
 import Header from '../components/Header';
@@ -6,15 +6,16 @@ import BookSlotModal from '../components/BookSlotModal';
 import { EnterChallengeButton } from '@/components/challenge/EnterChallengeButton';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import { 
+  Carousel, 
+  CarouselContent, 
+  CarouselItem, 
+  CarouselNext, 
+  CarouselPrevious 
+} from "@/components/ui/carousel";
 import { StreakBar } from '@/components/StreakBar';
 import { LocationPermissionRequest } from '@/components/LocationPermissionRequest';
 import { NearbyVenues } from '@/components/NearbyVenues';
-import HomepageAvailabilityWidget from '@/components/HomepageAvailabilityWidget';
-import AIChatWidget from '@/components/AIChatWidget';
-import RotatingTypewriter from '@/components/RotatingTypewriter';
-import { Typewriter } from '@/components/Typewriter';
-import ProgressiveImage from '@/components/ProgressiveImage';
 
 interface Venue {
   id: string;
@@ -22,38 +23,49 @@ interface Venue {
   location: string;
   image_url: string;
   rating: number;
-  review_count?: number;
-  total_bookings?: number;
 }
+
 interface Sport {
   id: string;
   name: string;
   description: string;
   image_url: string;
 }
-const sportsQuotes = ["\"The more difficult the victory, the greater the happiness in winning.\" — Pelé", "\"You miss 100% of the shots you don't take.\" — Wayne Gretzky", "\"Champions keep playing until they get it right.\" — Billie Jean King", "\"It ain't over till it's over.\" — Yogi Berra", "\"The difference between the impossible and the possible lies in a person's determination.\" — Tommy Lasorda"];
-const athletesBenefits = [{
-  title: "Challenge Mode",
-  description: "Create your team, challenge rivals, and climb the leaderboard in our competitive arena.",
-  image: "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//%20-3.jpg"
-}, {
-  title: "Digital Training Log",
-  description: "Keep a digital record of all your training sessions and track progress over time",
-  image: "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//%20-2.jpg"
-}, {
-  title: "Team Communication",
-  description: "Stay connected with your team and coaches through our integrated messaging platform",
-  image: "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//%20-4.jpg"
-}, {
-  title: "Skill Development",
-  description: "Access personalized training plans to develop your skills and reach your full potential",
-  image: "https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?q=80&w=1000&auto=format&fit=crop"
-}];
+
+const sportsQuotes = [
+  "\"The more difficult the victory, the greater the happiness in winning.\" — Pelé",
+  "\"You miss 100% of the shots you don't take.\" — Wayne Gretzky",
+  "\"Champions keep playing until they get it right.\" — Billie Jean King",
+  "\"It ain't over till it's over.\" — Yogi Berra",
+  "\"The difference between the impossible and the possible lies in a person's determination.\" — Tommy Lasorda",
+];
+
+const athletesBenefits = [
+  {
+    title: "Challenge Mode",
+    description: "Create your team, challenge rivals, and climb the leaderboard in our competitive arena.",
+    image: "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//%20-3.jpg",
+  },
+  {
+    title: "Digital Training Log",
+    description: "Keep a digital record of all your training sessions and track progress over time",
+    image: "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//%20-2.jpg",
+  },
+  {
+    title: "Team Communication",
+    description: "Stay connected with your team and coaches through our integrated messaging platform",
+    image: "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//%20-4.jpg",
+  },
+  {
+    title: "Skill Development",
+    description: "Access personalized training plans to develop your skills and reach your full potential",
+    image: "https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?q=80&w=1000&auto=format&fit=crop",
+  }
+];
+
 const Index: React.FC = () => {
   const navigate = useNavigate();
-  const {
-    user
-  } = useAuth();
+  const { user } = useAuth();
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
   const [activeQuoteIndex, setActiveQuoteIndex] = useState(0);
   const [visibleSections, setVisibleSections] = useState({
@@ -69,66 +81,71 @@ const Index: React.FC = () => {
     venues: true,
     sports: true
   });
-  const [locationPermissionHandled, setLocationPermissionHandled] = useState(false);
-  
+
   const venuesRef = useRef<HTMLDivElement>(null);
   const sportsRef = useRef<HTMLDivElement>(null);
   const athletesRef = useRef<HTMLDivElement>(null);
   const forYouRef = useRef<HTMLDivElement>(null);
   const quotesRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     // Fetch real data from Supabase
     fetchVenues();
     fetchSports();
+    
     const quoteInterval = setInterval(() => {
       setActiveQuoteIndex(prev => (prev + 1) % sportsQuotes.length);
     }, 5000);
+
     return () => clearInterval(quoteInterval);
   }, []);
+
   const fetchVenues = async () => {
     try {
-      const {
-        data,
-        error
-      } = await supabase.from('venues').select('id, name, location, image_url, rating').eq('is_active', true).order('rating', {
-        ascending: false
-      }).limit(4);
+      const { data, error } = await supabase
+        .from('venues')
+        .select('id, name, location, image_url, rating')
+        .eq('is_active', true)
+        .order('rating', { ascending: false })
+        .limit(4);
+        
       if (error) throw error;
+      
       if (data) {
         setVenues(data);
       }
     } catch (error) {
       console.error('Error fetching venues:', error);
     } finally {
-      setLoading(prev => ({
-        ...prev,
-        venues: false
-      }));
+      setLoading(prev => ({ ...prev, venues: false }));
     }
   };
+
   const fetchSports = async () => {
     try {
-      const {
-        data,
-        error
-      } = await supabase.from('sports').select('id, name, description, image_url').eq('is_active', true).limit(4);
+      const { data, error } = await supabase
+        .from('sports')
+        .select('id, name, description, image_url')
+        .eq('is_active', true)
+        .limit(4);
+        
       if (error) throw error;
+      
       if (data) {
         setSports(data);
       }
     } catch (error) {
       console.error('Error fetching sports:', error);
     } finally {
-      setLoading(prev => ({
-        ...prev,
-        sports: false
-      }));
+      setLoading(prev => ({ ...prev, sports: false }));
     }
   };
+
   useEffect(() => {
     const observerOptions = {
-      threshold: 0.2
+      threshold: 0.2,
     };
+
     const observerCallback = (entries: IntersectionObserverEntry[], observer: IntersectionObserver) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
@@ -140,93 +157,77 @@ const Index: React.FC = () => {
         }
       });
     };
+
     const observer = new IntersectionObserver(observerCallback, observerOptions);
+    
     if (venuesRef.current) observer.observe(venuesRef.current);
     if (sportsRef.current) observer.observe(sportsRef.current);
     if (athletesRef.current) observer.observe(athletesRef.current);
     if (forYouRef.current) observer.observe(forYouRef.current);
     if (quotesRef.current) observer.observe(quotesRef.current);
+
     return () => observer.disconnect();
   }, []);
+
   const handleSportCardClick = (sportId: string) => {
     navigate(`/venues?sport=${sportId}`);
   };
-  const handleLocationPermissionGranted = () => {
-    setLocationPermissionHandled(true);
-    console.log("Location permission granted");
-  };
-  
-  const handleLocationPermissionDenied = () => {
-    setLocationPermissionHandled(true);
-    console.log("Location permission denied");
-  };
-  
-  // Update VenueSkeleton component
-  const VenueSkeleton = () => (
-    <div className="venue-card animate-pulse rounded-lg overflow-hidden">
-      <div className="h-44 bg-navy-light"></div>
-      <div className="p-3 bg-navy">
-        <div className="h-5 w-3/4 bg-navy-light rounded mb-2"></div>
-        <div className="h-4 w-1/2 bg-navy-light rounded"></div>
-      </div>
-    </div>
-  );
-  
-  return <div className="min-h-screen bg-navy-dark text-card-foreground">
+
+  return (
+    <div className="min-h-screen bg-navy-dark text-card-foreground">
       <Header />
       
-<section className="hero-section">
-  <video autoPlay muted loop playsInline className="hero-video">
-    <source src="https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/vedios//mixkit-one-on-one-in-a-soccer-game-43483-full-hd%20(1).mp4" type="video/mp4" />
-    Your browser does not support the video tag.
-  </video>
-  <div className="hero-overlay dark-gradient-overlay"></div>
-  <div className="hero-content container mx-auto text-center">
-    <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold text-white mb-6 animate-fade-in">
-  Book Now for Your{' '}
-  <Typewriter 
-    texts={["Game On!", "Perfect Match!", "Training!", "Tournament!"]}
-    delay={80}
-  />
-</h1>
-    <p className="text-xl md:text-2xl text-white mb-10 max-w-3xl mx-auto animate-fade-in" style={{
-      animationDelay: '0.2s'
-    }}>
-      Find and book your favorite sports venues easily. Multiple sports, venues, and flexible time slots all in one place.
-    </p>
-    <div className="flex flex-col md:flex-row justify-center gap-4 animate-fade-in" style={{
-      animationDelay: '0.4s'
-    }}>
-      <button onClick={() => setIsBookModalOpen(true)} className="dynamic-button flex items-center justify-center">
-        Book A Slot Now
-        <ArrowRight className="ml-2 w-5 h-5" />
-      </button>
-      <Link to="/venues" className="nike-button bg-white text-indigo border border-indigo">
-        Browse Venues
-      </Link>
-    </div>
+      <section className="hero-section">
+        <video 
+          autoPlay 
+          muted 
+          loop 
+          playsInline
+          className="hero-video"
+        >
+          <source src="https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/vedios//mixkit-one-on-one-in-a-soccer-game-43483-full-hd%20(1).mp4" type="video/mp4" />
+          Your browser does not support the video tag.
+        </video>
+        <div className="hero-overlay dark-gradient-overlay"></div>
+        <div className="hero-content container mx-auto text-center">
+          <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold text-white mb-6 animate-fade-in">
+            Book Now for Your <span className="text-indigo-light">Game On!</span>
+          </h1>
+          <p className="text-xl md:text-2xl text-white mb-10 max-w-3xl mx-auto animate-fade-in" style={{ animationDelay: '0.2s' }}>
+            Find and book your favorite sports venues easily. Multiple sports, venues, and flexible time slots all in one place.
+          </p>
+          <div className="flex flex-col md:flex-row justify-center gap-4 animate-fade-in" style={{ animationDelay: '0.4s' }}>
+            <button 
+              onClick={() => setIsBookModalOpen(true)} 
+              className="dynamic-button flex items-center justify-center"
+            >
+              Book A Slot Now
+              <ArrowRight className="ml-2 w-5 h-5" />
+            </button>
+            <Link to="/venues" className="nike-button bg-white text-indigo border border-indigo">
+              Browse Venues
+            </Link>
+          </div>
           
           <EnterChallengeButton />
         </div>
       </section>
 
       {/* Add Location Permission Request here */}
-      {!locationPermissionHandled && (
-        <div className="container mx-auto px-4 -mt-6 relative z-10">
-          <LocationPermissionRequest
-            onPermissionGranted={handleLocationPermissionGranted}
-          />
-        </div>
-      )}
-
-      {/* Add Near You Section after the hero section */}
-      <div className="pt-0">
-        <NearbyVenues />
+      <div className="container mx-auto px-4 -mt-6 relative z-10">
+        <LocationPermissionRequest />
       </div>
 
-      <section id="venues" ref={venuesRef} className="py-16 bg-gradient-to-b from-black/90 to-navy-dark">
+      {/* Add Near You Section after the hero section */}
+      <NearbyVenues />
+
+      <section 
+        id="venues" 
+        ref={venuesRef}
+        className="py-16 bg-gradient-to-b from-black/90 to-navy-dark"
+      >
         <div className="container mx-auto px-4">
-          <div className={`flex justify-between items-center mb-8 ${visibleSections.venues ? 'animate-reveal' : 'opacity-0'}`}>
+          <div className={`flex justify-between items-center mb-10 ${visibleSections.venues ? 'animate-reveal' : 'opacity-0'}`}>
             <h2 className="section-title text-white relative">
               Featured Venues
               <span className="absolute -bottom-2 left-0 w-20 h-1 bg-indigo-light"></span>
@@ -238,82 +239,52 @@ const Index: React.FC = () => {
           
           <div className={`${visibleSections.venues ? 'animate-reveal' : 'opacity-0'}`}>
             {loading.venues ? (
-              <Carousel className="w-full">
-                <CarouselContent className="-ml-2 md:-ml-4">
-                  {[1, 2, 3, 4].map((_, index) => (
-                    <CarouselItem key={index} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/4">
-                      <VenueSkeleton />
-                    </CarouselItem>
-                  ))}
-                </CarouselContent>
-              </Carousel>
+              <div className="flex justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo"></div>
+              </div>
             ) : venues.length > 0 ? (
               <Carousel className="w-full">
                 <CarouselContent className="-ml-2 md:-ml-4">
                   {venues.map((venue, index) => (
                     <CarouselItem key={venue.id} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/4">
                       <div 
-                        className="venue-card group cursor-pointer overflow-hidden rounded-lg bg-navy-light hover:bg-navy transition-all duration-300" 
-                        style={{animationDelay: `${0.1 * (index + 1)}s`}} 
+                        className="venue-card group cursor-pointer overflow-hidden rounded-xl"
+                        style={{ animationDelay: `${0.1 * (index + 1)}s` }}
                         onClick={() => navigate(`/venues/${venue.id}`)}
-                        role="button"
-                        tabIndex={0}
-                        aria-label={`Book ${venue.name} - Rating: ${venue.rating.toFixed(1)}, Location: ${venue.location}`}
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            navigate(`/venues/${venue.id}`);
-                          }
-                        }}
                       >
-                        <div className="h-44 overflow-hidden relative">
-                          <img
-                            src={venue.image_url || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000'}
-                            alt={venue.name}
+                        <div className="h-56 overflow-hidden relative">
+                          <img 
+                            src={venue.image_url || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000'} 
+                            alt={venue.name} 
                             className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-110"
-                            loading="lazy"
                           />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-60"></div>
+                          <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-30 group-hover:opacity-70 transition-opacity"></div>
                           
                           <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
-                            <div className="bg-indigo/80 backdrop-blur-sm px-4 py-2 rounded-full transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">
-                              <span className="text-white text-sm font-medium">View Details</span>
+                            <div className="bg-indigo/80 backdrop-blur-sm p-3 rounded-full transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">
+                              <Link to={`/venues/${venue.id}`} className="text-white font-semibold">
+                                Details
+                              </Link>
                             </div>
                           </div>
                         </div>
-                        <div className="p-3 relative">
-                          <h3 className="text-base font-semibold text-white mb-1 group-hover:text-indigo-light transition-colors">
+                        <div className="p-4 bg-navy-light text-white relative overflow-hidden group-hover:bg-indigo transition-colors duration-500">
+                          <h3 className="text-xl font-bold group-hover:text-white transition-colors">
                             {venue.name}
                           </h3>
-                          <p className="text-gray-400 text-sm mb-2 line-clamp-1">{venue.location || 'Find a venue near you'}</p>
+                          <p className="text-gray-300 mt-2 line-clamp-2">{venue.location || 'Find a venue near you'}</p>
                           
-                          <div className="flex items-center justify-between text-xs">
-                            <div className="flex items-center space-x-1">
-                              <Star className="w-4 h-4 text-indigo-light" />
-                              <span className="text-white">{venue.rating.toFixed(1)}</span>
-                              {venue.review_count && (
-                                <span className="text-gray-400">({venue.review_count})</span>
-                              )}
-                            </div>
-                            {venue.total_bookings && (
-                              <span className="text-indigo-light/80">{venue.total_bookings} bookings</span>
-                            )}
-                          </div>
+                          <div className="absolute bottom-0 left-0 w-full h-1 bg-indigo transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-500"></div>
                           
-                          <div className="absolute bottom-0 left-0 w-full h-0.5 bg-indigo transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-500"></div>
+                          <div className="absolute -bottom-12 -right-12 w-24 h-24 bg-indigo-light rounded-full opacity-0 group-hover:opacity-20 transform translate-x-full translate-y-full group-hover:translate-x-0 group-hover:translate-y-0 transition-all duration-700"></div>
                         </div>
                       </div>
                     </CarouselItem>
                   ))}
                 </CarouselContent>
-                <div className="flex justify-end mt-4 gap-2">
-                  <CarouselPrevious 
-                    className="relative inset-0 translate-y-0 bg-navy hover:bg-indigo text-white hover:text-white"
-                    aria-label="View previous venues"
-                  />
-                  <CarouselNext 
-                    className="relative inset-0 translate-y-0 bg-navy hover:bg-indigo text-white hover:text-white"
-                    aria-label="View next venues"
-                  />
+                <div className="flex justify-end mt-6 gap-2">
+                  <CarouselPrevious className="relative inset-0 translate-y-0 bg-navy-light hover:bg-indigo hover:text-white text-white" />
+                  <CarouselNext className="relative inset-0 translate-y-0 bg-navy-light hover:bg-indigo hover:text-white text-white" />
                 </div>
               </Carousel>
             ) : (
@@ -325,65 +296,87 @@ const Index: React.FC = () => {
         </div>
       </section>
 
-     <section id="sports" ref={sportsRef} className="py-16 bg-gradient-to-b from-navy-dark to-black/90">
-  <div className="container mx-auto px-4">
-    <div className={`flex justify-between items-center mb-10 ${visibleSections.sports ? 'animate-reveal' : 'opacity-0'}`}>
-      <h2 className="section-title text-white relative">
-        Featured Sports
-        <span className="absolute -bottom-2 left-0 w-20 h-1 bg-indigo-light"></span>
-      </h2>
-      <Link to="/sports" className="text-indigo-light font-semibold flex items-center group hover:text-indigo-dark transition-colors">
-        View All <ChevronRight className="ml-1 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-      </Link>
-    </div>
-    
-    <div className={`${visibleSections.sports ? 'animate-reveal' : 'opacity-0'}`}>
-      {loading.sports ? <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo"></div>
-        </div> : sports.length > 0 ? <Carousel className="w-full">
-          <CarouselContent className="-ml-2 md:-ml-4">
-            {sports.map((sport, index) => <CarouselItem key={sport.id} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/4">
-                <div className="sport-card group cursor-pointer overflow-hidden rounded-xl" style={{
-            animationDelay: `${0.1 * (index + 1)}s`
-          }} onClick={() => handleSportCardClick(sport.id)}>
-                  <div className="h-40 overflow-hidden relative"> {/* Changed from h-56 to h-40 */}
-                    <img src={sport.image_url || 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?q=80&w=1000'} alt={sport.name} className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-110" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-30 group-hover:opacity-70 transition-opacity"></div>
-                    
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
-                      <div className="bg-indigo/80 backdrop-blur-sm p-3 rounded-full transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"> {/* Reduced icon size */}
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="p-3 bg-navy-light text-white relative overflow-hidden group-hover:bg-indigo transition-colors duration-500"> {/* Reduced padding */}
-                    <h3 className="text-lg font-bold group-hover:text-white transition-colors"> {/* Reduced text size */}
-                      {sport.name}
-                    </h3>
-                    <p className="text-gray-300 mt-1 text-sm line-clamp-2">{sport.description || 'Find venues for this sport'}</p> {/* Reduced text size and margin */}
-                    
-                    <div className="absolute bottom-0 left-0 w-full h-1 bg-indigo transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-500"></div>
-                    
-                    <div className="absolute -bottom-12 -right-12 w-24 h-24 bg-indigo-light rounded-full opacity-0 group-hover:opacity-20 transform translate-x-full translate-y-full group-hover:translate-x-0 group-hover:translate-y-0 transition-all duration-700"></div>
-                  </div>
-                </div>
-              </CarouselItem>)}
-          </CarouselContent>
-          <div className="flex justify-end mt-6 gap-2">
-            <CarouselPrevious className="relative inset-0 translate-y-0 bg-navy-light hover:bg-indigo hover:text-white text-white" />
-            <CarouselNext className="relative inset-0 translate-y-0 bg-navy-light hover:bg-indigo hover:text-white text-white" />
+      <section 
+        id="sports" 
+        ref={sportsRef}
+        className="py-16 bg-gradient-to-b from-navy-dark to-black/90"
+      >
+        <div className="container mx-auto px-4">
+          <div className={`flex justify-between items-center mb-10 ${visibleSections.sports ? 'animate-reveal' : 'opacity-0'}`}>
+            <h2 className="section-title text-white relative">
+              Featured Sports
+              <span className="absolute -bottom-2 left-0 w-20 h-1 bg-indigo-light"></span>
+            </h2>
+            <Link to="/sports" className="text-indigo-light font-semibold flex items-center group hover:text-indigo-dark transition-colors">
+              View All <ChevronRight className="ml-1 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </Link>
           </div>
-        </Carousel> : <div className="text-center py-12">
-          <p className="text-white text-lg">No sports available at the moment. Please check back later.</p>
-        </div>}
-    </div>
-  </div>
-</section>
+          
+          <div className={`${visibleSections.sports ? 'animate-reveal' : 'opacity-0'}`}>
+            {loading.sports ? (
+              <div className="flex justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo"></div>
+              </div>
+            ) : sports.length > 0 ? (
+              <Carousel className="w-full">
+                <CarouselContent className="-ml-2 md:-ml-4">
+                  {sports.map((sport, index) => (
+                    <CarouselItem key={sport.id} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/4">
+                      <div 
+                        className="sport-card group cursor-pointer overflow-hidden rounded-xl"
+                        style={{ animationDelay: `${0.1 * (index + 1)}s` }}
+                        onClick={() => handleSportCardClick(sport.id)}
+                      >
+                        <div className="h-56 overflow-hidden relative">
+                          <img 
+                            src={sport.image_url || 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?q=80&w=1000'} 
+                            alt={sport.name} 
+                            className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-110"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-30 group-hover:opacity-70 transition-opacity"></div>
+                          
+                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
+                            <div className="bg-indigo/80 backdrop-blur-sm p-3 rounded-full transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="p-4 bg-navy-light text-white relative overflow-hidden group-hover:bg-indigo transition-colors duration-500">
+                          <h3 className="text-xl font-bold group-hover:text-white transition-colors">
+                            {sport.name}
+                          </h3>
+                          <p className="text-gray-300 mt-2 line-clamp-2">{sport.description || 'Find venues for this sport'}</p>
+                          
+                          <div className="absolute bottom-0 left-0 w-full h-1 bg-indigo transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-500"></div>
+                          
+                          <div className="absolute -bottom-12 -right-12 w-24 h-24 bg-indigo-light rounded-full opacity-0 group-hover:opacity-20 transform translate-x-full translate-y-full group-hover:translate-x-0 group-hover:translate-y-0 transition-all duration-700"></div>
+                        </div>
+                      </div>
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+                <div className="flex justify-end mt-6 gap-2">
+                  <CarouselPrevious className="relative inset-0 translate-y-0 bg-navy-light hover:bg-indigo hover:text-white text-white" />
+                  <CarouselNext className="relative inset-0 translate-y-0 bg-navy-light hover:bg-indigo hover:text-white text-white" />
+                </div>
+              </Carousel>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-white text-lg">No sports available at the moment. Please check back later.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
 
-      <section id="athletes" ref={athletesRef} className="py-16 bg-gradient-to-b from-black/90 to-navy-dark">
+      <section 
+        id="athletes" 
+        ref={athletesRef}
+        className="py-16 bg-gradient-to-b from-black/90 to-navy-dark"
+      >
         <div className="container mx-auto px-4">
           <div className={`mb-10 ${visibleSections.athletes ? 'animate-reveal' : 'opacity-0'}`}>
             <h2 className="section-title text-white text-center relative">
@@ -395,37 +388,35 @@ const Index: React.FC = () => {
             </p>
           </div>
           
-          {/* Desktop Grid */}
-          <div className={`hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-6 ${visibleSections.athletes ? 'animate-reveal' : 'opacity-0'}`}>
+          <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 ${visibleSections.athletes ? 'animate-reveal' : 'opacity-0'}`}>
             {athletesBenefits.map((benefit, index) => (
-              <div key={index} className="group" style={{
-                animationDelay: `${0.15 * (index + 1)}s`
-              }}>
+              <div 
+                key={index} 
+                className="group"
+                style={{ animationDelay: `${0.15 * (index + 1)}s` }}
+              >
                 <div className="overflow-hidden rounded-lg bg-navy relative h-80">
                   <img 
                     src={benefit.image} 
                     alt={benefit.title} 
                     className="w-full h-full object-cover filter grayscale group-hover:grayscale-0 transition-all duration-500"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-navy to-transparent opacity-70" />
+                  
+                  <div className="absolute inset-0 bg-gradient-to-t from-navy to-transparent opacity-70"></div>
+                  
                   <div className="absolute inset-0">
                     <svg className="w-full h-full opacity-0 group-hover:opacity-40 transition-opacity duration-700" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
                       <circle cx="20" cy="20" r="2" fill="#4CAF50" className="animate-pulse-light" />
-                      <circle cx="80" cy="30" r="2" fill="#4CAF50" className="animate-pulse-light" style={{
-                        animationDelay: '0.5s'
-                      }} />
-                      <circle cx="65" cy="65" r="2" fill="#4CAF50" className="animate-pulse-light" style={{
-                        animationDelay: '1s'
-                      }} />
-                      <circle cx="30" cy="75" r="2" fill="#4CAF50" className="animate-pulse-light" style={{
-                        animationDelay: '1.5s'
-                      }} />
+                      <circle cx="80" cy="30" r="2" fill="#4CAF50" className="animate-pulse-light" style={{ animationDelay: '0.5s' }} />
+                      <circle cx="65" cy="65" r="2" fill="#4CAF50" className="animate-pulse-light" style={{ animationDelay: '1s' }} />
+                      <circle cx="30" cy="75" r="2" fill="#4CAF50" className="animate-pulse-light" style={{ animationDelay: '1.5s' }} />
                       <line x1="20" y1="20" x2="80" y2="30" stroke="#4CAF50" strokeWidth="0.5" strokeDasharray="2" />
                       <line x1="80" y1="30" x2="65" y2="65" stroke="#4CAF50" strokeWidth="0.5" strokeDasharray="2" />
                       <line x1="65" y1="65" x2="30" y2="75" stroke="#4CAF50" strokeWidth="0.5" strokeDasharray="2" />
                       <line x1="30" y1="75" x2="20" y2="20" stroke="#4CAF50" strokeWidth="0.5" strokeDasharray="2" />
                     </svg>
                   </div>
+                  
                   <div className="absolute inset-0 p-6 flex flex-col justify-end">
                     <h3 className="text-xl font-bold text-white mb-2">{benefit.title}</h3>
                     <p className="text-gray-300 opacity-0 group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">{benefit.description}</p>
@@ -434,58 +425,12 @@ const Index: React.FC = () => {
               </div>
             ))}
           </div>
-
-          {/* Mobile Carousel */}
-          <div className={`md:hidden ${visibleSections.athletes ? 'animate-reveal' : 'opacity-0'}`}>
-            <Carousel className="w-full">
-              <CarouselContent>
-                {athletesBenefits.map((benefit, index) => (
-                  <CarouselItem key={index} className="pl-1 md:basis-1/2 lg:basis-1/3">
-                    <div className="relative h-[300px] rounded-xl overflow-hidden bg-navy group active:scale-95 transition-all duration-300">
-                      {/* Animated border effect */}
-                      <div className="absolute inset-0 bg-gradient-to-r from-indigo via-[#2def80] to-indigo opacity-0 group-hover:opacity-100 transition-opacity duration-300" 
-                           style={{ padding: '1px' }}>
-                        <div className="absolute inset-0 bg-navy rounded-xl" />
-                      </div>
-
-                      {/* Main content */}
-                      <div className="relative h-full">
-                        <img 
-                          src={benefit.image} 
-                          alt={benefit.title}
-                          className="w-full h-full object-cover brightness-90 group-hover:brightness-100 group-hover:scale-105 transition-all duration-500"
-                          loading="lazy"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-navy via-navy/50 to-transparent opacity-90" />
-                        
-                        {/* Content overlay with animation */}
-                        <div className="absolute inset-x-0 bottom-0 p-4">
-                          <div className="bg-navy/80 backdrop-blur-sm rounded-lg p-4 border-t border-indigo/20 transform translate-y-0 group-hover:-translate-y-2 transition-transform duration-300">
-                            {/* Glowing dot indicator */}
-                            <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#2def80] shadow-lg shadow-[#2def80]/50 group-hover:animate-ping" />
-                            
-                            <h3 className="text-lg font-bold text-white mb-2 group-hover:text-[#2def80] transition-colors">
-                              {benefit.title}
-                            </h3>
-                            <p className="text-sm text-gray-300 line-clamp-2 group-hover:line-clamp-none transition-all duration-300">
-                              {benefit.description}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </CarouselItem>
-                ))}
-              </CarouselContent>
-              <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 flex gap-2">
-                <CarouselPrevious className="relative inset-0 translate-y-0 h-8 w-8 rounded-full bg-navy hover:bg-indigo text-white border border-indigo/20 hover:border-indigo transition-colors" />
-                <CarouselNext className="relative inset-0 translate-y-0 h-8 w-8 rounded-full bg-navy hover:bg-indigo text-white border border-indigo/20 hover:border-indigo transition-colors" />
-              </div>
-            </Carousel>
-          </div>
           
           <div className="mt-10 text-center">
-            <Link to="/register" className="inline-flex items-center px-6 py-3 bg-indigo text-white rounded-md hover:bg-indigo-dark transition-colors">
+            <Link 
+              to="/register" 
+              className="inline-flex items-center px-6 py-3 bg-indigo text-white rounded-md hover:bg-indigo-dark transition-colors"
+            >
               Join Now
               <ArrowRight className="ml-2 w-5 h-5" />
             </Link>
@@ -493,55 +438,52 @@ const Index: React.FC = () => {
         </div>
       </section>
 
-      <section id="forYou" ref={forYouRef} className="py-16 bg-gradient-to-r from-navy-light to-navy-dark">
+      <section 
+        id="forYou" 
+        ref={forYouRef}
+        className="py-16 bg-gradient-to-r from-navy-light to-navy-dark"
+      >
         <div className="container mx-auto px-4">
-          <h2 className={`section-title text-center text-white mb-8 ${visibleSections.forYou ? 'animate-reveal' : 'opacity-0'}`}>
-            For You
-            <span className="block w-20 h-1 bg-indigo-light mx-auto mt-2"></span>
-          </h2>
+          <h2 className={`section-title text-center text-white ${visibleSections.forYou ? 'animate-reveal' : 'opacity-0'}`}>For You</h2>
           
-          <div className={`max-w-4xl mx-auto ${visibleSections.forYou ? 'animate-reveal' : 'opacity-0'}`} style={{
-            animationDelay: '0.2s'
-          }}>
-            <div className="glass-card shadow-2xl overflow-hidden bg-navy/50">
-              <div className="p-6">
+          <div className={`max-w-4xl mx-auto ${visibleSections.forYou ? 'animate-reveal' : 'opacity-0'}`} style={{ animationDelay: '0.2s' }}>
+            <div className="glass-card shadow-2xl overflow-hidden">
+              <div className="p-8">
                 <div className="mb-6 flex items-center">
-                  <Activity className="w-6 h-6 text-indigo-light mr-3" />
-                  <h3 className="text-xl font-bold text-white">Recommended For You</h3>
+                  <Activity className="w-8 h-8 text-indigo-light mr-3" />
+                  <h3 className="text-2xl font-bold text-white">Recommended For You</h3>
                 </div>
                 
+                {/* Added StreakBar component here */}
                 <StreakBar />
                 
-                <div className="my-6">
-                  <Suspense fallback={<div className="h-[200px] bg-navy animate-pulse rounded-lg"></div>}>
-                    <HomepageAvailabilityWidget />
-                  </Suspense>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="flex flex-col items-center text-center p-4 rounded-lg border border-indigo/30 hover:border-indigo-light bg-navy/50 hover:bg-navy transition-all">
-                    <Calendar className="w-8 h-8 mb-3 text-indigo-light" />
-                    <h4 className="text-base font-semibold mb-1 text-white">Quick Booking</h4>
-                    <p className="text-sm text-gray-400">Based on your preferences</p>
-                    <button onClick={() => setIsBookModalOpen(true)} className="mt-3 py-1.5 px-4 bg-indigo hover:bg-indigo-dark text-white text-sm rounded-full transition-colors">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="flex flex-col items-center text-center p-4 rounded-lg border border-indigo-light hover:bg-indigo hover:text-white transition-all">
+                    <Calendar className="w-10 h-10 mb-3" />
+                    <h4 className="text-lg font-semibold mb-1">Quick Booking</h4>
+                    <p className="text-sm">Based on your preferences</p>
+                    <button 
+                      onClick={() => setIsBookModalOpen(true)} 
+                      className="mt-4 py-2 px-4 bg-indigo text-white rounded-md hover:bg-indigo-dark transition-colors"
+                    >
                       Book Now
                     </button>
                   </div>
                   
-                  <div className="flex flex-col items-center text-center p-4 rounded-lg border border-indigo/30 hover:border-indigo-light bg-navy/50 hover:bg-navy transition-all">
-                    <Clock className="w-8 h-8 mb-3 text-indigo-light" />
-                    <h4 className="text-base font-semibold mb-1 text-white">Upcoming Event</h4>
-                    <p className="text-sm text-gray-400">Community tournament</p>
-                    <button className="mt-3 py-1.5 px-4 bg-indigo hover:bg-indigo-dark text-white text-sm rounded-full transition-colors">
+                  <div className="flex flex-col items-center text-center p-4 rounded-lg border border-navy hover:bg-navy hover:text-white transition-all">
+                    <Clock className="w-10 h-10 mb-3" />
+                    <h4 className="text-lg font-semibold mb-1">Upcoming Event</h4>
+                    <p className="text-sm">Community basketball tournament</p>
+                    <button className="mt-4 py-2 px-4 bg-navy-dark text-white rounded-md hover:bg-black transition-colors">
                       Learn More
                     </button>
                   </div>
                   
-                  <div className="flex flex-col items-center text-center p-4 rounded-lg border border-indigo/30 hover:border-indigo-light bg-navy/50 hover:bg-navy transition-all">
-                    <User className="w-8 h-8 mb-3 text-indigo-light" />
-                    <h4 className="text-base font-semibold mb-1 text-white">Complete Profile</h4>
-                    <p className="text-sm text-gray-400">Get recommendations</p>
-                    <Link to="/register" className="mt-3 py-1.5 px-4 bg-indigo hover:bg-indigo-dark text-white text-sm rounded-full transition-colors">
+                  <div className="flex flex-col items-center text-center p-4 rounded-lg border border-navy hover:bg-navy hover:text-white transition-all">
+                    <User className="w-10 h-10 mb-3" />
+                    <h4 className="text-lg font-semibold mb-1">Complete Profile</h4>
+                    <p className="text-sm">Get personalized recommendations</p>
+                    <Link to="/register" className="mt-4 py-2 px-4 bg-navy-dark text-white rounded-md hover:bg-black transition-colors">
                       Sign Up
                     </Link>
                   </div>
@@ -552,58 +494,28 @@ const Index: React.FC = () => {
         </div>
       </section>
 
-      <section id="partners" ref={quotesRef} className="py-16 bg-indigo relative overflow-hidden">
-  <div className="absolute inset-0 pattern-dots pattern-opacity-10 bg-navy-dark"></div>
-  <div className="container mx-auto px-4 relative z-10">
-    <h2 className={`text-3xl font-bold text-center text-white mb-10 ${visibleSections.quotes ? 'animate-reveal' : 'opacity-0'}`}>
-      Become A Partner
-      <span className="block w-20 h-1 bg-white mt-2 mx-auto"></span>
-    </h2>
-    
-    <div className="relative w-full max-w-6xl mx-auto overflow-hidden">
-      {/* Gradient fade edges */}
-      <div className="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-indigo to-transparent z-10"></div>
-      <div className="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-indigo to-transparent z-10"></div>
-      
-      {/* Infinite scrolling carousel */}
-      <div className="flex overflow-x-hidden group hover:[animation-play-state:paused]">
-        <div className="flex animate-infinite-scroll whitespace-nowrap">
-          {[
-            "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//%20-3.jpg",
-            "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//%20.jpg",
-            "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//ChatGPT%20Image%20Apr%2018,%202025,%2001_59_47%20AM.png",
-            "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//3e6653285e2d08a596a15f28e50d2735.jpg"
-          ].map((img, idx) => (
-            <div key={idx} className="inline-flex items-center justify-center mx-4">
-              <img 
-                src={img} 
-                alt={`Partner ${idx + 1}`}
-                className="h-32 w-auto object-contain max-w-[200px] md:max-w-[300px] rounded-lg shadow-md hover:scale-105 transition-transform"
-                loading="lazy"
-              />
+      <section 
+        id="quotes" 
+        ref={quotesRef}
+        className="py-16 bg-indigo relative overflow-hidden"
+      >
+        <div className="absolute inset-0 pattern-dots pattern-opacity-10"></div>
+        <div className="container mx-auto px-4 relative z-10">
+          <h2 className={`section-title text-center text-white ${visibleSections.quotes ? 'animate-reveal' : 'opacity-0'}`}>
+            Want To Register For A Tournament?
+          </h2>
+          
+          <div className="max-w-4xl mx-auto mt-10">
+            <div className={`glass-card p-8 ${visibleSections.quotes ? 'animate-reveal animate-float' : 'opacity-0'}`} style={{ animationDelay: '0.3s' }}>
+              <div className="text-center">
+                <p className="text-2xl md:text-3xl font-medium text-white italic">
+                  {sportsQuotes[activeQuoteIndex]}
+                </p>
+              </div>
             </div>
-          ))}
-          {/* Duplicate for seamless looping */}
-          {[
-            "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//%20-3.jpg",
-            "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//%20.jpg",
-            "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//ChatGPT%20Image%20Apr%2018,%202025,%2001_59_47%20AM.png",
-            "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//3e6653285e2d08a596a15f28e50d2735.jpg"
-          ].map((img, idx) => (
-            <div key={`dup-${idx}`} className="inline-flex items-center justify-center mx-4">
-              <img 
-                src={img} 
-                alt={`Partner ${idx + 1}`}
-                className="h-32 w-auto object-contain max-w-[200px] md:max-w-[300px] rounded-lg shadow-md hover:scale-105 transition-transform"
-                loading="lazy"
-              />
-            </div>
-          ))}
+          </div>
         </div>
-      </div>
-    </div>
-  </div>
-</section>
+      </section>
 
       <footer className="bg-navy-dark text-white py-12">
         <div className="container mx-auto px-4">
@@ -640,7 +552,11 @@ const Index: React.FC = () => {
               <h3 className="text-lg font-semibold mb-4">Newsletter</h3>
               <p className="text-gray-300 mb-4">Subscribe to get updates on new venues and special offers.</p>
               <form className="flex">
-                <input type="email" placeholder="Your email" className="px-4 py-2 rounded-l-md w-full focus:outline-none text-navy-dark" />
+                <input 
+                  type="email" 
+                  placeholder="Your email" 
+                  className="px-4 py-2 rounded-l-md w-full focus:outline-none text-navy-dark"
+                />
                 <button className="bg-indigo px-4 py-2 rounded-r-md hover:bg-indigo-dark transition-colors">
                   Subscribe
                 </button>
@@ -654,9 +570,11 @@ const Index: React.FC = () => {
         </div>
       </footer>
 
-      {isBookModalOpen && <BookSlotModal onClose={() => setIsBookModalOpen(false)} />}
-      
-      {/* Remove old AIChatWidget reference */}
-    </div>;
+      {isBookModalOpen && (
+        <BookSlotModal onClose={() => setIsBookModalOpen(false)} />
+      )}
+    </div>
+  );
 };
+
 export default Index;
