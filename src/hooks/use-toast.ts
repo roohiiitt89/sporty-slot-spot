@@ -1,5 +1,7 @@
 
-// Re-export from @/hooks/use-toast to maintain compatibility
-import { useToast, toast } from "@/hooks/use-toast";
+// Import directly from the ui toast components
+import { useToast as useToastOriginal, toast as toastOriginal } from "@/components/ui/toast";
 
-export { useToast, toast };
+// Export with the same names
+export const useToast = useToastOriginal;
+export const toast = toastOriginal;

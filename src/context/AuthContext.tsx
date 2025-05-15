@@ -13,6 +13,8 @@ interface AuthContextProps {
   signUp: (email: string, password: string, userData: any) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
+  isSessionExpired: boolean;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
@@ -22,6 +24,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<'user' | 'admin' | 'super_admin' | null>(null);
+  const [isSessionExpired, setIsSessionExpired] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -32,6 +35,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setUser(currentSession?.user ?? null);
         
         if (event === 'SIGNED_IN') {
+          setIsSessionExpired(false);
           // Fetch user role after sign in
           if (currentSession?.user) {
             fetchUserRole(currentSession.user.id);
@@ -39,6 +43,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         } else if (event === 'SIGNED_OUT') {
           setUserRole(null);
           navigate('/login');
+        } else if (event === 'TOKEN_REFRESHED') {
+          setIsSessionExpired(false);
+        } else if (event === 'USER_UPDATED') {
+          setUser(currentSession?.user ?? null);
         }
       }
     );
@@ -56,8 +64,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
-  }, [navigate]);
+    // Add session expiration check
+    const checkSessionExpiration = () => {
+      const expiresAt = session?.expires_at;
+      if (expiresAt) {
+        const now = Math.floor(Date.now() / 1000);
+        if (expiresAt < now) {
+          setIsSessionExpired(true);
+        }
+      }
+    };
+
+    const interval = setInterval(checkSessionExpiration, 60000); // Check every minute
+    
+    return () => {
+      subscription.unsubscribe();
+      clearInterval(interval);
+    };
+  }, [navigate, session?.expires_at]);
 
   const fetchUserRole = async (userId: string) => {
     try {
@@ -118,9 +142,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signOut = async () => {
     await supabase.auth.signOut();
   };
+  
+  const logout = async () => {
+    await supabase.auth.signOut();
+  };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, userRole, signUp, signIn, signOut }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      session, 
+      loading, 
+      userRole, 
+      signUp, 
+      signIn, 
+      signOut,
+      isSessionExpired,
+      logout
+    }}>
       {children}
     </AuthContext.Provider>
   );

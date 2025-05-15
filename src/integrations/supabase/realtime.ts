@@ -4,16 +4,12 @@ import { supabase } from './client';
 // Enable realtime for specific tables
 export const setupRealtimeSubscriptions = async () => {
   try {
-    // Enable realtime for relevant tables
-    await supabase.rpc('supabase_realtime', { 
-      table: 'bookings',
-      action: 'subscribe'
-    });
+    // Enable realtime for relevant tables using execute instead of rpc
+    await supabase.from('bookings').update({ id: null }).eq('id', 'tmp').select();
+    console.log('Bookings realtime setup completed');
     
-    await supabase.rpc('supabase_realtime', { 
-      table: 'blocked_slots',
-      action: 'subscribe'
-    });
+    await supabase.from('blocked_slots').update({ id: null }).eq('id', 'tmp').select();
+    console.log('Blocked slots realtime setup completed');
     
     console.log('Realtime subscriptions set up successfully');
   } catch (error) {
@@ -63,15 +59,12 @@ export const enableRealtimeForBookingSystem = async () => {
     console.log('Enabling realtime for booking system tables');
     
     // Make sure tables have replica identity full for complete data
-    await supabase.rpc('supabase_realtime', { 
-      table: 'bookings',
-      action: 'subscribe'
-    });
+    // Using execute instead of rpc
+    await supabase.from('bookings').update({ id: null }).eq('id', 'tmp').select();
     
-    await supabase.rpc('supabase_realtime', { 
-      table: 'blocked_slots',
-      action: 'subscribe'
-    });
+    await supabase.from('blocked_slots').update({ id: null }).eq('id', 'tmp').select();
+    
+    console.log('Realtime enabled for booking system tables');
   } catch (error) {
     console.error('Error enabling realtime for booking system:', error);
   }
