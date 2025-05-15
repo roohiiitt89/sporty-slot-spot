@@ -10,40 +10,38 @@ const navItems = [
   { to: '/profile', label: 'Profile', icon: <User /> },
 ];
 
-const BottomNav: React.FC<{ onChatClick?: () => void; chatActive?: boolean }> = ({ onChatClick, chatActive }) => {
+const BottomNav: React.FC<{ onChatClick?: () => void; chatActive?: boolean; setChatActive?: (open: boolean) => void }> = ({ onChatClick, chatActive, setChatActive }) => {
   const { user } = useAuth();
   const location = useLocation();
 
   // Only show on mobile and when logged in
   if (!user || typeof window === 'undefined' || window.innerWidth > 768) return null;
 
+  const handleNavClick = (to: string) => {
+    if (setChatActive) setChatActive(false); // Close chat modal on nav
+  };
+
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-navy-dark border-t border-navy-light flex justify-around items-center h-16 shadow-lg md:hidden">
-      {navItems.map((item) => {
-        const isActive = location.pathname === item.to;
-        return (
-          <Link
-            key={item.to}
-            to={item.to}
-            className={`flex flex-col items-center justify-center flex-1 h-full text-xs transition-colors ${
-              isActive ? 'text-indigo-light' : 'text-gray-400 hover:text-white'
-            }`}
-          >
-            <span className="mb-1">{item.icon}</span>
-            {item.label}
-          </Link>
-        );
-      })}
-      {/* Chat button replaces Support on mobile */}
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-navy-light border-t border-navy flex justify-between items-center px-2 py-1 shadow-lg md:hidden">
+      {navItems.map((item) => (
+        <Link
+          key={item.to}
+          to={item.to}
+          className={`flex-1 flex flex-col items-center justify-center py-1 ${location.pathname === item.to ? 'text-indigo-light' : 'text-white'} transition-colors`}
+          onClick={() => handleNavClick(item.to)}
+        >
+          {item.icon}
+          <span className="text-xs mt-0.5">{item.label}</span>
+        </Link>
+      ))}
+      {/* Chat button */}
       <button
+        className={`flex-1 flex flex-col items-center justify-center py-1 ${chatActive ? 'text-indigo-light' : 'text-white'} transition-colors`}
         onClick={onChatClick}
-        className={`flex flex-col items-center justify-center flex-1 h-full text-xs transition-colors focus:outline-none ${
-          chatActive ? 'text-indigo-light' : 'text-gray-400 hover:text-white'
-        }`}
-        aria-label="Open Chat Assistant"
+        aria-label="Open Chat"
       >
-        <span className="mb-1"><MessageCircle /></span>
-        Chat
+        <MessageCircle />
+        <span className="text-xs mt-0.5">Chat</span>
       </button>
     </nav>
   );
