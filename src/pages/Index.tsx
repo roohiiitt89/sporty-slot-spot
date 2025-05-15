@@ -223,7 +223,7 @@ const Index: React.FC = () => {
                   {venues.map((venue, index) => (
                     <CarouselItem key={venue.id} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/4">
                       <div 
-                        className="venue-card group cursor-pointer overflow-hidden rounded-lg bg-navy-light hover:bg-navy transition-all duration-300" 
+                        className="venue-card group cursor-pointer overflow-hidden rounded-xl bg-gradient-to-br from-black via-[#1E3B2C] to-black border border-[#2E7D32] hover:shadow-[0_0_16px_2px_#2E7D32] hover:border-[#2def80] shadow-lg animate-fade-in transition-all duration-300" 
                         style={{animationDelay: `${0.1 * (index + 1)}s`}} 
                         onClick={() => navigate(`/venues/${venue.id}`)}
                         role="button"
@@ -235,60 +235,42 @@ const Index: React.FC = () => {
                           }
                         }}
                       >
-                        <div className="h-44 overflow-hidden relative">
-                          <img
-                            src={venue.image_url || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000'}
-                            alt={venue.name}
-                            className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-110"
-                            loading="lazy"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-60"></div>
-                          
-                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
-                            <div className="bg-indigo/80 backdrop-blur-sm px-4 py-2 rounded-full transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">
-                              <span className="text-white text-sm font-medium">View Details</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="p-3 relative">
-                          <h3 className="text-base font-semibold text-white mb-1 group-hover:text-indigo-light transition-colors">
-                            {venue.name}
-                          </h3>
-                          <p className="text-gray-400 text-sm mb-2 line-clamp-1">{venue.location || 'Find a venue near you'}</p>
-                          
-                          <div className="flex items-center justify-between text-xs">
-                            <div className="flex items-center space-x-1">
-                              <Star className="w-4 h-4 text-indigo-light" />
-                              <span className="text-white">{venue.rating.toFixed(1)}</span>
-                              {venue.review_count && (
-                                <span className="text-gray-400">({venue.review_count})</span>
-                              )}
-                            </div>
-                            {venue.total_bookings && (
-                              <span className="text-indigo-light/80">{venue.total_bookings} bookings</span>
+                        <div className="h-24 md:h-32 overflow-hidden relative">
+                          <img src={venue.image_url || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000'} alt={venue.name} className="w-full h-full object-cover transform transition-transform duration-700 group-hover:scale-105" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent opacity-80"></div>
+                          <div className="absolute top-2 right-2 bg-black/80 backdrop-blur px-2 py-0.5 rounded flex items-center shadow">
+                            <Star className="h-3 w-3 md:h-4 md:w-4 text-[#2E7D32] fill-current mr-1" />
+                            <span className="text-xs md:text-sm font-bold text-white">{venue.rating.toFixed(1)}</span>
+                            {venue.review_count && (
+                              <span className="text-gray-400 ml-1">({venue.review_count})</span>
                             )}
                           </div>
-                          
-                          <div className="absolute bottom-0 left-0 w-full h-0.5 bg-indigo transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-500"></div>
+                        </div>
+                        <div className="p-2 md:p-3">
+                          <h3 className="text-xs md:text-base font-semibold text-white mb-0.5 md:mb-1 truncate group-hover:text-[#2E7D32] transition-colors">{venue.name}</h3>
+                          <p className="text-[10px] md:text-xs text-gray-300 mb-1 truncate">{venue.location || 'Find a venue near you'}</p>
+                          <div className="flex items-center justify-between text-[10px] md:text-xs">
+                            <div className="flex items-center space-x-1">
+                              <Star className="w-3 h-3 text-[#2E7D32]" />
+                              <span className="text-white">{venue.rating.toFixed(1)}</span>
+                            </div>
+                            {venue.total_bookings && (
+                              <span className="text-[#2E7D32]/80">{venue.total_bookings} bookings</span>
+                            )}
+                          </div>
+                          <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[#1E3B2C] transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-500"></div>
                         </div>
                       </div>
                     </CarouselItem>
                   ))}
                 </CarouselContent>
-                <div className="flex justify-end mt-4 gap-2">
-                  <CarouselPrevious 
-                    className="relative inset-0 translate-y-0 bg-navy hover:bg-indigo text-white hover:text-white"
-                    aria-label="View previous venues"
-                  />
-                  <CarouselNext 
-                    className="relative inset-0 translate-y-0 bg-navy hover:bg-indigo text-white hover:text-white"
-                    aria-label="View next venues"
-                  />
-                </div>
               </Carousel>
             ) : (
-              <div className="text-center py-12">
-                <p className="text-white text-lg">No venues available at the moment. Please check back later.</p>
+              <div className="text-center py-8 md:py-12 bg-black rounded-lg">
+                <p className="text-white text-lg mb-4">No venues found</p>
+                <button onClick={() => navigate('/venues')} className="px-4 py-2 bg-[#1E3B2C] text-white rounded-md hover:bg-[#2E7D32] transition-colors">
+                  Browse All Venues
+                </button>
               </div>
             )}
           </div>
