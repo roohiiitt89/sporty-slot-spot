@@ -70,6 +70,9 @@ const VenueDetails: React.FC = () => {
   const isMobile = useIsMobile();
   const [venueImages, setVenueImages] = useState<string[]>([]);
 
+  // Use isMobile to conditionally apply mobile-optimized classes
+  const containerClass = isMobile ? 'max-w-screen-sm mx-auto px-2' : 'container mx-auto px-4';
+
   useEffect(() => {
     const fetchVenueDetails = async () => {
       try {
@@ -155,7 +158,7 @@ const VenueDetails: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black">
+      <div className={containerClass + ' min-h-screen bg-black'}>
         <Header />
         <div className="container mx-auto px-4 py-32">
           <div className="flex justify-center items-center h-64">
@@ -168,7 +171,7 @@ const VenueDetails: React.FC = () => {
 
   if (!venue) {
     return (
-      <div className="min-h-screen bg-black">
+      <div className={containerClass + ' min-h-screen bg-black'}>
         <Header />
         <div className="container mx-auto px-4 py-32">
           <div className="text-center">
@@ -505,7 +508,7 @@ const VenueDetails: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen bg-navy-dark">
+    <div className={containerClass + ' min-h-screen bg-navy-dark'}>
       <Header />
       
       {/* Back Button */}
