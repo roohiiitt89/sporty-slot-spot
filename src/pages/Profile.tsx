@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { LogOut, Edit, Calendar, User, Phone, Mail, CreditCard, ChevronRight, ArrowLeft, Shield, Info } from 'lucide-react';
 import SportDisplayName from '@/components/SportDisplayName';
+import HelpChatWidget from '@/components/HelpChatWidget';
 
 interface Booking {
   id: string;
@@ -48,6 +49,9 @@ const Profile: React.FC = () => {
     full_name: '',
     phone: ''
   });
+
+  // Detect mobile
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
   useEffect(() => {
     if (user) {
@@ -619,6 +623,8 @@ const Profile: React.FC = () => {
           </div>
         </div>
       </footer>
+      {/* Show HelpChatWidget only for mobile and signed-in users */}
+      {isMobile && user && <HelpChatWidget />}
     </div>
   );
 };
