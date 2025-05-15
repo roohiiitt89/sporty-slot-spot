@@ -14,7 +14,7 @@ import ReviewManagement from './ReviewManagement';
 import MessageManagement from './MessageManagement';
 import HelpRequestsManagement from './HelpRequestsManagement';
 import SportDisplayNames from './SportDisplayNames';
-import AIChatWidget from '@/components/AIChatWidget';
+
 interface VenueAdmin {
   venue_id: string;
 }
@@ -135,9 +135,6 @@ const AdminHome: React.FC = () => {
             <HelpRequestsManagement userRole={userRole} />
           </TabsContent>
         </Tabs>
-        
-        {/* Add AI Chat Widget */}
-        <AIChatWidget />
       </div>
     </div>;
 };
