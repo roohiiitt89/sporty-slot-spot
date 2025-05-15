@@ -33,6 +33,8 @@ const App = () => {
   const [chatActive, setChatActive] = useState(false);
   const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
 
+  const handleChatClick = () => setChatActive((prev) => !prev);
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -76,7 +78,7 @@ const App = () => {
             
             {/* Only show the new AI Chat Widget */}
             {(!isMobile || chatActive) && <NewAIChatWidget isOpen={chatActive} setIsOpen={setChatActive} />}
-            <BottomNav onChatClick={() => setChatActive((v) => !v)} chatActive={chatActive} />
+            <BottomNav onChatClick={handleChatClick} chatActive={chatActive} setChatActive={setChatActive} />
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
