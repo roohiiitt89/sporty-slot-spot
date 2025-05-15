@@ -162,6 +162,21 @@ serve(async (req)=>{
         }
       });
     }
+    // Check for venue admin/owner contact queries
+    if (containsVenueAdminContactQuery(messages[messages.length - 1]?.content || "")) {
+      const venueAdminMsg = isHinglish ? 'Aap venue ke admin/owner se seedha baat kar sakte hain "Chat with Venue" option se, jo Book Now button ke neeche Venue details page par hai. Ya phir, Venue details page par diye gaye contact number par call kar sakte hain. (You can chat directly using the "Chat with Venue" option below the Book Now button in the Venue details page, or you can call them using the contact details provided in the Venue details page.)' : 'You can chat directly using the "Chat with Venue" option below the Book Now button in the Venue details page, or you can call them using the contact details provided in the Venue details page.';
+      return new Response(JSON.stringify({
+        message: {
+          role: "assistant",
+          content: venueAdminMsg
+        }
+      }), {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        }
+      });
+    }
     console.log("Sending request to OpenAI");
     // Call OpenAI API
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -321,6 +336,27 @@ function containsSupportQuery(message) {
     /kaise privacy policy dekhu/i // How to see privacy policy
   ];
   return supportKeywords.some((pattern)=>pattern.test(message));
+}
+// Helper function to detect venue admin/owner contact queries
+function containsVenueAdminContactQuery(message) {
+  if (!message) return false;
+  const patterns = [
+    /contact.*(venue|ground|court).*(admin|owner|manager|incharge|person)/i,
+    /how.*contact.*(venue|ground|court).*(admin|owner|manager|incharge|person)/i,
+    /venue.*admin.*contact/i,
+    /venue.*owner.*contact/i,
+    /admin.*kaise/i,
+    /owner.*kaise/i,
+    /venue.*kaise contact/i,
+    /kaise contact karu.*admin/i,
+    /kaise baat karu.*admin/i,
+    /venue.*admin.*baat/i,
+    /venue.*admin.*message/i,
+    /venue.*admin.*call/i,
+    /venue.*owner.*baat/i,
+    /venue.*owner.*call/i
+  ];
+  return patterns.some((pattern)=>pattern.test(message));
 }
 // Function to get user bookings using Supabase client
 async function getUserBookings(userId) {
