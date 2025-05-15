@@ -24,6 +24,7 @@ import Faq3Demo from "./pages/Faq3Demo";
 import Help from "./pages/Help";
 import Contact from "./pages/Contact";
 import Privacy from "./pages/Privacy";
+import BottomNav from "./components/ui/BottomNav";
 
 const queryClient = new QueryClient();
 
@@ -70,6 +71,7 @@ const App = () => (
           
           {/* Only show the new AI Chat Widget */}
           <NewAIChatWidget />
+          <BottomNav />
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
