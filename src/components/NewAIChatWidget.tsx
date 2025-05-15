@@ -21,8 +21,15 @@ interface ChatMessage {
   };
 }
 
-const NewAIChatWidget = () => {
-  const [isOpen, setIsOpen] = useState(false);
+interface NewAIChatWidgetProps {
+  isOpen?: boolean;
+  setIsOpen?: (open: boolean) => void;
+}
+
+const NewAIChatWidget: React.FC<NewAIChatWidgetProps> = ({ isOpen: isOpenProp, setIsOpen: setIsOpenProp }) => {
+  const [isOpenState, setIsOpenState] = useState(false);
+  const isOpen = typeof isOpenProp === 'boolean' ? isOpenProp : isOpenState;
+  const setIsOpen = setIsOpenProp || setIsOpenState;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
