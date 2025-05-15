@@ -86,6 +86,13 @@ const NewAIChatWidget = () => {
     }
   }, [isSessionExpired, isOpen]);
 
+  // When user changes (logout/login), reset chat state
+  useEffect(() => {
+    setMessages([]);
+    setIsFirstInteraction(true);
+    setInputMessage('');
+  }, [user]);
+
   // Load conversation history from localStorage and check for analytics consent
   useEffect(() => {
     if (user) {
