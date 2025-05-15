@@ -86,34 +86,41 @@ const NewAIChatWidget = () => {
     }
   }, [isSessionExpired, isOpen]);
 
-  // When user changes (logout/login), reset chat state
+  // When user changes (logout/login), reset chat state and clear localStorage for previous user
   useEffect(() => {
     setMessages([]);
     setIsFirstInteraction(true);
     setInputMessage('');
+    // Remove all ai_chat_history_* keys from localStorage if user logs out
+    if (!user) {
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('ai_chat_history_')) {
+          localStorage.removeItem(key);
+        }
+      });
+    }
   }, [user]);
 
   // Load conversation history from localStorage and check for analytics consent
   useEffect(() => {
     if (user) {
+      // Only load chat history for the current user, not previous users
       const savedChat = localStorage.getItem(`ai_chat_history_${user.id}`);
       const savedConsent = localStorage.getItem(`ai_chat_consent_${user.id}`);
-      
       if (savedConsent !== null) {
         setConsentGiven(savedConsent === 'true');
       }
-
-      if (savedChat) {
-        try {
-          const parsedChat = JSON.parse(savedChat);
-          setMessages(parsedChat.map((msg: any) => ({
-            ...msg,
-            timestamp: new Date(msg.timestamp)
-          })));
-        } catch (e) {
-          console.error("Failed to parse chat history", e);
+      // Always start with a fresh welcome message for new user session
+      setMessages([
+        {
+          id: 'welcome-' + Date.now(),
+          role: 'assistant',
+          content: user ? `Hello${user.user_metadata?.name ? ' ' + user.user_metadata.name : ''}! How can I help you with sports bookings today?` : 'Please sign in to use the chat assistant.',
+          timestamp: new Date()
         }
-      }
+      ]);
+      setIsFirstInteraction(false);
+      setInputMessage('');
     }
   }, [user]);
 
