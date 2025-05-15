@@ -390,7 +390,7 @@ const Venues: React.FC = () => {
             {filteredVenues.map((venue) => (
               <div
                 key={venue.id}
-                className="relative bg-navy-light rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 border border-transparent group hover:border-gradient-to-r hover:from-[#2def80] hover:to-[#1e3b2c] h-[320px] flex flex-col"
+                className="relative bg-gradient-to-br from-black via-[#1E3B2C] to-black border border-[#2E7D32] hover:shadow-[0_0_16px_2px_#2E7D32] hover:border-[#2def80] rounded-2xl overflow-hidden shadow-md transition-all duration-300 h-[320px] flex flex-col animate-fade-in group"
                 style={{ minHeight: 0 }}
               >
                 {/* Venue Image */}
