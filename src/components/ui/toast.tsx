@@ -1,3 +1,4 @@
+
 import * as React from "react"
 import * as ToastPrimitives from "@radix-ui/react-toast"
 import { cva, type VariantProps } from "class-variance-authority"
@@ -114,18 +115,9 @@ export interface ToastProps extends React.ComponentPropsWithoutRef<typeof Toast>
   variant?: "default" | "destructive"
 }
 
-export interface ToastActionElement {
-  altText?: string
-  action: React.ReactNode
-}
-
-type ToastProps = React.ComponentPropsWithoutRef<typeof Toast>
-
-type ToastActionElement = React.ReactElement<typeof ToastAction>
+export interface ToastActionElement extends React.ReactElement {}
 
 export {
-  type ToastProps,
-  type ToastActionElement,
   ToastProvider,
   ToastViewport,
   Toast,
