@@ -167,36 +167,6 @@ export type Database = {
           },
         ]
       }
-      help_requests: {
-        Row: {
-          created_at: string
-          id: string
-          last_message_at: string
-          status: string
-          subject: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          last_message_at?: string
-          status?: string
-          subject: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          last_message_at?: string
-          status?: string
-          subject?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       match_chats: {
         Row: {
           challenge_id: string
@@ -947,18 +917,6 @@ export type Database = {
             }
         Returns: string
       }
-      create_help_request: {
-        Args: { p_user_id: string; p_subject: string }
-        Returns: {
-          created_at: string
-          id: string
-          last_message_at: string
-          status: string
-          subject: string
-          updated_at: string
-          user_id: string
-        }
-      }
       gbt_bit_compress: {
         Args: { "": unknown }
         Returns: unknown
@@ -1201,32 +1159,6 @@ export type Database = {
           is_available: boolean
         }[]
       }
-      get_help_requests: {
-        Args: { p_status?: string }
-        Returns: {
-          id: string
-          user_id: string
-          subject: string
-          status: string
-          created_at: string
-          updated_at: string
-          last_message_at: string
-          user_name: string
-          user_email: string
-        }[]
-      }
-      get_user_help_requests: {
-        Args: { p_user_id: string }
-        Returns: {
-          created_at: string
-          id: string
-          last_message_at: string
-          status: string
-          subject: string
-          updated_at: string
-          user_id: string
-        }[]
-      }
       has_role: {
         Args: { role: Database["public"]["Enums"]["app_role"] }
         Returns: boolean
@@ -1242,18 +1174,6 @@ export type Database = {
       is_venue_admin: {
         Args: { venue_id: string }
         Returns: boolean
-      }
-      update_help_request_status: {
-        Args: { p_help_request_id: string; p_status: string }
-        Returns: {
-          created_at: string
-          id: string
-          last_message_at: string
-          status: string
-          subject: string
-          updated_at: string
-          user_id: string
-        }
       }
     }
     Enums: {
