@@ -5,6 +5,7 @@ import React from "react";
 import { AuroraBackground } from "@/components/ui/aurora-background";
 import { ArrowRight, Activity } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Typewriter } from '@/components/Typewriter';
 
 // SVG silhouettes for swimming, football, badminton, basketball, tennis, cricket, volleyball, running
 const silhouettes = [
@@ -28,6 +29,7 @@ const silhouettes = [
 
 export function AuroraBackgroundDemo() {
   const navigate = useNavigate();
+  const animatedWords = ["game on", "match", "training", "tournament"];
   return (
     <AuroraBackground className="bg-black dark:bg-black">
       {/* Animated sports silhouettes */}
@@ -52,11 +54,22 @@ export function AuroraBackgroundDemo() {
           className="text-3xl sm:text-5xl md:text-7xl font-extrabold text-center text-white drop-shadow-lg"
         >
           <span className="bg-gradient-to-r from-emerald-800 via-emerald-500 to-emerald-800 bg-clip-text text-transparent animate-gradient-x">
-            Book Your Next
+            Book now for your
           </span>
-          <br />
-          <span className="text-emerald-400 animate-text-blur">Sports Slot</span>
         </motion.h1>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.7, duration: 0.8, ease: "easeOut" }}
+          className="text-3xl sm:text-5xl md:text-7xl font-extrabold text-center text-white w-full flex justify-center"
+        >
+          <span className="inline-block w-[12ch] text-center">
+            <Typewriter
+              texts={animatedWords}
+              delay={90}
+            />
+          </span>
+        </motion.div>
         {/* Animated subheadline with shimmer/typewriter */}
         <motion.div
           initial={{ opacity: 0, x: -30 }}
