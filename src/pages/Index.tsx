@@ -582,7 +582,7 @@ const Index: React.FC = () => {
               <h3 className="text-lg font-semibold mb-4">Support</h3>
               <ul className="space-y-2">
                 <li><a href="#" className="hover:text-indigo-light transition-colors">Help Center</a></li>
-                <li><a href="#" className="hover:text-indigo-light transition-colors">FAQs</a></li>
+                <li><Link to="/faq" className="hover:text-indigo-light transition-colors">FAQs</Link></li>
                 <li><a href="#" className="hover:text-indigo-light transition-colors">Contact Us</a></li>
                 <li><a href="#" className="hover:text-indigo-light transition-colors">Privacy Policy</a></li>
               </ul>
