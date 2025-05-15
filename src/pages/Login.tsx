@@ -14,7 +14,7 @@ const Login: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const isMobile = useIsMobile();
 
-  const { signIn } = useAuth();
+  const { signIn, signOut } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
