@@ -26,78 +26,101 @@ const AvailabilityWidget: React.FC<AvailabilityWidgetProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const isMobile = useIsMobile();
+  const [lastRefetch, setLastRefetch] = useState<number>(Date.now());
+
+  const fetchAvailability = async () => {
+    try {
+      console.log(`Fetching availability for court ${courtId} on date ${date}`);
+      setLoading(true);
+      setError(null);
+
+      // Validate inputs
+      if (!courtId || !date) {
+        setError("Invalid court or date information");
+        setLoading(false);
+        return;
+      }
+
+      // Fetch available slots from the database function
+      const {
+        data,
+        error
+      } = await supabase.rpc('get_available_slots', {
+        p_court_id: courtId,
+        p_date: date
+      }).returns<GetAvailableSlotsResult>();
+      
+      console.log('Availability data received:', data);
+      
+      if (error) throw error;
+      setSlots(data || []);
+    } catch (error: any) {
+      console.error('Error fetching availability:', error);
+      setError(`Error fetching availability: ${error.message}`);
+      toast({
+        title: "Failed to load availability",
+        description: "Please try again or contact support if the problem persists.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchAvailability = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        // Validate inputs
-        if (!courtId || !date) {
-          setError("Invalid court or date information");
-          setLoading(false);
-          return;
-        }
-
-        // Fetch available slots from the database function
-        const {
-          data,
-          error
-        } = await supabase.rpc('get_available_slots', {
-          p_court_id: courtId,
-          p_date: date
-        }).returns<GetAvailableSlotsResult>();
-        
-        if (error) throw error;
-        setSlots(data || []);
-      } catch (error: any) {
-        console.error('Error fetching availability:', error);
-        setError(`Error fetching availability: ${error.message}`);
-        toast({
-          title: "Failed to load availability",
-          description: "Please try again or contact support if the problem persists.",
-          variant: "destructive"
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
+    // When courtId or date changes, we need to refetch availability
     fetchAvailability();
+    
+    // Reset state when key props change
+    return () => {
+      setSlots([]);
+      setError(null);
+      setLoading(true);
+    };
+  }, [courtId, date, lastRefetch]);
 
+  useEffect(() => {
     // Set up real-time subscription for bookings changes
-    const channel = supabase.channel('bookings_changes')
+    const bookingsChannel = supabase.channel('bookings_changes_' + courtId + '_' + date)
       .on('postgres_changes', {
-        event: '*',
-        // Listen for all events (INSERT, UPDATE, DELETE)
+        event: '*',  // Listen for all events (INSERT, UPDATE, DELETE)
         schema: 'public',
         table: 'bookings',
         filter: `court_id=eq.${courtId}`
-      }, () => {
-        // When booking changes, refetch availability
-        fetchAvailability();
+      }, (payload) => {
+        console.log('Booking change detected:', payload);
+        // Trigger a refetch when booking changes
+        setLastRefetch(Date.now());
       })
       .subscribe((status) => {
-        if (status !== 'SUBSCRIBED') {
-          console.log('Subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('Successfully subscribed to bookings changes');
+        } else {
+          console.log('Subscription status for bookings:', status);
         }
       });
     
     // Set up real-time subscription for blocked slots changes
-    const blockedSlotsChannel = supabase.channel('blocked_slots_changes')
+    const blockedSlotsChannel = supabase.channel('blocked_slots_changes_' + courtId + '_' + date)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'blocked_slots',
         filter: `court_id=eq.${courtId}`
-      }, () => {
-        // When blocked slots change, refetch availability
-        fetchAvailability();
+      }, (payload) => {
+        console.log('Blocked slot change detected:', payload);
+        // Trigger a refetch when blocked slots change
+        setLastRefetch(Date.now());
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('Successfully subscribed to blocked slots changes');
+        }
+      });
     
     return () => {
-      supabase.removeChannel(channel);
+      console.log('Removing realtime channels for court', courtId);
+      supabase.removeChannel(bookingsChannel);
       supabase.removeChannel(blockedSlotsChannel);
     };
   }, [courtId, date]);
@@ -114,17 +137,34 @@ const AvailabilityWidget: React.FC<AvailabilityWidgetProps> = ({
 
   const handleSlotClick = (slot: { start_time: string; end_time: string; is_available: boolean }) => {
     if (onSelectSlot && (slot.is_available || isAdmin)) {
+      console.log('Slot selected:', slot);
       onSelectSlot(slot);
     }
+  };
+
+  // Add a manual refresh button
+  const handleManualRefresh = () => {
+    console.log('Manual refresh triggered');
+    setLastRefetch(Date.now());
   };
 
   return (
     <Card className="w-full border border-indigo/20 bg-navy-light/50 backdrop-blur-sm">
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg font-medium flex items-center text-white">
-          <Clock className="mr-2 h-5 w-5 text-indigo-light" />
-          Real-Time Availability
-        </CardTitle>
+        <div className="flex justify-between items-center">
+          <CardTitle className="text-lg font-medium flex items-center text-white">
+            <Clock className="mr-2 h-5 w-5 text-indigo-light" />
+            Real-Time Availability
+          </CardTitle>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={handleManualRefresh}
+            className="text-indigo-light hover:text-white hover:bg-indigo/20"
+          >
+            Refresh
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         {loading ? (
@@ -136,7 +176,7 @@ const AvailabilityWidget: React.FC<AvailabilityWidgetProps> = ({
             <AlertCircle className="h-8 w-8 text-red-400 mb-2" />
             <p className="text-red-400">{error}</p>
             <Button 
-              onClick={() => window.location.reload()} 
+              onClick={handleManualRefresh} 
               className="mt-3 bg-indigo hover:bg-indigo-dark text-white"
               size="sm"
             >
@@ -149,7 +189,7 @@ const AvailabilityWidget: React.FC<AvailabilityWidgetProps> = ({
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
             {slots.map((slot, index) => (
               <div 
-                key={index} 
+                key={`${slot.start_time}-${slot.end_time}-${index}`}
                 className={`
                   border rounded-md p-2 text-center transition-all cursor-pointer
                   hover:transform hover:scale-105
