@@ -8,7 +8,6 @@ import { format, parseISO } from 'date-fns';
 import SportDisplayName from './SportDisplayName';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
-import classNames from 'classnames';
 
 declare global {
   interface Window {
