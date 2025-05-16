@@ -195,7 +195,7 @@ const Index: React.FC = () => {
       </div>
 
       <section id="venues" ref={venuesRef} className="py-16 bg-gradient-to-b from-black/90 to-navy-dark">
-        <div className="container mx-auto px-4">
+        <div className="container mx-auto px-4 pb-24">
           <div className={`flex justify-between items-center mb-8 ${visibleSections.venues ? 'animate-reveal' : 'opacity-0'}`}>
             <h2 className="section-title text-white relative">
               Featured Venues
