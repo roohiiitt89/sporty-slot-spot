@@ -111,6 +111,8 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     transition: { duration: 0.8, repeat: Infinity }
   };
 
+  const padTime = (t: string) => t.length === 5 ? t + ':00' : t;
+
   useEffect(() => {
     if (!user) {
       toast({
@@ -471,7 +473,13 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       // Mark slots as unavailable if booked in any court in the group
       const slotsWithPrice = data?.map(slot => {
         const key = `${slot.start_time}-${slot.end_time}`;
-        const isBooked = bookings?.some(b => b.start_time === slot.start_time && b.end_time === slot.end_time);
+        // Normalize times to 'HH:mm:ss'
+        const slotStart = padTime(slot.start_time);
+        const slotEnd = padTime(slot.end_time);
+        const isBooked = bookings?.some(b =>
+          padTime(b.start_time) === slotStart &&
+          padTime(b.end_time) === slotEnd
+        );
         return {
           ...slot,
           is_available: slot.is_available && !isBooked,
@@ -482,10 +490,10 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       setAvailableTimeSlots(slotsWithPrice);
 
       const updatedSelectedSlots = selectedSlots.filter(slotDisplay => {
-        const [startTime, endTime] = slotDisplay.split(' - ').map(t => convertTo24Hour(t));
+        const [startTime, endTime] = slotDisplay.split(' - ').map(t => padTime(t));
         const slotStillAvailable = slotsWithPrice.some(slot =>
-          slot.start_time === startTime &&
-          slot.end_time === endTime &&
+          padTime(slot.start_time) === startTime &&
+          padTime(slot.end_time) === endTime &&
           slot.is_available
         );
         if (!slotStillAvailable && selectedSlots.length > 0) {
@@ -552,8 +560,8 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       const updatedSlots = [...selectedSlots, slotDisplay];
       
       const sortedSlots = updatedSlots.sort((a, b) => {
-        const startTimeA = convertTo24Hour(a.split(' - ')[0]);
-        const startTimeB = convertTo24Hour(b.split(' - ')[0]);
+        const startTimeA = padTime(a.split(' - ')[0]);
+        const startTimeB = padTime(b.split(' - ')[0]);
         return startTimeA.localeCompare(startTimeB);
       });
       
@@ -746,8 +754,8 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       }
       
       const sortedSlots = [...selectedSlots].sort((a, b) => {
-        const startTimeA = convertTo24Hour(a.split(' - ')[0]);
-        const startTimeB = convertTo24Hour(b.split(' - ')[0]);
+        const startTimeA = padTime(a.split(' - ')[0]);
+        const startTimeB = padTime(b.split(' - ')[0]);
         return startTimeA.localeCompare(startTimeB);
       });
       
@@ -755,8 +763,8 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       let currentBlock = [sortedSlots[0]];
       
       for (let i = 1; i < sortedSlots.length; i++) {
-        const currentSlotEnd = convertTo24Hour(currentBlock[currentBlock.length - 1].split(' - ')[1]);
-        const nextSlotStart = convertTo24Hour(sortedSlots[i].split(' - ')[0]);
+        const currentSlotEnd = padTime(currentBlock[currentBlock.length - 1].split(' - ')[1]);
+        const nextSlotStart = padTime(sortedSlots[i].split(' - ')[0]);
         
         if (currentSlotEnd === nextSlotStart) {
           currentBlock.push(sortedSlots[i]);
@@ -771,8 +779,8 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       const bookingResults = [];
       
       for (const block of bookingBlocks) {
-        const startTime = convertTo24Hour(block[0].split(' - ')[0]);
-        const endTime = convertTo24Hour(block[block.length - 1].split(' - ')[1]);
+        const startTime = padTime(block[0].split(' - ')[0]);
+        const endTime = padTime(block[block.length - 1].split(' - ')[1]);
         
         const blockPrice = block.reduce((total, slot) => {
           return total + selectedSlotPrices[slot];
