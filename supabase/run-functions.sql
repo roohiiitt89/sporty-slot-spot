@@ -1,4 +1,5 @@
 
+
 -- Create team_join_requests table if it doesn't exist
 CREATE TABLE IF NOT EXISTS public.team_join_requests (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -44,3 +45,4 @@ CREATE INDEX IF NOT EXISTS idx_team_join_requests_team_id ON public.team_join_re
 CREATE INDEX IF NOT EXISTS idx_team_join_requests_status ON public.team_join_requests(status);
 CREATE INDEX IF NOT EXISTS idx_help_requests_user_id ON public.help_requests(user_id);
 CREATE INDEX IF NOT EXISTS idx_help_requests_status ON public.help_requests(status);
+

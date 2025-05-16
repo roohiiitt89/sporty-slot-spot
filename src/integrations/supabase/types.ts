@@ -1295,14 +1295,6 @@ export type Database = {
           allow_cash_payments: boolean
         }[]
       }
-      get_available_slots: {
-        Args: { p_court_id: string; p_date: string }
-        Returns: {
-          start_time: string
-          end_time: string
-          is_available: boolean
-        }[]
-      }
       get_help_requests: {
         Args: { p_status?: string }
         Returns: {

@@ -25,9 +25,9 @@ export const setupRealtimeSubscriptions = async () => {
       .channel('team_join_requests_channel')
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'team_join_requests' },
+        { event: '*', schema: 'public', table: 'team_join_requests' },
         (payload) => {
-          console.log('Join request updated:', payload);
+          console.log('Team join request update:', payload);
         }
       )
       .subscribe();
@@ -70,6 +70,13 @@ export const enableRealtimeForBookingSystem = async () => {
         { event: '*', schema: 'public', table: 'blocked_slots' },
         (payload) => {
           console.log('Blocked slot update:', payload);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'team_join_requests' },
+        (payload) => {
+          console.log('Team join request update (system):', payload);
         }
       )
       .subscribe();
