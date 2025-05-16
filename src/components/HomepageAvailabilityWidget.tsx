@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, Calendar, Clock, ChevronDown } from 'lucide-react';
@@ -9,6 +8,7 @@ import { format } from 'date-fns';
 import AvailabilityWidget from './AvailabilityWidget';
 import { toast } from '@/components/ui/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { Badge } from '@/components/ui/badge';
 
 interface Venue {
   id: string;
@@ -30,6 +30,74 @@ const HomepageAvailabilityWidget: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isExpanded, setIsExpanded] = useState(false);
   const isMobile = useIsMobile();
+  const [slots, setSlots] = useState<any[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [slotsError, setSlotsError] = useState<string | null>(null);
+
+  const padTime = (t: string) => t.length === 5 ? t + ':00' : t;
+
+  const fetchAvailability = async (courtId: string, date: string) => {
+    try {
+      setSlotsLoading(true);
+      setSlotsError(null);
+      // Fetch court details to check for court_group_id
+      const { data: courtDetails, error: courtDetailsError } = await supabase
+        .from('courts')
+        .select('court_group_id')
+        .eq('id', courtId)
+        .single();
+      if (courtDetailsError) throw courtDetailsError;
+      let courtIdsToCheck = [courtId];
+      if (courtDetails && courtDetails.court_group_id) {
+        const { data: groupCourts, error: groupCourtsError } = await supabase
+          .from('courts')
+          .select('id')
+          .eq('court_group_id', courtDetails.court_group_id)
+          .eq('is_active', true);
+        if (groupCourtsError) throw groupCourtsError;
+        courtIdsToCheck = groupCourts.map((c: { id: string }) => c.id);
+      }
+      // Fetch available slots for the selected court (for template/pricing)
+      const { data, error } = await supabase.rpc('get_available_slots', {
+        p_court_id: courtId,
+        p_date: date
+      });
+      if (error) throw error;
+      // Fetch bookings for all courts in the group (or just the selected court)
+      const { data: bookings, error: bookingsError } = await supabase
+        .from('bookings')
+        .select('court_id, start_time, end_time, booking_date')
+        .in('court_id', courtIdsToCheck)
+        .eq('booking_date', date)
+        .in('status', ['confirmed', 'pending']);
+      if (bookingsError) throw bookingsError;
+      // Mark slots as unavailable if booked in any court in the group
+      const slotsWithBooking = data?.map(slot => {
+        const slotStart = padTime(slot.start_time);
+        const slotEnd = padTime(slot.end_time);
+        const isBooked = bookings?.some(b =>
+          padTime(b.start_time) === slotStart &&
+          padTime(b.end_time) === slotEnd
+        );
+        return {
+          ...slot,
+          is_available: slot.is_available && !isBooked
+        };
+      }) || [];
+      setSlots(slotsWithBooking);
+    } catch (error: any) {
+      setSlotsError(error.message || 'Failed to load availability');
+      setSlots([]);
+    } finally {
+      setSlotsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedCourtId && today && isExpanded) {
+      fetchAvailability(selectedCourtId, today);
+    }
+  }, [selectedCourtId, today, isExpanded]);
 
   useEffect(() => {
     const fetchVenues = async () => {
@@ -177,7 +245,42 @@ const HomepageAvailabilityWidget: React.FC = () => {
                 
                 {isExpanded && (
                   <div className="animate-fade-in">
-                    <AvailabilityWidget courtId={selectedCourtId} date={today} />
+                    {slotsLoading ? (
+                      <div className="flex justify-center items-center h-24">
+                        <Loader2 className="h-8 w-8 animate-spin text-indigo" />
+                      </div>
+                    ) : slotsError ? (
+                      <div className="text-center text-red-400 py-4">{slotsError}</div>
+                    ) : slots.length === 0 ? (
+                      <p className="text-center text-gray-400 py-4">No time slots available for this date</p>
+                    ) : (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                        {slots.map((slot, index) => (
+                          <div
+                            key={`${slot.start_time}-${slot.end_time}-${index}`}
+                            className={`
+                              border rounded-md p-2 text-center transition-all cursor-pointer
+                              hover:transform hover:scale-105
+                              ${slot.is_available
+                                ? 'border-green-500/30 bg-green-500/10 hover:bg-green-500/20'
+                                : 'border-red-500/30 bg-red-500/10'}
+                              ${!slot.is_available ? 'cursor-not-allowed' : 'cursor-pointer'}
+                            `}
+                          >
+                            <p className="text-sm font-medium text-white">
+                              {slot.start_time?.slice(0,5)} - {slot.end_time?.slice(0,5)}
+                            </p>
+                            <Badge
+                              className={`mt-1 ${slot.is_available
+                                ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                                : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'}`}
+                            >
+                              {slot.is_available ? 'Available' : 'Booked'}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
