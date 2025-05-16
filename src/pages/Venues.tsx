@@ -468,7 +468,7 @@ const Venues: React.FC = () => {
       
       <footer className="bg-[#1e3b2c] text-white py-8">
         <div className="container mx-auto px-4 text-center">
-          <p>&copy; 2025 SportySlot. All rights reserved.</p>
+          <p>&copy; 2025 Grid2Play. All rights reserved.</p>
         </div>
       </footer>
       
