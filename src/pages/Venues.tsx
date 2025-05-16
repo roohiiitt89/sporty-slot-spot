@@ -473,7 +473,16 @@ const Venues: React.FC = () => {
       </footer>
       
       {isBookModalOpen && (
-        <BookSlotModal onClose={() => setIsBookModalOpen(false)} />
+        <BookSlotModal 
+          open={isBookModalOpen}
+          onOpenChange={setIsBookModalOpen}
+          selectedDate={new Date()}
+          selectedCourt={null}
+          hourlyRate={null}
+          onBookingComplete={() => {}}
+          allowCashPayments={true}
+          onClose={() => setIsBookModalOpen(false)}
+        />
       )}
     </div>
   );

@@ -490,8 +490,8 @@ const VenueDetails: React.FC = () => {
                     <Navigation className="h-4 w-4 text-[#2def80] flex-shrink-0 mt-0.5" />
                     <span>
                       {distance < 1 
-                        ? `${(distance * 1000).toFixed(0)} meters from your location` 
-                        : `${distance.toFixed(1)} km from your location`}
+                        ? `${(distance * 1000).toFixed(0)}m away` 
+                        : `${distance.toFixed(1)}km away`}
                     </span>
                   </li>
                 )}
@@ -584,6 +584,13 @@ const VenueDetails: React.FC = () => {
       {/* Modals */}
       {isBookModalOpen && (
         <BookSlotModal
+          open={isBookModalOpen}
+          onOpenChange={setIsBookModalOpen}
+          selectedDate={new Date()}
+          selectedCourt={null}
+          hourlyRate={null}
+          onBookingComplete={() => {}}
+          allowCashPayments={true}
           onClose={() => setIsBookModalOpen(false)}
           venueId={id || ''}
         />
@@ -608,4 +615,3 @@ const VenueDetails: React.FC = () => {
 };
 
 export default VenueDetails;
-

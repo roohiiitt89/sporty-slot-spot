@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { CalendarIcon, Clock, User, Phone, Mail, CheckCircle, XCircle } from 'lucide-react';
@@ -38,6 +39,10 @@ interface BookSlotModalProps {
   hourlyRate: number | null;
   onBookingComplete: () => void;
   allowCashPayments: boolean;
+  // Add the new props required by the pages
+  onClose?: () => void;
+  sportId?: string;
+  venueId?: string;
 }
 
 const BookSlotModal: React.FC<BookSlotModalProps> = ({
@@ -48,6 +53,9 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({
   hourlyRate,
   onBookingComplete,
   allowCashPayments,
+  onClose, // Add onClose prop
+  sportId, // Add sportId prop
+  venueId, // Add venueId prop
 }) => {
   const [availableSlots, setAvailableSlots] = useState<
     { start_time: string; end_time: string; is_available: boolean }[]
@@ -188,7 +196,12 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({
   };
 
   const handleClose = () => {
-    onOpenChange(false);
+    // Use either the provided onClose or onOpenChange
+    if (onClose) {
+      onClose();
+    } else {
+      onOpenChange(false);
+    }
   };
 
   return (

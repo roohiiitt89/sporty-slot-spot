@@ -300,7 +300,14 @@ const Sports: React.FC = () => {
       
       {isBookModalOpen && (
         <BookSlotModal 
-          onClose={() => setIsBookModalOpen(false)} 
+          open={isBookModalOpen}
+          onOpenChange={setIsBookModalOpen}
+          selectedDate={new Date()}
+          selectedCourt={null}
+          hourlyRate={null}
+          onBookingComplete={() => {}}
+          allowCashPayments={true}
+          onClose={() => setIsBookModalOpen(false)}
           sportId={selectedSportId}
         />
       )}

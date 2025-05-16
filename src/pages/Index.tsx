@@ -172,7 +172,8 @@ const Index: React.FC = () => {
     </div>
   );
   
-  return <div className="min-h-screen bg-navy-dark text-card-foreground">
+  return (
+    <div className="min-h-screen bg-navy-dark text-card-foreground">
       <Header />
       
 <section className="hero-section">
@@ -378,7 +379,7 @@ const Index: React.FC = () => {
                     </svg>
                   </div>
                   <div className="absolute inset-0 p-6 flex flex-col justify-end">
-                    <h3 className="text-xl font-bold text-white mb-2">{benefit.title}</h3>
+                    <h3 className="text-xl font-bold group-hover:text-white transition-colors">{benefit.title}</h3>
                     <p className="text-gray-300 opacity-0 group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">{benefit.description}</p>
                   </div>
                 </div>
@@ -605,8 +606,20 @@ const Index: React.FC = () => {
         </div>
       </footer>
 
-      {isBookModalOpen && <BookSlotModal onClose={() => setIsBookModalOpen(false)} />}
-      
-    </div>;
+      {isBookModalOpen && (
+        <BookSlotModal 
+          open={isBookModalOpen}
+          onOpenChange={setIsBookModalOpen}
+          selectedDate={new Date()}
+          selectedCourt={null}
+          hourlyRate={null}
+          onBookingComplete={() => {}}
+          allowCashPayments={true}
+          onClose={() => setIsBookModalOpen(false)}
+        />
+      )}
+    </div>
+  );
 };
+
 export default Index;
