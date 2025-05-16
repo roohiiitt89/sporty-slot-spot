@@ -16,6 +16,8 @@ export const getAvailableSlots = async (
   date: string
 ): Promise<{ data: GetAvailableSlotsResult | null; error: any }> => {
   try {
+    console.log(`Calling get_available_slots with courtId=${courtId}, date=${date}`);
+    
     // We need to use the any type here since the function isn't in the auto-generated types
     const response = await (supabase.rpc as any)('get_available_slots', {
       p_court_id: courtId,
@@ -27,6 +29,7 @@ export const getAvailableSlots = async (
       return { data: null, error: response.error };
     }
     
+    console.log('Available slots response:', response.data);
     return { data: response.data, error: null };
   } catch (error) {
     console.error('Exception fetching available slots:', error);
