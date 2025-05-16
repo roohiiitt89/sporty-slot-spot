@@ -42,7 +42,7 @@ const Login: React.FC = () => {
       } else {
         toast({
           title: "Login successful",
-          description: "Welcome back to SportySlot!",
+          description: "Welcome back to Grid2Play!",
         });
       }
     } catch (error: any) {
@@ -93,7 +93,7 @@ const Login: React.FC = () => {
                   </svg>
                 </div>
                 <h1 className="text-2xl sm:text-3xl font-extrabold text-[#2E7D32] drop-shadow">Welcome Back</h1>
-                <p className="text-gray-300 mt-2">Sign in to continue with SportySlot</p>
+                <p className="text-gray-300 mt-2">Sign in to continue with Grid2Play</p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-6">
