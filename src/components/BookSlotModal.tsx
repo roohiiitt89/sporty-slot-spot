@@ -1210,10 +1210,14 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
               <motion.button 
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => setRefreshKey(prev => prev + 1)}
-                className="text-sm text-emerald-400 hover:text-emerald-300 flex items-center gap-1 transition-colors"
+                onClick={() => {
+                  setLoading(prev => ({ ...prev, availability: true }));
+                  setRefreshKey(prev => prev + 1);
+                }}
+                disabled={loading.availability}
+                className={`text-sm flex items-center gap-1 transition-colors ${loading.availability ? 'text-gray-500 cursor-not-allowed' : 'text-emerald-400 hover:text-emerald-300'}`}
               >
-                <RefreshCw size={14} className="animate-spin-once" />
+                <RefreshCw size={14} className={loading.availability ? 'animate-spin' : ''} />
                 Refresh
               </motion.button>
             </motion.div>
