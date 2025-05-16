@@ -132,39 +132,40 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       setSelectedVenue(venueId);
       fetchVenueDetails(venueId);
     }
- 
+  }, []);
 
-  // Only subscribe to changes for the CURRENTLY SELECTED court and date
-  const bookingChannel = supabase
-    .channel('booking-updates')
-    .on('postgres_changes', {
-      event: '*',
-      schema: 'public',
-      table: 'bookings',
-      filter: selectedCourt && selectedDate 
-        ? `court_id=eq.${selectedCourt},booking_date=eq.${selectedDate}`
-        : undefined
-    }, (payload) => {
-      console.log('Relevant booking change detected:', payload);
-      // Only refresh if the change matches our current selection
-      if (
-        payload.new && 
-        typeof payload.new === 'object' &&
-        'court_id' in payload.new &&
-        'booking_date' in payload.new &&
-        payload.new.court_id === selectedCourt &&
-        payload.new.booking_date === selectedDate
-      ) {
-        setRefreshKey(prev => prev + 1);
-      }
-    })
-    .subscribe();
+  useEffect(() => {
+    // Only subscribe to changes for the CURRENTLY SELECTED court and date
+    const bookingChannel = supabase
+      .channel('booking-updates')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'bookings',
+        filter: selectedCourt && selectedDate 
+          ? `court_id=eq.${selectedCourt},booking_date=eq.${selectedDate}`
+          : undefined
+      }, (payload) => {
+        console.log('Relevant booking change detected:', payload);
+        // Only refresh if the change matches our current selection
+        if (
+          payload.new && 
+          typeof payload.new === 'object' &&
+          'court_id' in payload.new &&
+          'booking_date' in payload.new &&
+          payload.new.court_id === selectedCourt &&
+          payload.new.booking_date === selectedDate
+        ) {
+          setRefreshKey(prev => prev + 1);
+        }
+      })
+      .subscribe();
 
-  return () => {
-    supabase.removeChannel(bookingChannel);
-  };
-}, [user, selectedCourt, selectedDate]); // Only resubscribe when these change
-    
+    return () => {
+      supabase.removeChannel(bookingChannel);
+    };
+  }, [user, selectedCourt, selectedDate]);
+
   useEffect(() => {
     const loadRazorpayScript = () => {
       return new Promise((resolve) => {
@@ -236,6 +237,18 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       fetchUserProfile();
     }
   }, [user]);
+
+  useEffect(() => {
+    // Only set selectedDate to today on mount
+    const today = new Date();
+    setSelectedDate(today.toISOString().split('T')[0]);
+  }, []);
+
+  useEffect(() => {
+    // Clear selected slots and prices when date, court, or venue changes
+    setSelectedSlots([]);
+    setSelectedSlotPrices({});
+  }, [selectedDate, selectedCourt, selectedVenue]);
 
   const fetchVenueDetails = async (venueId: string) => {
     try {
@@ -854,14 +867,14 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   className={`flex items-center justify-center w-10 h-10 rounded-full transition-all duration-300 ${
-                    currentStep === step 
+                    Number(currentStep) === Number(step)
                       ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-800/30' 
-                      : currentStep > step 
+                      : Number(currentStep) > Number(step)
                         ? 'bg-emerald-800/80 text-emerald-200' 
                         : 'bg-gray-800 text-gray-400'
                   }`}
                 >
-                  {currentStep > step ? (
+                  {Number(currentStep) > Number(step) ? (
                     <Check size={18} className="text-emerald-200" />
                   ) : (
                     <span className="font-medium">{step}</span>
@@ -869,7 +882,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
                 </motion.div>
                 {step < 3 && (
                   <div className={`w-16 h-1 transition-all duration-300 ${
-                    currentStep > step ? 'bg-gradient-to-r from-emerald-600 to-emerald-800' : 'bg-gray-700'
+                    Number(currentStep) > Number(step) ? 'bg-gradient-to-r from-emerald-600 to-emerald-800' : 'bg-gray-700'
                   }`}></div>
                 )}
               </React.Fragment>
@@ -886,7 +899,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
         {currentStep === 1 && (
           <motion.div 
             initial="hidden"
-            animate="visible"
+            animate={"visible"}
             variants={staggerContainer}
             className="p-6 space-y-6"
           >
@@ -944,209 +957,208 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
             </motion.div>
             
             <motion.div variants={fadeIn} className="space-y-2">
-  <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
-    <Activity size={16} className="text-emerald-400" />
-    Select Sport
-  </label>
-  
-  {!selectedVenue ? (
-    <p className="mt-1 text-xs text-gray-500 flex items-center gap-1">
-      <Info size={14} />
-      Please select a venue first
-    </p>
-  ) : venueSports.length === 0 ? (
-    <p className="mt-1 text-xs text-red-400 flex items-center gap-1">
-      <AlertCircle size={14} />
-      No sports available for this venue
-    </p>
-  ) : (
-    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
-      {venueSports.map((sport) => (
-        <motion.div
-          key={sport.id}
-          whileHover={{ scale: 1.03 }}
-          className="flex items-center"
-        >
-          <input
-            type="radio"
-            id={`sport-${sport.id}`}
-            name="sport"
-            value={sport.id}
-            checked={selectedSport === sport.id}
-            onChange={() => {
-              setSelectedSport(sport.id);
-              fetchSportDetails(sport.id);
-            }}
-            className="hidden"
-          />
-          <label
-            htmlFor={`sport-${sport.id}`}
-            className={`flex items-center justify-center gap-1 w-full p-2 rounded-lg border text-sm transition-all cursor-pointer ${
-              selectedSport === sport.id
-                ? 'bg-emerald-600 text-white border-emerald-700 shadow-md shadow-emerald-800/20'
-                : 'bg-gray-800 border-gray-600 hover:border-emerald-500 hover:bg-gray-750 text-gray-200'
-            }`}
-          >
-            <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-              selectedSport === sport.id 
-                ? 'border-white bg-white' 
-                : 'border-gray-400'
-            }`}>
-              {selectedSport === sport.id && (
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-600"></div>
+              <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
+                <Activity size={16} className="text-emerald-400" />
+                Select Sport
+              </label>
+              
+              {!selectedVenue ? (
+                <p className="mt-1 text-xs text-gray-500 flex items-center gap-1">
+                  <Info size={14} />
+                  Please select a venue first
+                </p>
+              ) : venueSports.length === 0 ? (
+                <p className="mt-1 text-xs text-red-400 flex items-center gap-1">
+                  <AlertCircle size={14} />
+                  No sports available for this venue
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+                  {venueSports.map((sport) => (
+                    <motion.div
+                      key={sport.id}
+                      whileHover={{ scale: 1.03 }}
+                      className="flex items-center"
+                    >
+                      <input
+                        type="radio"
+                        id={`sport-${sport.id}`}
+                        name="sport"
+                        value={sport.id}
+                        checked={selectedSport === sport.id}
+                        onChange={() => {
+                          setSelectedSport(sport.id);
+                          fetchSportDetails(sport.id);
+                        }}
+                        className="hidden"
+                      />
+                      <label
+                        htmlFor={`sport-${sport.id}`}
+                        className={`flex items-center justify-center gap-1 w-full p-2 rounded-lg border text-sm transition-all cursor-pointer ${
+                          selectedSport === sport.id
+                            ? 'bg-emerald-600 text-white border-emerald-700 shadow-md shadow-emerald-800/20'
+                            : 'bg-gray-800 border-gray-600 hover:border-emerald-500 hover:bg-gray-750 text-gray-200'
+                        }`}
+                      >
+                        <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                          selectedSport === sport.id 
+                            ? 'border-white bg-white' 
+                            : 'border-gray-400'
+                        }`}>
+                          {selectedSport === sport.id && (
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-600"></div>
+                          )}
+                        </div>
+                        {selectedVenue ? (
+                          <SportDisplayName
+                            venueId={selectedVenue}
+                            sportId={sport.id}
+                            defaultName={sport.name}
+                          />
+                        ) : (
+                          sport.name
+                        )}
+                      </label>
+                    </motion.div>
+                  ))}
+                </div>
               )}
-            </div>
-            {selectedVenue ? (
-              <SportDisplayName
-                venueId={selectedVenue}
-                sportId={sport.id}
-                defaultName={sport.name}
-              />
-            ) : (
-              sport.name
-            )}
-          </label>
-        </motion.div>
-      ))}
-    </div>
-  )}
-  
-  {sportDetails && (
-    <motion.div 
-      initial={{ opacity: 0, height: 0 }}
-      animate={{ opacity: 1, height: 'auto' }}
-      className="mt-2 p-3 bg-gray-800/50 rounded-lg border border-emerald-800/20"
-    >
-      <div className="flex items-center gap-3">
-        {sportDetails.icon_name && (
-          <div className="w-10 h-10 rounded-full bg-emerald-900/50 flex items-center justify-center">
-            <span className="text-emerald-400">{sportDetails.icon_name}</span>
-          </div>
-        )}
-        <div>
-          <h4 className="font-medium text-emerald-400">
-            {selectedVenue ? (
-              <SportDisplayName
-                venueId={selectedVenue}
-                sportId={sportDetails.id}
-                defaultName={sportDetails.name}
-              />
-            ) : (
-              sportDetails.name
-            )}
-          </h4>
-          <p className="text-xs text-gray-400 mt-1">Select a court for this sport</p>
-        </div>
-      </div>
-    </motion.div>
-  )}
-</motion.div>
-
+              
+              {sportDetails && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="mt-2 p-3 bg-gray-800/50 rounded-lg border border-emerald-800/20"
+                >
+                  <div className="flex items-center gap-3">
+                    {sportDetails.icon_name && (
+                      <div className="w-10 h-10 rounded-full bg-emerald-900/50 flex items-center justify-center">
+                        <span className="text-emerald-400">{sportDetails.icon_name}</span>
+                      </div>
+                    )}
+                    <div>
+                      <h4 className="font-medium text-emerald-400">
+                        {selectedVenue ? (
+                          <SportDisplayName
+                            venueId={selectedVenue}
+                            sportId={sportDetails.id}
+                            defaultName={sportDetails.name}
+                          />
+                        ) : (
+                          sportDetails.name
+                        )}
+                      </h4>
+                      <p className="text-xs text-gray-400 mt-1">Select a court for this sport</p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </motion.div>
             
             <motion.div variants={fadeIn} className="space-y-2">
-  <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
-    <MapPin size={16} className="text-emerald-400" />
-    Select Court
-  </label>
-  
-  {loading.courts ? (
-    <motion.p 
-      animate={pulse}
-      className="mt-1 text-xs text-gray-500 flex items-center gap-1"
-    >
-      <Loader size={14} className="animate-spin" />
-      Loading courts...
-    </motion.p>
-  ) : !selectedVenue || !selectedSport ? (
-    <p className="mt-1 text-xs text-gray-500 flex items-center gap-1">
-      <Info size={14} />
-      Please select a venue and sport first
-    </p>
-  ) : courts.length === 0 ? (
-    <p className="mt-1 text-xs text-red-400 flex items-center gap-1">
-      <AlertCircle size={14} />
-      No courts available for this venue and sport combination.
-    </p>
-  ) : (
-    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
-      {courts.map((court) => (
-        <motion.div
-          key={court.id}
-          whileHover={{ scale: 1.03 }}
-          className="flex items-center"
-        >
-          <input
-            type="radio"
-            id={`court-${court.id}`}
-            name="court"
-            value={court.id}
-            checked={selectedCourt === court.id}
-            onChange={() => {
-              setSelectedCourt(court.id);
-              setCourtRate(court.hourly_rate);
-              fetchCourtDetails(court.id);
-            }}
-            className="hidden"
-          />
-          <label
-            htmlFor={`court-${court.id}`}
-            className={`flex items-center justify-center gap-1 w-full p-2 rounded-lg border text-sm transition-all cursor-pointer ${
-              selectedCourt === court.id
-                ? 'bg-emerald-600 text-white border-emerald-700 shadow-md shadow-emerald-800/20'
-                : 'bg-gray-800 border-gray-600 hover:border-emerald-500 hover:bg-gray-750 text-gray-200'
-            }`}
-          >
-            <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-              selectedCourt === court.id 
-                ? 'border-white bg-white' 
-                : 'border-gray-400'
-            }`}>
-              {selectedCourt === court.id && (
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-600"></div>
-              )}
-            </div>
-            <div className="flex items-center gap-1">
-              <span>{court.name}</span>
-              {court.court_group_id && (
-                <span className="text-xs">🏟️</span>
-              )}
-            </div>
-          </label>
-        </motion.div>
-      ))}
-    </div>
-  )}
-  
-  {selectedCourt && courtDetails && (
-    <motion.div 
-      initial={{ opacity: 0, height: 0 }}
-      animate={{ opacity: 1, height: 'auto' }}
-      className="mt-2 p-3 bg-gray-800/50 rounded-lg border border-emerald-800/20"
-    >
-      <div className="flex items-start gap-3">
-        <div className="w-10 h-10 rounded-full bg-emerald-900/50 flex items-center justify-center">
-          <span className="text-emerald-400">🏟️</span>
-        </div>
-        <div>
-          <h4 className="font-medium text-emerald-400">{courtDetails.name}</h4>
-          {courtDetails.description && (
-            <p className="text-xs text-gray-400 mt-1">{courtDetails.description}</p>
-          )}
-          <div className="mt-2 flex items-center gap-2">
-            <span className="text-xs px-2 py-1 bg-emerald-900/30 text-emerald-300 rounded-full">
+              <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
+                <MapPin size={16} className="text-emerald-400" />
+                Select Court
+              </label>
               
-            </span>
-            {courtDetails.court_group_id && (
-              <span className="text-xs px-2 py-1 bg-blue-900/30 text-blue-300 rounded-full">
-                Shared Space
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  )}
-</motion.div>
+              {loading.courts ? (
+                <motion.p 
+                  animate={pulse}
+                  className="mt-1 text-xs text-gray-500 flex items-center gap-1"
+                >
+                  <Loader size={14} className="animate-spin" />
+                  Loading courts...
+                </motion.p>
+              ) : !selectedVenue || !selectedSport ? (
+                <p className="mt-1 text-xs text-gray-500 flex items-center gap-1">
+                  <Info size={14} />
+                  Please select a venue and sport first
+                </p>
+              ) : courts.length === 0 ? (
+                <p className="mt-1 text-xs text-red-400 flex items-center gap-1">
+                  <AlertCircle size={14} />
+                  No courts available for this venue and sport combination.
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+                  {courts.map((court) => (
+                    <motion.div
+                      key={court.id}
+                      whileHover={{ scale: 1.03 }}
+                      className="flex items-center"
+                    >
+                      <input
+                        type="radio"
+                        id={`court-${court.id}`}
+                        name="court"
+                        value={court.id}
+                        checked={selectedCourt === court.id}
+                        onChange={() => {
+                          setSelectedCourt(court.id);
+                          setCourtRate(court.hourly_rate);
+                          fetchCourtDetails(court.id);
+                        }}
+                        className="hidden"
+                      />
+                      <label
+                        htmlFor={`court-${court.id}`}
+                        className={`flex items-center justify-center gap-1 w-full p-2 rounded-lg border text-sm transition-all cursor-pointer ${
+                          selectedCourt === court.id
+                            ? 'bg-emerald-600 text-white border-emerald-700 shadow-md shadow-emerald-800/20'
+                            : 'bg-gray-800 border-gray-600 hover:border-emerald-500 hover:bg-gray-750 text-gray-200'
+                        }`}
+                      >
+                        <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                          selectedCourt === court.id 
+                            ? 'border-white bg-white' 
+                            : 'border-gray-400'
+                        }`}>
+                          {selectedCourt === court.id && (
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-600"></div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span>{court.name}</span>
+                          {court.court_group_id && (
+                            <span className="text-xs">🏟️</span>
+                          )}
+                        </div>
+                      </label>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+              
+              {selectedCourt && courtDetails && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="mt-2 p-3 bg-gray-800/50 rounded-lg border border-emerald-800/20"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-full bg-emerald-900/50 flex items-center justify-center">
+                      <span className="text-emerald-400">🏟️</span>
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-emerald-400">{courtDetails.name}</h4>
+                      {courtDetails.description && (
+                        <p className="text-xs text-gray-400 mt-1">{courtDetails.description}</p>
+                      )}
+                      <div className="mt-2 flex items-center gap-2">
+                        <span className="text-xs px-2 py-1 bg-emerald-900/30 text-emerald-300 rounded-full">
+                          
+                        </span>
+                        {courtDetails.court_group_id && (
+                          <span className="text-xs px-2 py-1 bg-blue-900/30 text-blue-300 rounded-full">
+                            Shared Space
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </motion.div>
             
             <motion.div variants={fadeIn} className="space-y-2">
               <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
@@ -1168,7 +1180,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
         {currentStep === 2 && (
           <motion.div 
             initial="hidden"
-            animate="visible"
+            animate={"visible"}
             variants={staggerContainer}
             className="p-6"
           >
@@ -1212,31 +1224,31 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
                   className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3"
                 >
                   {availableTimeSlots.map((slot) => {
-  const slotDisplay = `${formatTime(slot.start_time)} - ${formatTime(slot.end_time)}`;
-  const isSelected = selectedSlots.includes(slotDisplay);
-  return (
-    <motion.button
-      key={`${slot.start_time}-${slot.end_time}`}
-      variants={slideUp}
-      whileHover={{ scale: slot.is_available ? 1.03 : 1 }}
-      whileTap={{ scale: slot.is_available ? 0.98 : 1 }}
-      disabled={!slot.is_available}
-      onClick={() => handleSlotClick(slot)}
-      className={`
-        p-2 rounded-lg border transition-all text-center text-sm transform
-        ${slot.is_available 
-          ? isSelected
-            ? 'bg-emerald-600 text-white border-emerald-700 shadow-lg shadow-emerald-800/30'
-            : 'bg-gray-800 border-gray-600 hover:border-emerald-500 hover:bg-gray-750 text-gray-200'
-          : 'bg-red-900/60 border-red-800 text-red-200 cursor-not-allowed'}
-        ${isSelected ? 'ring-2 ring-emerald-400' : ''}
-      `}
-    >
-      <div className="font-medium">{slotDisplay}</div>
-      <div className="text-xs mt-1">₹{parseFloat(slot.price).toFixed(2)}</div>
-    </motion.button>
-  );
-})}
+                    const slotDisplay = `${formatTime(slot.start_time)} - ${formatTime(slot.end_time)}`;
+                    const isSelected = selectedSlots.includes(slotDisplay);
+                    return (
+                      <motion.button
+                        key={`${slot.start_time}-${slot.end_time}`}
+                        variants={slideUp}
+                        whileHover={{ scale: slot.is_available ? 1.03 : 1 }}
+                        whileTap={{ scale: slot.is_available ? 0.98 : 1 }}
+                        disabled={!slot.is_available}
+                        onClick={() => handleSlotClick(slot)}
+                        className={`
+                          p-2 rounded-lg border transition-all text-center text-sm transform
+                          ${slot.is_available 
+                            ? isSelected
+                              ? 'bg-emerald-600 text-white border-emerald-700 shadow-lg shadow-emerald-800/30'
+                              : 'bg-gray-800 border-gray-600 hover:border-emerald-500 hover:bg-gray-750 text-gray-200'
+                            : 'bg-red-900/60 border-red-800 text-red-200 cursor-not-allowed'}
+                          ${isSelected ? 'ring-2 ring-emerald-400' : ''}
+                        `}
+                      >
+                        <div className="font-medium">{slotDisplay}</div>
+                        <div className="text-xs mt-1">₹{parseFloat(slot.price).toFixed(2)}</div>
+                      </motion.button>
+                    );
+                  })}
                 </motion.div>
                 
                 {availableTimeSlots.length === 0 && (
@@ -1249,22 +1261,22 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
                 )}
                 
                 <motion.div 
-  variants={fadeIn}
-  className="mt-6 flex flex-wrap items-center gap-3 text-xs"
->
-  <div className="flex items-center">
-    <div className="w-3 h-3 bg-emerald-600 rounded-full mr-2"></div>
-    <span className="text-gray-300">Selected</span>
-  </div>
-  <div className="flex items-center">
-    <div className="w-3 h-3 bg-gray-800 border border-gray-600 rounded-full mr-2"></div>
-    <span className="text-gray-300">Available</span>
-  </div>
-  <div className="flex items-center">
-    <div className="w-3 h-3 bg-red-900/60 rounded-full mr-2"></div>
-    <span className="text-gray-300">Booked</span>
-  </div>
-</motion.div>
+                  variants={fadeIn}
+                  className="mt-6 flex flex-wrap items-center gap-3 text-xs"
+                >
+                  <div className="flex items-center">
+                    <div className="w-3 h-3 bg-emerald-600 rounded-full mr-2"></div>
+                    <span className="text-gray-300">Selected</span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="w-3 h-3 bg-gray-800 border border-gray-600 rounded-full mr-2"></div>
+                    <span className="text-gray-300">Available</span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="w-3 h-3 bg-red-900/60 rounded-full mr-2"></div>
+                    <span className="text-gray-300">Booked</span>
+                  </div>
+                </motion.div>
                 
                 {selectedSlots.length > 0 && (
                   <motion.div 
@@ -1300,7 +1312,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
         {currentStep === 3 && (
           <motion.div 
             initial="hidden"
-            animate="visible"
+            animate={"visible"}
             variants={staggerContainer}
             className="p-6"
           >
