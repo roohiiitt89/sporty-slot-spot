@@ -103,16 +103,44 @@ serve(async (req)=>{
     // Special handling for booking-related queries
     if (containsBookingQuery(messages[messages.length - 1]?.content || "")) {
       try {
-        const bookingInfo = await getUserBookings(userId);
+        let bookingInfo;
+        if (await isVenueAdmin(userId)) {
+          const adminVenueIds = await getAdminVenueIds(userId);
+          // Fetch venue names for these IDs
+          let venueNames = [];
+          let venuesData = [];
+          if (adminVenueIds.length > 0) {
+            const { data, error } = await supabase.from('venues').select('id, name').in('id', adminVenueIds);
+            if (!error && data) {
+              venueNames = data.map((v)=>v.name);
+              venuesData = data;
+            }
+          }
+          // Extract venue name from user message
+          const requestedVenueName = extractVenueName(messages[messages.length - 1]?.content || "", venueNames);
+          let filteredVenueIds = adminVenueIds;
+          if (requestedVenueName) {
+            // Use case-insensitive, partial match
+            const venueObj = venuesData.find((v)=>requestedVenueName && v.name.toLowerCase().includes(requestedVenueName.toLowerCase()));
+            if (venueObj) filteredVenueIds = [
+              venueObj.id
+            ];
+          }
+          // Extract date from user message
+          const filterDate = extractDateFromMessage(messages[messages.length - 1]?.content || "");
+          completeMessages.unshift({
+            role: "system",
+            content: `The current user is a venue admin for venues: ${venueNames.join(", ")} (IDs: ${adminVenueIds.join(", ")}). Only show bookings for these venues when asked for bookings.`
+          });
+          bookingInfo = await getAdminBookings(userId, filteredVenueIds, filterDate);
+        } else {
+          bookingInfo = await getUserBookings(userId);
+        }
         if (bookingInfo && bookingInfo.success) {
           // Add booking information as a system message so the AI has context
           completeMessages.push({
             role: "system",
-            content: `User has ${bookingInfo.upcoming.length} upcoming bookings and ${bookingInfo.past.length} past bookings. 
-            
-            Upcoming bookings details: ${JSON.stringify(bookingInfo.upcoming)}
-            
-            Past bookings details: ${JSON.stringify(bookingInfo.past)}`
+            content: `User has ${bookingInfo.upcoming.length} upcoming bookings and ${bookingInfo.past.length} past bookings. \n\nUpcoming bookings details: ${JSON.stringify(bookingInfo.upcoming)}\n\nPast bookings details: ${JSON.stringify(bookingInfo.past)}`
           });
         }
       } catch (error) {
@@ -262,7 +290,10 @@ function containsBookingQuery(message) {
     /schedule/i,
     /appointment/i,
     /reservation/i,
-    /meri booking/i
+    /meri booking/i,
+    /admin bookings?/i,
+    /venue bookings?/i,
+    /show me all bookings/i
   ];
   return bookingKeywords.some((keyword)=>keyword.test(message));
 }
@@ -357,6 +388,35 @@ function containsVenueAdminContactQuery(message) {
     /venue.*owner.*call/i
   ];
   return patterns.some((pattern)=>pattern.test(message));
+}
+// Helper: Extract venue name from message
+function extractVenueName(message, venueNames) {
+  const lowerMsg = message.toLowerCase();
+  return venueNames.find((name)=>lowerMsg.includes(name.toLowerCase()));
+}
+// Helper: Extract date from message (supports 'today', 'tomorrow', and formats like 'may 16')
+function extractDateFromMessage(message) {
+  const lowerMsg = message.toLowerCase();
+  const today = new Date();
+  if (lowerMsg.includes('today')) {
+    return today.toISOString().split('T')[0];
+  }
+  if (lowerMsg.includes('tomorrow')) {
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    return tomorrow.toISOString().split('T')[0];
+  }
+  // Match formats like "may 16"
+  const dateMatch = lowerMsg.match(/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{1,2}/i);
+  if (dateMatch) {
+    const year = today.getFullYear();
+    const dateStr = `${dateMatch[0]} ${year}`;
+    const parsed = new Date(dateStr);
+    if (!isNaN(parsed)) {
+      return parsed.toISOString().split('T')[0];
+    }
+  }
+  return null;
 }
 // Function to get user bookings using Supabase client
 async function getUserBookings(userId) {
@@ -521,4 +581,84 @@ async function getSports() {
       error: error.message
     };
   }
+}
+// Helper: Get venue IDs for which the user is an admin
+async function getAdminVenueIds(userId) {
+  const { data, error } = await supabase.from('venue_admins').select('venue_id').eq('user_id', userId);
+  if (error) throw error;
+  return data?.map((v)=>v.venue_id) || [];
+}
+// Helper: Check if user is an admin (has venues assigned)
+async function isVenueAdmin(userId) {
+  const venueIds = await getAdminVenueIds(userId);
+  return venueIds.length > 0;
+}
+// Helper: Get all court IDs for a venue, grouped by court_group_id
+async function getCourtIdsByGroupForVenue(venueId) {
+  const { data: courts, error } = await supabase.from('courts').select('id, court_group_id').eq('venue_id', venueId).eq('is_active', true);
+  if (error) throw error;
+  // Group court IDs by court_group_id (null means not grouped)
+  const groupMap = new Map();
+  for (const court of courts){
+    const groupId = court.court_group_id || court.id;
+    if (!groupMap.has(groupId)) groupMap.set(groupId, []);
+    groupMap.get(groupId).push(court.id);
+  }
+  return groupMap;
+}
+// Update getAdminBookings to aggregate by court_group_id
+async function getAdminBookings(userId, filteredVenueIds = null, filterDate = null) {
+  const venueIds = filteredVenueIds || await getAdminVenueIds(userId);
+  if (!venueIds.length) return {
+    success: true,
+    upcoming: [],
+    past: []
+  };
+  let allBookings = [];
+  for (const venueId of venueIds){
+    const groupMap = await getCourtIdsByGroupForVenue(venueId);
+    for (const [groupId, courtIds] of groupMap.entries()){
+      let query = supabase.from('bookings').select(`
+          id, booking_date, start_time, end_time, total_price, status,
+          courts:court_id (
+            id, name, venue_id, venues:venue_id (id, name, location), sports:sport_id (id, name), court_group_id
+          )
+        `).in('court_id', courtIds).order('booking_date', {
+        ascending: true
+      });
+      if (filterDate) {
+        query = query.eq('booking_date', filterDate);
+      }
+      const { data: bookings, error } = await query;
+      if (error) throw error;
+      // For each group, only include unique bookings by time slot (avoid double-counting)
+      // (Assume no overlapping bookings for the same group and time slot due to your triggers)
+      allBookings.push(...bookings || []);
+    }
+  }
+  // Format bookings for assistant
+  const formatted = allBookings.map((booking)=>({
+      date: booking.booking_date,
+      time: `${booking.start_time} - ${booking.end_time}`,
+      court: booking.courts?.name || 'Unknown court',
+      venue: booking.courts?.venues?.name || 'Unknown venue',
+      sport: booking.courts?.sports?.name || 'Unknown sport',
+      status: booking.status,
+      price: booking.total_price
+    }));
+  // Split into upcoming and past based on today
+  const today = new Date().toISOString().split('T')[0];
+  let upcoming = [], past = [];
+  if (filterDate) {
+    // If filtering by date, treat all as upcoming for that date
+    upcoming = formatted;
+  } else {
+    upcoming = formatted.filter((b)=>b.date >= today);
+    past = formatted.filter((b)=>b.date < today);
+  }
+  return {
+    success: true,
+    upcoming,
+    past
+  };
 }
