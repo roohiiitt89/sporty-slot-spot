@@ -308,7 +308,7 @@ const AnalyticsDashboard: React.FC = () => {
           <p className="text-muted-foreground">Track your venue performance and booking trends</p>
         </div>
         
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
           <select 
             value={selectedVenueId}
             onChange={(e) => setSelectedVenueId(e.target.value)}
@@ -383,7 +383,7 @@ const AnalyticsDashboard: React.FC = () => {
       </div>
       
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Bookings</CardTitle>
@@ -457,7 +457,7 @@ const AnalyticsDashboard: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-[300px]">
+              <div className="min-h-[200px] h-[250px] sm:h-[300px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart
                     data={trendData}
@@ -501,7 +501,7 @@ const AnalyticsDashboard: React.FC = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-[300px]">
+                <div className="min-h-[200px] h-[250px] sm:h-[300px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
@@ -534,7 +534,7 @@ const AnalyticsDashboard: React.FC = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-[300px]">
+                <div className="min-h-[200px] h-[250px] sm:h-[300px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={sportPopularityData}
@@ -567,7 +567,7 @@ const AnalyticsDashboard: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-[300px]">
+              <div className="min-h-[200px] h-[250px] sm:h-[300px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     data={timeSlotData}
@@ -599,42 +599,44 @@ const AnalyticsDashboard: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Time</TableHead>
-                    <TableHead>Venue</TableHead>
-                    <TableHead>Court</TableHead>
-                    <TableHead>Sport</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredBookings
-                    .sort((a, b) => new Date(b.booking_date).getTime() - new Date(a.booking_date).getTime())
-                    .slice(0, 10)
-                    .map((booking) => (
-                      <TableRow key={booking.id}>
-                        <TableCell>{format(parseISO(booking.booking_date), 'MMM dd, yyyy')}</TableCell>
-                        <TableCell>
-                          {booking.start_time.substring(0, 5)} - {booking.end_time.substring(0, 5)}
-                        </TableCell>
-                        <TableCell>{booking.court?.venues?.name || 'N/A'}</TableCell>
-                        <TableCell>{booking.court?.name || 'N/A'}</TableCell>
-                        <TableCell>{booking.court?.sports?.name || 'N/A'}</TableCell>
-                        <TableCell className="text-right font-medium">₹{booking.total_price}</TableCell>
-                      </TableRow>
-                    ))}
-                  {filteredBookings.length === 0 && (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
-                        No bookings found for the selected period
-                      </TableCell>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Time</TableHead>
+                      <TableHead>Venue</TableHead>
+                      <TableHead>Court</TableHead>
+                      <TableHead>Sport</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
                     </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredBookings
+                      .sort((a, b) => new Date(b.booking_date).getTime() - new Date(a.booking_date).getTime())
+                      .slice(0, 10)
+                      .map((booking) => (
+                        <TableRow key={booking.id}>
+                          <TableCell>{format(parseISO(booking.booking_date), 'MMM dd, yyyy')}</TableCell>
+                          <TableCell>
+                            {booking.start_time.substring(0, 5)} - {booking.end_time.substring(0, 5)}
+                          </TableCell>
+                          <TableCell>{booking.court?.venues?.name || 'N/A'}</TableCell>
+                          <TableCell>{booking.court?.name || 'N/A'}</TableCell>
+                          <TableCell>{booking.court?.sports?.name || 'N/A'}</TableCell>
+                          <TableCell className="text-right font-medium">₹{booking.total_price}</TableCell>
+                        </TableRow>
+                      ))}
+                    {filteredBookings.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
+                          No bookings found for the selected period
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
