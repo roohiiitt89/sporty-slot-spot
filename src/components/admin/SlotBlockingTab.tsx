@@ -99,31 +99,13 @@ const SlotBlockingTab: React.FC<SlotBlockingTabProps> = ({
       setLoading(false);
     }
   };
-  // Add padTime helper
-  const padTime = (t: string) => t.length === 5 ? t + ':00' : t;
-
-  // Add shared group logic for blocked slots
   const fetchBlockedSlots = async () => {
     try {
       const formattedDate = format(selectedDate, 'yyyy-MM-dd');
-      // Fetch court details to check for court_group_id
-      const { data: courtDetails, error: courtDetailsError } = await supabase
-        .from('courts')
-        .select('court_group_id')
-        .eq('id', selectedCourtId)
-        .single();
-      if (courtDetailsError) throw courtDetailsError;
-      let courtIdsToCheck = [selectedCourtId];
-      if (courtDetails && courtDetails.court_group_id) {
-        const { data: groupCourts, error: groupCourtsError } = await supabase
-          .from('courts')
-          .select('id')
-          .eq('court_group_id', courtDetails.court_group_id)
-          .eq('is_active', true);
-        if (groupCourtsError) throw groupCourtsError;
-        courtIdsToCheck = groupCourts.map((c: { id: string }) => c.id);
-      }
-      const { data, error } = await supabase.from('blocked_slots').select('*').in('court_id', courtIdsToCheck).eq('date', formattedDate);
+      const {
+        data,
+        error
+      } = await supabase.from('blocked_slots').select('*').eq('court_id', selectedCourtId).eq('date', formattedDate);
       if (error) throw error;
       setBlockedSlots(data || []);
     } catch (err) {
