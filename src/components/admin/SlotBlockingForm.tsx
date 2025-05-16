@@ -40,6 +40,10 @@ const SlotBlockingForm: React.FC<SlotBlockingFormProps> = ({
     const hour12 = hour % 12 || 12;
     return `${hour12}:${minutes} ${ampm}`;
   };
+
+  // Add padTime helper
+  const padTime = (t: string) => t.length === 5 ? t + ':00' : t;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user?.id || !selectedSlot) {
@@ -52,24 +56,39 @@ const SlotBlockingForm: React.FC<SlotBlockingFormProps> = ({
     }
     setLoading(true);
     try {
-      // Create blocked slot
-      const {
-        error
-      } = await supabase.from('blocked_slots').insert({
-        court_id: courtId,
+      // Fetch court details to check for court_group_id
+      const { data: courtDetails, error: courtDetailsError } = await supabase
+        .from('courts')
+        .select('court_group_id')
+        .eq('id', courtId)
+        .single();
+      if (courtDetailsError) throw courtDetailsError;
+      let courtIdsToBlock = [courtId];
+      if (courtDetails && courtDetails.court_group_id) {
+        const { data: groupCourts, error: groupCourtsError } = await supabase
+          .from('courts')
+          .select('id')
+          .eq('court_group_id', courtDetails.court_group_id)
+          .eq('is_active', true);
+        if (groupCourtsError) throw groupCourtsError;
+        courtIdsToBlock = groupCourts.map((c: { id: string }) => c.id);
+      }
+      // Create blocked slot for each court in the group
+      const inserts = courtIdsToBlock.map(cid => ({
+        court_id: cid,
         date,
-        start_time: selectedSlot.start_time,
-        end_time: selectedSlot.end_time,
+        start_time: padTime(selectedSlot.start_time),
+        end_time: padTime(selectedSlot.end_time),
         reason: reason.trim() || 'Blocked by admin',
         created_by: user.id
-      });
+      }));
+      const { error } = await supabase.from('blocked_slots').insert(inserts);
       if (error) throw error;
       toast({
         title: 'Success',
-        description: `Slot blocked successfully`,
+        description: `Slot blocked successfully for all shared courts`,
         variant: 'default'
       });
-
       // Reset form and notify parent
       setReason('');
       onBlockComplete();
@@ -99,6 +118,9 @@ const SlotBlockingForm: React.FC<SlotBlockingFormProps> = ({
         <p className="text-sm text-red-600 mt-2">
           <Ban className="inline h-4 w-4 mr-1" />
           This slot will become unavailable for booking
+        </p>
+        <p className="text-xs text-yellow-400 mt-1">
+          If this court is part of a shared group, this slot will be blocked for <b>all shared courts</b>.
         </p>
       </div>
       
