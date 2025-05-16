@@ -234,6 +234,18 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     setSelectedSlotPrices({});
   }, [selectedDate, selectedCourt, selectedVenue, selectedCourtGroupId]);
 
+  useEffect(() => {
+    // When user changes (login/logout), reset slot state and fetch fresh availability
+    setSelectedSlots([]);
+    setSelectedSlotPrices({});
+    setAvailableTimeSlots([]);
+    if (user && selectedCourt && selectedDate) {
+      fetchAvailability();
+    }
+    // Optionally, reset other state if needed
+    // setCurrentStep(1);
+  }, [user]);
+
   const fetchVenueDetails = async (venueId: string) => {
     try {
       const { data, error } = await supabase
