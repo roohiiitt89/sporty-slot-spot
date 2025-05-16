@@ -614,7 +614,7 @@ const Profile: React.FC = () => {
       <footer className="bg-navy-dark/50 backdrop-blur-sm py-6 border-t border-white/20">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center">
-            <p className="text-gray-400 text-sm">&copy; {new Date().getFullYear()} SportySlot. All rights reserved.</p>
+            <p className="text-gray-400 text-sm">&copy; {new Date().getFullYear()} Grid2Play. All rights reserved.</p>
             <div className="mt-4 md:mt-0 flex space-x-6">
               <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">Terms</a>
               <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">Privacy</a>
