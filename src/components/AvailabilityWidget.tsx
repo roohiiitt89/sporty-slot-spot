@@ -1,6 +1,6 @@
-
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { getAvailableSlots } from '@/integrations/supabase/custom-types';
 import { Loader2, Clock, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -41,19 +41,17 @@ const AvailabilityWidget: React.FC<AvailabilityWidgetProps> = ({
         return;
       }
 
-      // Fetch available slots from the database function
-      const {
-        data,
-        error
-      } = await supabase.rpc('get_available_slots', {
-        p_court_id: courtId,
-        p_date: date
-      });
+      // Use our custom helper function to call the RPC
+      const { data, error } = await getAvailableSlots(courtId, date);
       
       console.log('Availability data received:', data);
       
       if (error) throw error;
-      setSlots(data || []);
+      if (data) {
+        setSlots(data);
+      } else {
+        setSlots([]);
+      }
     } catch (error: any) {
       console.error('Error fetching availability:', error);
       setError(`Error fetching availability: ${error.message}`);

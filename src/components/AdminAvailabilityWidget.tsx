@@ -1,6 +1,6 @@
-
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { getAvailableSlots } from '@/integrations/supabase/custom-types';
 import { Loader2, Clock, Info, User, Mail, Phone, Calendar, Ban, CheckCircle2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -56,13 +56,8 @@ const AdminAvailabilityWidget: React.FC<AdminAvailabilityWidgetProps> = ({
       try {
         setLoading(true);
         
-        // Fetch available slots from the database function
-        const { data: availabilityData, error: availabilityError } = await supabase
-          .rpc('get_available_slots', {
-            p_court_id: courtId,
-            p_date: date,
-          })
-          .returns<GetAvailableSlotsResult>();
+        // Use our custom helper function for get_available_slots
+        const { data: availabilityData, error: availabilityError } = await getAvailableSlots(courtId, date);
 
         if (availabilityError) throw availabilityError;
         
@@ -96,7 +91,7 @@ const AdminAvailabilityWidget: React.FC<AdminAvailabilityWidgetProps> = ({
         if (blockedSlotsError) throw blockedSlotsError;
         
         // Merge availability data with booking and blocked slots data
-        const enhancedSlots = availabilityData.map((slot: AvailabilitySlot) => {
+        const enhancedSlots = availabilityData?.map((slot: AvailabilitySlot) => {
           const booking = bookingsData?.find((b: BookingInfo) => 
             b.start_time === slot.start_time && 
             b.end_time === slot.end_time
@@ -112,9 +107,9 @@ const AdminAvailabilityWidget: React.FC<AdminAvailabilityWidgetProps> = ({
             booking: booking || undefined,
             blocked: blockedSlot || undefined
           };
-        });
+        }) || [];
         
-        setSlots(enhancedSlots || []);
+        setSlots(enhancedSlots);
       } catch (error) {
         console.error('Error fetching availability and bookings:', error);
         toast({
