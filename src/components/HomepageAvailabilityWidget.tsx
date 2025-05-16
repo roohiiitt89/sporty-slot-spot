@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, Calendar, Clock, ChevronDown } from 'lucide-react';
@@ -41,39 +40,29 @@ const HomepageAvailabilityWidget: React.FC = () => {
     try {
       setSlotsLoading(true);
       setSlotsError(null);
-      
       // Fetch court details to check for court_group_id
       const { data: courtDetails, error: courtDetailsError } = await supabase
         .from('courts')
         .select('court_group_id')
         .eq('id', courtId)
         .single();
-        
       if (courtDetailsError) throw courtDetailsError;
-      
       let courtIdsToCheck = [courtId];
-      
       if (courtDetails && courtDetails.court_group_id) {
-        // If court is part of a group, get all courts in that group
         const { data: groupCourts, error: groupCourtsError } = await supabase
           .from('courts')
           .select('id')
           .eq('court_group_id', courtDetails.court_group_id)
           .eq('is_active', true);
-          
         if (groupCourtsError) throw groupCourtsError;
-        
         courtIdsToCheck = groupCourts.map((c: { id: string }) => c.id);
       }
-      
       // Fetch available slots for the selected court (for template/pricing)
       const { data, error } = await supabase.rpc('get_available_slots', {
         p_court_id: courtId,
         p_date: date
       });
-      
       if (error) throw error;
-      
       // Fetch bookings for all courts in the group (or just the selected court)
       const { data: bookings, error: bookingsError } = await supabase
         .from('bookings')
@@ -81,25 +70,20 @@ const HomepageAvailabilityWidget: React.FC = () => {
         .in('court_id', courtIdsToCheck)
         .eq('booking_date', date)
         .in('status', ['confirmed', 'pending']);
-        
       if (bookingsError) throw bookingsError;
-      
       // Mark slots as unavailable if booked in any court in the group
       const slotsWithBooking = data?.map(slot => {
         const slotStart = padTime(slot.start_time);
         const slotEnd = padTime(slot.end_time);
-        
         const isBooked = bookings?.some(b =>
           padTime(b.start_time) === slotStart &&
           padTime(b.end_time) === slotEnd
         );
-        
         return {
           ...slot,
           is_available: slot.is_available && !isBooked
         };
       }) || [];
-      
       setSlots(slotsWithBooking);
     } catch (error: any) {
       setSlotsError(error.message || 'Failed to load availability');
