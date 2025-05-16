@@ -896,11 +896,9 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className={classNames(
-        "fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto",
-        "flex flex-col min-h-[60vh] sm:min-h-[70vh] md:min-h-[60vh]",
-        "p-0 sm:p-0 md:p-0"
-      )}
+      className={
+        `fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto flex flex-col min-h-[60vh] sm:min-h-[70vh] md:min-h-[60vh] p-0 sm:p-0 md:p-0`
+      }
     >
       {bookingInProgress && (
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black bg-opacity-80 min-h-screen w-full">
