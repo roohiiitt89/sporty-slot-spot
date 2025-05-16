@@ -118,11 +118,18 @@ const NewAIChatWidget: React.FC<NewAIChatWidgetProps> = ({ isOpen: isOpenProp, s
         setConsentGiven(savedConsent === 'true');
       }
       // Always start with a fresh welcome message for new user session
+      let welcomeName = '';
+      if (isAdmin) {
+        const venueName = user.user_metadata?.venue_name;
+        welcomeName = venueName ? `(Admin: ${venueName})` : 'Admin';
+      } else {
+        welcomeName = user.user_metadata?.name ? user.user_metadata.name : '';
+      }
       setMessages([
         {
           id: 'welcome-' + Date.now(),
           role: 'assistant',
-          content: user ? `Hello${user.user_metadata?.name ? ' ' + user.user_metadata.name : ''}! How can I help you with sports bookings today?` : 'Please sign in to use the chat assistant.',
+          content: `Hello${welcomeName ? ' ' + welcomeName : ''}! How can I help you with sports bookings today?`,
           timestamp: new Date()
         }
       ]);
@@ -209,11 +216,18 @@ const NewAIChatWidget: React.FC<NewAIChatWidgetProps> = ({ isOpen: isOpenProp, s
   // Welcome message setup
   useEffect(() => {
     if (isOpen && isFirstInteraction && messages.length === 0) {
+      let welcomeName = '';
+      if (isAdmin) {
+        const venueName = user?.user_metadata?.venue_name;
+        welcomeName = venueName ? `(Admin: ${venueName})` : 'Admin';
+      } else {
+        welcomeName = user?.user_metadata?.name ? user.user_metadata.name : '';
+      }
       const welcomeMessage: ChatMessage = {
         id: 'welcome-' + Date.now(),
         role: 'assistant',
         content: user ? 
-          `Hello${user.user_metadata?.name ? ' ' + user.user_metadata.name : ''}! How can I help you with sports bookings today?` : 
+          `Hello${welcomeName ? ' ' + welcomeName : ''}! How can I help you with sports bookings today?` : 
           'Please sign in to use the chat assistant.',
         timestamp: new Date()
       };
@@ -259,6 +273,9 @@ const NewAIChatWidget: React.FC<NewAIChatWidgetProps> = ({ isOpen: isOpenProp, s
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [messages]);
+
+  // Helper to check if current user is admin
+  const isAdmin = userRole === 'admin' || userRole === 'super_admin';
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return;
@@ -479,6 +496,46 @@ const NewAIChatWidget: React.FC<NewAIChatWidgetProps> = ({ isOpen: isOpenProp, s
     );
   };
 
+  // Helper: Parse JSON markers for table and parsedDate in assistant messages
+  function parseAssistantContent(content: string) {
+    try {
+      // If the message starts with a JSON object, parse it
+      if (content.trim().startsWith('{')) {
+        const parsed = JSON.parse(content);
+        return parsed;
+      }
+    } catch (e) {
+      // Not JSON, fallback to string
+    }
+    return null;
+  }
+
+  // Helper: Render a responsive table
+  function AdminTable({ columns, rows }: { columns: string[]; rows: any[] }) {
+    return (
+      <div className="overflow-x-auto w-full my-2">
+        <table className="min-w-full text-sm border border-emerald-900 rounded-lg">
+          <thead className="bg-emerald-900/80 text-emerald-200">
+            <tr>
+              {columns.map((col) => (
+                <th key={col} className="px-3 py-2 font-semibold whitespace-nowrap border-b border-emerald-800">{col}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="bg-gray-900/80 text-gray-100">
+            {rows.map((row, i) => (
+              <tr key={i} className="border-b border-emerald-900/30">
+                {columns.map((col) => (
+                  <td key={col} className="px-3 py-2 whitespace-nowrap">{row[col]}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
   // Only render the chat widget on mobile if isOpen is true
   if (isMobile && !isOpen) return null;
 
@@ -614,7 +671,45 @@ const NewAIChatWidget: React.FC<NewAIChatWidgetProps> = ({ isOpen: isOpenProp, s
                         : "border-gray-500"
                     )}
                   >
-                    <div className="whitespace-pre-wrap">{message.content}</div>
+                    <div className="whitespace-pre-wrap">
+                      {message.role === 'assistant' ? (
+                        (() => {
+                          // Try to parse special content for admin
+                          const parsed = parseAssistantContent(message.content);
+                          // If admin and table marker present, render table
+                          if (isAdmin && parsed && parsed.table && Array.isArray(parsed.table.rows) && Array.isArray(parsed.table.columns)) {
+                            return (
+                              <>
+                                {parsed.parsedDate && (
+                                  <div className="mb-2 inline-block bg-emerald-800/80 text-emerald-100 px-3 py-1 rounded-full text-xs font-semibold">
+                                    You asked about bookings for <span className="font-bold">{parsed.parsedDate}</span>
+                                  </div>
+                                )}
+                                <AdminTable columns={parsed.table.columns} rows={parsed.table.rows} />
+                                {parsed.text && (
+                                  <div className="mt-2" dangerouslySetInnerHTML={formatMessageContent(parsed.text)} />
+                                )}
+                              </>
+                            );
+                          }
+                          // If parsedDate marker present for any user, show badge
+                          if (parsed && parsed.parsedDate) {
+                            return (
+                              <>
+                                <div className="mb-2 inline-block bg-emerald-800/80 text-emerald-100 px-3 py-1 rounded-full text-xs font-semibold">
+                                  You asked about bookings for <span className="font-bold">{parsed.parsedDate}</span>
+                                </div>
+                                <div dangerouslySetInnerHTML={formatMessageContent(parsed.text || message.content)} />
+                              </>
+                            );
+                          }
+                          // Fallback: markdown/HTML rendering
+                          return <div dangerouslySetInnerHTML={formatMessageContent(message.content)} />;
+                        })()
+                      ) : (
+                        message.content
+                      )}
+                    </div>
                     
                     {message.timestamp && (
                       <div className={cn(
