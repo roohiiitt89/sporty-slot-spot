@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { format, addDays } from 'date-fns';
 import { CalendarIcon, Clock, User, Phone, Mail, CheckCircle, XCircle, Building, Dumbbell } from 'lucide-react';
@@ -102,6 +103,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [paymentReference, setPaymentReference] = useState('');
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'completed'>('pending');
+  const [venueAllowsCash, setVenueAllowsCash] = useState<boolean>(allowCashPayments);
 
   // Fetch venues on modal open
   useEffect(() => {
@@ -300,7 +302,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({
 
       if (error) throw error;
       // Default to true if not specified
-      setAllowCashPayments(data.allow_cash_payments !== false);
+      setVenueAllowsCash(data.allow_cash_payments !== false);
     } catch (err) {
       console.error('Error fetching venue details:', err);
     }
@@ -662,7 +664,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({
                         <SelectValue placeholder="Select payment method" />
                       </SelectTrigger>
                       <SelectContent>
-                        {allowCashPayments && (
+                        {venueAllowsCash && (
                           <SelectItem value="cash">Cash</SelectItem>
                         )}
                         <SelectItem value="card">Card</SelectItem>
