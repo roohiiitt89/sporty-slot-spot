@@ -54,7 +54,7 @@ const Register: React.FC = () => {
       } else {
         toast({
           title: "Registration successful",
-          description: "Welcome to SportySlot!",
+          description: "Welcome to Grid2Play!",
         });
         navigate('/');
       }
@@ -101,7 +101,7 @@ const Register: React.FC = () => {
                   </svg>
                 </div>
                 <h1 className="text-3xl font-bold text-white">Create Account</h1>
-                <p className="text-gray-300 mt-2">Join SportySlot today</p>
+                <p className="text-gray-300 mt-2">Join Grid2Play today</p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-6">
@@ -278,7 +278,7 @@ const Register: React.FC = () => {
 
       <footer className="bg-navy-dark/50 backdrop-blur-sm py-6">
         <div className="container mx-auto px-4 text-center">
-          <p className="text-gray-400">&copy; 2025 SportySlot. All rights reserved.</p>
+          <p className="text-gray-400">&copy; 2025 Grid2Play. All rights reserved.</p>
         </div>
       </footer>
     </div>
