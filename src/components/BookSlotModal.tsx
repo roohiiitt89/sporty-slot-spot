@@ -459,13 +459,16 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       });
 
       // Fetch bookings for all courts in the group (or just the selected court)
+      const randomNoCache = Math.random().toString(36).substring(2);
       const { data: bookings, error: bookingsError } = await supabase
         .from('bookings')
         .select('court_id, start_time, end_time, booking_date')
         .in('court_id', courtIdsToCheck)
         .eq('booking_date', selectedDate)
-        .in('status', ['confirmed', 'pending']);
+        .in('status', ['confirmed', 'pending'])
+        .neq('id', randomNoCache);
       if (bookingsError) throw bookingsError;
+      console.log('Fetched bookings for courts', courtIdsToCheck, 'on', selectedDate, bookings);
 
       // Mark slots as unavailable if booked in any court in the group
       const slotsWithPrice = data?.map(slot => {
