@@ -45,6 +45,10 @@ const AdminBookingTab: React.FC<AdminBookingTabProps> = ({
   } | null>(null);
   const [courtDetails, setCourtDetails] = useState<Court | null>(null);
   const [loading, setLoading] = useState(true);
+  const [slots, setSlots] = useState<any[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [slotsError, setSlotsError] = useState<string | null>(null);
+
   useEffect(() => {
     fetchVenues();
   }, [userRole, adminVenues]);
@@ -53,6 +57,7 @@ const AdminBookingTab: React.FC<AdminBookingTabProps> = ({
       fetchCourtDetails(selectedCourtId);
     }
   }, [selectedCourtId]);
+
   const fetchVenues = async () => {
     try {
       setLoading(true);
@@ -138,6 +143,74 @@ const AdminBookingTab: React.FC<AdminBookingTabProps> = ({
   const handleBookingComplete = () => {
     setSelectedSlot(null);
   };
+
+  // Add padTime helper
+  const padTime = (t: string) => t.length === 5 ? t + ':00' : t;
+
+  // Add shared group logic for slot availability
+  const fetchAvailability = async (courtId: string, date: string) => {
+    try {
+      setSlotsLoading(true);
+      setSlotsError(null);
+      // Fetch court details to check for court_group_id
+      const { data: courtDetails, error: courtDetailsError } = await supabase
+        .from('courts')
+        .select('court_group_id')
+        .eq('id', courtId)
+        .single();
+      if (courtDetailsError) throw courtDetailsError;
+      let courtIdsToCheck = [courtId];
+      if (courtDetails && courtDetails.court_group_id) {
+        const { data: groupCourts, error: groupCourtsError } = await supabase
+          .from('courts')
+          .select('id')
+          .eq('court_group_id', courtDetails.court_group_id)
+          .eq('is_active', true);
+        if (groupCourtsError) throw groupCourtsError;
+        courtIdsToCheck = groupCourts.map((c: { id: string }) => c.id);
+      }
+      // Fetch available slots for the selected court (for template/pricing)
+      const { data, error } = await supabase.rpc('get_available_slots', {
+        p_court_id: courtId,
+        p_date: format(selectedDate, 'yyyy-MM-dd')
+      });
+      if (error) throw error;
+      // Fetch bookings for all courts in the group (or just the selected court)
+      const { data: bookings, error: bookingsError } = await supabase
+        .from('bookings')
+        .select('court_id, start_time, end_time, booking_date')
+        .in('court_id', courtIdsToCheck)
+        .eq('booking_date', format(selectedDate, 'yyyy-MM-dd'))
+        .in('status', ['confirmed', 'pending']);
+      if (bookingsError) throw bookingsError;
+      // Mark slots as unavailable if booked in any court in the group
+      const slotsWithBooking = data?.map(slot => {
+        const slotStart = padTime(slot.start_time);
+        const slotEnd = padTime(slot.end_time);
+        const isBooked = bookings?.some(b =>
+          padTime(b.start_time) === slotStart &&
+          padTime(b.end_time) === slotEnd
+        );
+        return {
+          ...slot,
+          is_available: slot.is_available && !isBooked
+        };
+      }) || [];
+      setSlots(slotsWithBooking);
+    } catch (error: any) {
+      setSlotsError(error.message || 'Failed to load availability');
+      setSlots([]);
+    } finally {
+      setSlotsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedCourtId && selectedDate) {
+      fetchAvailability(selectedCourtId, format(selectedDate, 'yyyy-MM-dd'));
+    }
+  }, [selectedCourtId, selectedDate]);
+
   if (loading) {
     return <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-sport-green"></div>
