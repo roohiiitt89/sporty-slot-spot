@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { getAvailableSlots } from '@/integrations/supabase/custom-types';
 import { Loader2, Clock, Info, User, Mail, Phone, Calendar, Ban, CheckCircle2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -51,65 +50,71 @@ const AdminAvailabilityWidget: React.FC<AdminAvailabilityWidgetProps> = ({
   const [blockingSlot, setBlockingSlot] = useState(false);
   const [unblockingSlot, setUnblockingSlot] = useState(false);
 
+  const padTime = (t: string) => t.length === 5 ? t + ':00' : t;
+
   useEffect(() => {
     const fetchAvailabilityAndBookings = async () => {
       try {
         setLoading(true);
-        
-        // Use our custom helper function for get_available_slots
-        const { data: availabilityData, error: availabilityError } = await getAvailableSlots(courtId, date);
-
+        // Fetch court details to check for court_group_id
+        const { data: courtDetails, error: courtDetailsError } = await supabase
+          .from('courts')
+          .select('court_group_id')
+          .eq('id', courtId)
+          .single();
+        if (courtDetailsError) throw courtDetailsError;
+        let courtIdsToCheck = [courtId];
+        if (courtDetails && courtDetails.court_group_id) {
+          const { data: groupCourts, error: groupCourtsError } = await supabase
+            .from('courts')
+            .select('id')
+            .eq('court_group_id', courtDetails.court_group_id)
+            .eq('is_active', true);
+          if (groupCourtsError) throw groupCourtsError;
+          courtIdsToCheck = groupCourts.map((c: { id: string }) => c.id);
+        }
+        // Fetch available slots for the selected court (for template/pricing)
+        const { data: availabilityData, error: availabilityError } = await supabase
+          .rpc('get_available_slots', {
+            p_court_id: courtId,
+            p_date: date,
+          });
         if (availabilityError) throw availabilityError;
-        
-        // Fetch bookings for this court on this date
+        // Fetch bookings for all courts in the group (or just the selected court)
         const { data: bookingsData, error: bookingsError } = await supabase
           .from('bookings')
-          .select(`
-            id, 
-            user_id, 
-            guest_name, 
-            guest_phone, 
-            start_time, 
-            end_time, 
-            booking_date,
-            status,
-            payment_status
-          `)
-          .eq('court_id', courtId)
+          .select('*')
+          .in('court_id', courtIdsToCheck)
           .eq('booking_date', date)
           .in('status', ['confirmed', 'pending', 'completed']);
-          
         if (bookingsError) throw bookingsError;
-        
-        // Fetch blocked slots
+        // Fetch blocked slots for all courts in the group (or just the selected court)
         const { data: blockedSlotsData, error: blockedSlotsError } = await supabase
           .from('blocked_slots')
           .select('*')
-          .eq('court_id', courtId)
+          .in('court_id', courtIdsToCheck)
           .eq('date', date);
-          
         if (blockedSlotsError) throw blockedSlotsError;
-        
         // Merge availability data with booking and blocked slots data
-        const enhancedSlots = availabilityData?.map((slot: AvailabilitySlot) => {
-          const booking = bookingsData?.find((b: BookingInfo) => 
-            b.start_time === slot.start_time && 
-            b.end_time === slot.end_time
+        const enhancedSlots = availabilityData.map((slot: any) => {
+          const slotStart = padTime(slot.start_time);
+          const slotEnd = padTime(slot.end_time);
+          const booking = bookingsData?.find((b: any) =>
+            padTime(b.start_time) === slotStart &&
+            padTime(b.end_time) === slotEnd
           );
-          
-          const blockedSlot = blockedSlotsData?.find((bs: BlockedSlot) => 
-            bs.start_time === slot.start_time && 
-            bs.end_time === slot.end_time
+          const blockedSlot = blockedSlotsData?.find((bs: any) =>
+            padTime(bs.start_time) === slotStart &&
+            padTime(bs.end_time) === slotEnd
           );
-          
           return {
             ...slot,
             booking: booking || undefined,
-            blocked: blockedSlot || undefined
+            blocked: blockedSlot || undefined,
+            is_available: slot.is_available && !booking && !blockedSlot
           };
-        }) || [];
-        
-        setSlots(enhancedSlots);
+        });
+        setSlots(enhancedSlots || []);
       } catch (error) {
         console.error('Error fetching availability and bookings:', error);
         toast({
@@ -121,7 +126,6 @@ const AdminAvailabilityWidget: React.FC<AdminAvailabilityWidgetProps> = ({
         setLoading(false);
       }
     };
-
     fetchAvailabilityAndBookings();
 
     // Set up real-time subscription for bookings changes
