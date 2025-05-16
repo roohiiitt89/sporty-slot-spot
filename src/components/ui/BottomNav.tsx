@@ -22,59 +22,32 @@ const BottomNav: React.FC<{ onChatClick?: () => void; chatActive?: boolean; setC
   };
 
   return (
-    <nav className="fixed bottom-3 left-1/2 -translate-x-1/2 z-50 w-[95vw] max-w-xl rounded-2xl bg-navy-light/80 backdrop-blur-md border border-navy/40 flex justify-between items-end px-2 py-2 shadow-2xl md:hidden transition-all duration-300">
-      {/* Home */}
-      <Link
-        key={navItems[0].to}
-        to={navItems[0].to}
-        className={`flex-1 flex flex-col items-center justify-center py-1 transition-all duration-200 rounded-xl mx-1 ${location.pathname === navItems[0].to ? 'text-indigo-light scale-110 bg-indigo/10 shadow-lg' : 'text-white hover:bg-navy/40 hover:scale-105'} `}
-        onClick={() => handleNavClick(navItems[0].to)}
-      >
-        {navItems[0].icon}
-        <span className="text-xs mt-0.5 font-semibold drop-shadow">{navItems[0].label}</span>
-      </Link>
-      {/* Venues */}
-      <Link
-        key={navItems[1].to}
-        to={navItems[1].to}
-        className={`flex-1 flex flex-col items-center justify-center py-1 transition-all duration-200 rounded-xl mx-1 ${location.pathname === navItems[1].to ? 'text-indigo-light scale-110 bg-indigo/10 shadow-lg' : 'text-white hover:bg-navy/40 hover:scale-105'} `}
-        onClick={() => handleNavClick(navItems[1].to)}
-      >
-        {navItems[1].icon}
-        <span className="text-xs mt-0.5 font-semibold drop-shadow">{navItems[1].label}</span>
-      </Link>
-      {/* Chat button in center, floating and standout */}
+    <nav className="fixed bottom-3 left-1/2 -translate-x-1/2 z-50 w-[90vw] max-w-sm rounded-xl bg-navy-light/80 backdrop-blur-md border border-navy/40 flex justify-between items-end px-1.5 py-1.5 shadow-xl md:hidden transition-all duration-300">
+      {navItems.map((item, idx) => (
+        <Link
+          key={item.to}
+          to={item.to}
+          className={`flex-1 flex flex-col items-center justify-center py-1 transition-all duration-200 rounded-lg mx-0.5 group ${location.pathname === item.to ? 'text-indigo-light scale-110 bg-indigo/10 shadow-lg' : 'text-white hover:bg-navy/40 hover:scale-105'} `}
+          onClick={() => handleNavClick(item.to)}
+        >
+          <span className={`text-xl flex items-center justify-center transition-all duration-200 group-hover:scale-125 group-hover:text-emerald-400 ${location.pathname === item.to ? 'text-indigo-light scale-125' : ''}`}>
+            {item.icon}
+          </span>
+          <span className="text-xs mt-0.5 font-semibold drop-shadow">{item.label}</span>
+        </Link>
+      ))}
+      {/* Chat button inline with nav, animated */}
       <button
-        className={`relative -top-6 flex flex-col items-center justify-center w-16 h-16 rounded-full bg-gradient-to-tr from-indigo via-fuchsia-500 to-emerald-400 shadow-2xl border-4 border-navy-light/80 transition-all duration-300 hover:scale-110 active:scale-95 focus:outline-none ${chatActive ? 'ring-4 ring-indigo/40' : ''}`}
+        className={`flex-1 flex flex-col items-center justify-center py-1 transition-all duration-200 rounded-lg mx-0.5 group ${chatActive ? 'text-indigo-light scale-110 bg-indigo/10 shadow-lg' : 'text-white hover:bg-navy/40 hover:scale-105'}`}
         onClick={onChatClick}
         aria-label="Open Chat"
-        style={{ zIndex: 2 }}
+        style={{ zIndex: 1 }}
       >
-        <span className="text-white text-2xl flex items-center justify-center drop-shadow-lg">
+        <span className={`text-xl flex items-center justify-center transition-all duration-200 group-hover:scale-125 group-hover:text-fuchsia-400 ${chatActive ? 'text-indigo-light scale-125' : ''}`}>
           <MessageCircle />
         </span>
-        <span className="text-xs mt-0.5 text-white font-bold drop-shadow">Chat</span>
+        <span className="text-xs mt-0.5 font-bold drop-shadow">Chat</span>
       </button>
-      {/* Bookings */}
-      <Link
-        key={navItems[2].to}
-        to={navItems[2].to}
-        className={`flex-1 flex flex-col items-center justify-center py-1 transition-all duration-200 rounded-xl mx-1 ${location.pathname === navItems[2].to ? 'text-indigo-light scale-110 bg-indigo/10 shadow-lg' : 'text-white hover:bg-navy/40 hover:scale-105'} `}
-        onClick={() => handleNavClick(navItems[2].to)}
-      >
-        {navItems[2].icon}
-        <span className="text-xs mt-0.5 font-semibold drop-shadow">{navItems[2].label}</span>
-      </Link>
-      {/* Profile */}
-      <Link
-        key={navItems[3].to}
-        to={navItems[3].to}
-        className={`flex-1 flex flex-col items-center justify-center py-1 transition-all duration-200 rounded-xl mx-1 ${location.pathname === navItems[3].to ? 'text-indigo-light scale-110 bg-indigo/10 shadow-lg' : 'text-white hover:bg-navy/40 hover:scale-105'} `}
-        onClick={() => handleNavClick(navItems[3].to)}
-      >
-        {navItems[3].icon}
-        <span className="text-xs mt-0.5 font-semibold drop-shadow">{navItems[3].label}</span>
-      </Link>
     </nav>
   );
 };
