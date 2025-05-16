@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { 
@@ -129,6 +128,13 @@ const AnalyticsDashboard: React.FC = () => {
 
     fetchData();
   }, [userRole]);
+
+  // Set default selectedVenueId for admins to their first assigned venue
+  useEffect(() => {
+    if (userRole === 'admin' && adminVenues.length > 0) {
+      setSelectedVenueId(adminVenues[0].venue_id);
+    }
+  }, [userRole, adminVenues]);
 
   // Filter bookings based on selected time range and venue
   const filteredBookings = bookings.filter(booking => {
@@ -308,7 +314,10 @@ const AnalyticsDashboard: React.FC = () => {
             onChange={(e) => setSelectedVenueId(e.target.value)}
             className="px-3 py-2 border rounded-md"
           >
-            <option value="all">All Venues</option>
+            {/* Only show 'All Venues' for super_admin */}
+            {userRole === 'super_admin' && (
+              <option value="all">All Venues</option>
+            )}
             {venues
               .filter(venue => 
                 userRole === 'super_admin' || 
