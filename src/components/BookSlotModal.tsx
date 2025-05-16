@@ -414,60 +414,79 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     
     setLoading(prev => ({ ...prev, availability: true }));
     try {
+      let courtIdsToCheck = [selectedCourt];
+      // If shared court group, get all court IDs in the group
+      if (selectedCourtGroupId) {
+        const { data: groupCourts, error: groupCourtsError } = await supabase
+          .from('courts')
+          .select('id')
+          .eq('court_group_id', selectedCourtGroupId)
+          .eq('is_active', true);
+        if (groupCourtsError) throw groupCourtsError;
+        courtIdsToCheck = groupCourts.map((c: { id: string }) => c.id);
+      }
+
+      // Fetch slots for the selected court (for template/pricing)
       const { data, error } = await supabase
-        .rpc('get_available_slots', { 
-          p_court_id: selectedCourt, 
-          p_date: selectedDate 
+        .rpc('get_available_slots', {
+          p_court_id: selectedCourt,
+          p_date: selectedDate
         });
-      
       if (error) throw error;
-      
+
+      // Fetch template slots for pricing
       const { data: templateSlots, error: templateError } = await supabase
         .from('template_slots')
         .select('start_time, end_time, price')
         .eq('court_id', selectedCourt);
-        
       if (templateError) throw templateError;
-      
       const priceMap: Record<string, string> = {};
       templateSlots?.forEach(slot => {
         const key = `${slot.start_time}-${slot.end_time}`;
         priceMap[key] = slot.price;
       });
-      
+
+      // Fetch bookings for all courts in the group (or just the selected court)
+      const { data: bookings, error: bookingsError } = await supabase
+        .from('bookings')
+        .select('court_id, start_time, end_time, booking_date')
+        .in('court_id', courtIdsToCheck)
+        .eq('booking_date', selectedDate)
+        .in('status', ['confirmed', 'pending']);
+      if (bookingsError) throw bookingsError;
+
+      // Mark slots as unavailable if booked in any court in the group
       const slotsWithPrice = data?.map(slot => {
         const key = `${slot.start_time}-${slot.end_time}`;
+        const isBooked = bookings?.some(b => b.start_time === slot.start_time && b.end_time === slot.end_time);
         return {
           ...slot,
+          is_available: slot.is_available && !isBooked,
           price: priceMap[key] || courtRate.toString()
         };
       }) || [];
-      
+
       setAvailableTimeSlots(slotsWithPrice);
-      
+
       const updatedSelectedSlots = selectedSlots.filter(slotDisplay => {
         const [startTime, endTime] = slotDisplay.split(' - ').map(t => convertTo24Hour(t));
-        const slotStillAvailable = slotsWithPrice.some(slot => 
-          slot.start_time === startTime && 
-          slot.end_time === endTime && 
+        const slotStillAvailable = slotsWithPrice.some(slot =>
+          slot.start_time === startTime &&
+          slot.end_time === endTime &&
           slot.is_available
         );
-        
         if (!slotStillAvailable && selectedSlots.length > 0) {
           toast({
             title: "Slot no longer available",
             description: `The time slot ${slotDisplay} is no longer available`,
             variant: "destructive",
           });
-          
           const updatedPrices = { ...selectedSlotPrices };
           delete updatedPrices[slotDisplay];
           setSelectedSlotPrices(updatedPrices);
         }
-        
         return slotStillAvailable;
       });
-      
       if (updatedSelectedSlots.length !== selectedSlots.length) {
         setSelectedSlots(updatedSelectedSlots);
       }
@@ -481,7 +500,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     } finally {
       setLoading(prev => ({ ...prev, availability: false }));
     }
-  }, [selectedCourt, selectedDate, courtRate, selectedSlots, selectedSlotPrices]);
+  }, [selectedCourt, selectedDate, courtRate, selectedSlots, selectedSlotPrices, selectedCourtGroupId]);
 
   const formatTime = (time: string) => {
     const [hour, minute] = time.split(':').map(n => parseInt(n));
@@ -810,6 +829,42 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       setBookingInProgress(false);
     }
   };
+
+  // In the real-time subscription, listen for bookings on all courts in the group
+  useEffect(() => {
+    if (!user) return;
+    let bookingChannel;
+    let courtIdsToCheck = [selectedCourt];
+    const subscribe = async () => {
+      if (selectedCourtGroupId) {
+        const { data: groupCourts } = await supabase
+          .from('courts')
+          .select('id')
+          .eq('court_group_id', selectedCourtGroupId)
+          .eq('is_active', true);
+        courtIdsToCheck = groupCourts.map((c: { id: string }) => c.id);
+      }
+      bookingChannel = supabase
+        .channel('booking-updates')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'bookings',
+          filter: courtIdsToCheck.length > 1
+            ? `court_id=in.(${courtIdsToCheck.join(',')}),booking_date=eq.${selectedDate}`
+            : `court_id=eq.${selectedCourt},booking_date=eq.${selectedDate}`
+        }, (payload) => {
+          // Always refresh on any relevant booking change
+          fetchAvailability();
+        })
+        .subscribe();
+    };
+    subscribe();
+    return () => {
+      if (bookingChannel) supabase.removeChannel(bookingChannel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, selectedCourt, selectedDate, selectedCourtGroupId]);
 
   if (!user) {
     return null;
