@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
@@ -8,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
+
 interface SlotBlockingFormProps {
   courtId: string;
   courtName: string;
@@ -19,6 +21,7 @@ interface SlotBlockingFormProps {
   } | null;
   onBlockComplete: () => void;
 }
+
 const SlotBlockingForm: React.FC<SlotBlockingFormProps> = ({
   courtId,
   courtName,
@@ -26,9 +29,7 @@ const SlotBlockingForm: React.FC<SlotBlockingFormProps> = ({
   selectedSlot,
   onBlockComplete
 }) => {
-  const {
-    user
-  } = useAuth();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [reason, setReason] = useState('');
 
@@ -54,7 +55,9 @@ const SlotBlockingForm: React.FC<SlotBlockingFormProps> = ({
       });
       return;
     }
+    
     setLoading(true);
+    
     try {
       // Fetch court details to check for court_group_id
       const { data: courtDetails, error: courtDetailsError } = await supabase
@@ -62,17 +65,24 @@ const SlotBlockingForm: React.FC<SlotBlockingFormProps> = ({
         .select('court_group_id')
         .eq('id', courtId)
         .single();
+        
       if (courtDetailsError) throw courtDetailsError;
+      
       let courtIdsToBlock = [courtId];
+      
       if (courtDetails && courtDetails.court_group_id) {
+        // If court is part of a group, get all courts in that group
         const { data: groupCourts, error: groupCourtsError } = await supabase
           .from('courts')
           .select('id')
           .eq('court_group_id', courtDetails.court_group_id)
           .eq('is_active', true);
+          
         if (groupCourtsError) throw groupCourtsError;
+        
         courtIdsToBlock = groupCourts.map((c: { id: string }) => c.id);
       }
+      
       // Create blocked slot for each court in the group
       const inserts = courtIdsToBlock.map(cid => ({
         court_id: cid,
@@ -82,13 +92,17 @@ const SlotBlockingForm: React.FC<SlotBlockingFormProps> = ({
         reason: reason.trim() || 'Blocked by admin',
         created_by: user.id
       }));
+      
       const { error } = await supabase.from('blocked_slots').insert(inserts);
+      
       if (error) throw error;
+      
       toast({
         title: 'Success',
         description: `Slot blocked successfully for all shared courts`,
         variant: 'default'
       });
+      
       // Reset form and notify parent
       setReason('');
       onBlockComplete();
@@ -102,12 +116,17 @@ const SlotBlockingForm: React.FC<SlotBlockingFormProps> = ({
       setLoading(false);
     }
   };
+
   if (!selectedSlot) {
-    return <div className="p-4 bg-gray-100 rounded-md">
+    return (
+      <div className="p-4 bg-gray-100 rounded-md">
         <p className="text-center text-gray-600">Please select a time slot to block</p>
-      </div>;
+      </div>
+    );
   }
-  return <div className="bg-emerald-800 rounded-md shadow p-4">
+
+  return (
+    <div className="bg-emerald-800 rounded-md shadow p-4">
       <h3 className="text-lg font-semibold mb-4">Block Time Slot</h3>
       
       <div className="mb-4 p-3 bg-black rounded-md">
@@ -128,17 +147,34 @@ const SlotBlockingForm: React.FC<SlotBlockingFormProps> = ({
         <div className="space-y-4">
           <div>
             <Label htmlFor="reason">Reason for Blocking (Optional)</Label>
-            <Textarea id="reason" value={reason} onChange={e => setReason(e.target.value)} placeholder="Enter reason for blocking this slot" rows={3} />
+            <Textarea 
+              id="reason" 
+              value={reason} 
+              onChange={e => setReason(e.target.value)} 
+              placeholder="Enter reason for blocking this slot" 
+              rows={3} 
+            />
           </div>
           
-          <Button type="submit" variant="destructive" className="w-full" disabled={loading}>
-            {loading ? <span className="flex items-center">
+          <Button 
+            type="submit" 
+            variant="destructive" 
+            className="w-full" 
+            disabled={loading}
+          >
+            {loading ? (
+              <span className="flex items-center">
                 <span className="animate-spin mr-2 h-4 w-4 border-t-2 border-b-2 border-white rounded-full"></span>
                 Blocking...
-              </span> : <>Block Slot</>}
+              </span>
+            ) : (
+              <>Block Slot</>
+            )}
           </Button>
         </div>
       </form>
-    </div>;
+    </div>
+  );
 };
+
 export default SlotBlockingForm;
