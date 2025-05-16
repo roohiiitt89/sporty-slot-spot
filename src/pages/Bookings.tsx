@@ -296,7 +296,7 @@ const Bookings: React.FC = () => {
 
       <footer className="bg-navy-dark/50 backdrop-blur-sm py-6">
         <div className="container mx-auto px-4 text-center">
-          <p className="text-gray-400">&copy; {new Date().getFullYear()} SportySlot. All rights reserved.</p>
+          <p className="text-gray-400">&copy; {new Date().getFullYear()} Grid2Play. All rights reserved.</p>
         </div>
       </footer>
     </div>
