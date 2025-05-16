@@ -609,24 +609,25 @@ const Index: React.FC = () => {
         </div>
       </footer>
 
-      {isBookModalOpen && (
-        <BookSlotModal 
-          open={isBookModalOpen}
-          onOpenChange={setIsBookModalOpen}
-          selectedDate={new Date()}
-          selectedCourt={null}
-          hourlyRate={null}
-          onBookingComplete={() => {}}
-          allowCashPayments={true}
-          onClose={() => setIsBookModalOpen(false)}
-        />
-      )}
-      {!(isBookModalOpen || chatActive) && (
-        <BottomNav onChatClick={() => setChatActive(true)} chatActive={chatActive} setChatActive={setChatActive} />
-      )}
-      {chatActive && (
-        <NewAIChatWidget isOpen={chatActive} setIsOpen={setChatActive} />
-      )}
+      {/* Move these to the very end of the main div for correct overlay and stacking */}
+    {isBookModalOpen && (
+      <BookSlotModal 
+        open={isBookModalOpen}
+        onOpenChange={setIsBookModalOpen}
+        selectedDate={new Date()}
+        selectedCourt={null}
+        hourlyRate={null}
+        onBookingComplete={() => {}}
+        allowCashPayments={true}
+        onClose={() => setIsBookModalOpen(false)}
+      />
+    )}
+    {!(isBookModalOpen || chatActive) && (
+      <BottomNav onChatClick={() => setChatActive(true)} chatActive={chatActive} setChatActive={setChatActive} />
+    )}
+    {chatActive && (
+      <NewAIChatWidget isOpen={chatActive} setIsOpen={setChatActive} />
+    )}
     </div>
   );
 };
