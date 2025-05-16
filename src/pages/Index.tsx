@@ -16,6 +16,7 @@ import { Typewriter } from '@/components/Typewriter';
 import ProgressiveImage from '@/components/ProgressiveImage';
 import { AuroraBackgroundDemo } from "@/components/ui/demo";
 import BottomNav from '@/components/ui/BottomNav';
+import NewAIChatWidget from '@/components/NewAIChatWidget';
 
 interface Venue {
   id: string;
@@ -624,7 +625,7 @@ const Index: React.FC = () => {
         <BottomNav onChatClick={() => setChatActive(true)} chatActive={chatActive} setChatActive={setChatActive} />
       )}
       {chatActive && (
-        <YourChatComponent isOpen={chatActive} setIsOpen={setChatActive} />
+        <NewAIChatWidget isOpen={chatActive} setIsOpen={setChatActive} />
       )}
     </div>
   );
