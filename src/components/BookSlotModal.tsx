@@ -136,36 +136,11 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
   }, []);
 
   useEffect(() => {
-    // Only subscribe to changes for the CURRENTLY SELECTED court and date
-    const bookingChannel = supabase
-      .channel('booking-updates')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'bookings',
-        filter: selectedCourt && selectedDate 
-          ? `court_id=eq.${selectedCourt},booking_date=eq.${selectedDate}`
-          : undefined
-      }, (payload) => {
-        console.log('Relevant booking change detected:', payload);
-        // Only refresh if the change matches our current selection
-        if (
-          payload.new && 
-          typeof payload.new === 'object' &&
-          'court_id' in payload.new &&
-          'booking_date' in payload.new &&
-          payload.new.court_id === selectedCourt &&
-          payload.new.booking_date === selectedDate
-        ) {
-          setRefreshKey(prev => prev + 1);
-        }
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(bookingChannel);
-    };
-  }, [user, selectedCourt, selectedDate]);
+    if (selectedCourt && selectedDate) {
+      fetchAvailability();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCourt, selectedDate, refreshKey]);
 
   useEffect(() => {
     const loadRazorpayScript = () => {
@@ -589,6 +564,9 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
 
   const handlePreviousStep = () => {
     setCurrentStep(currentStep - 1);
+    if (currentStep === 3 && selectedCourt && selectedDate) {
+      fetchAvailability();
+    }
   };
 
   const createRazorpayOrder = async () => {
