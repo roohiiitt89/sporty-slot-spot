@@ -30,28 +30,74 @@ const AvailabilityWidget: React.FC<AvailabilityWidgetProps> = ({
 
   const fetchAvailability = async () => {
     try {
-      console.log(`Fetching availability for court ${courtId} on date ${date}`);
       setLoading(true);
       setError(null);
 
-      // Validate inputs
       if (!courtId || !date) {
         setError("Invalid court or date information");
         setLoading(false);
         return;
       }
 
-      // Use our custom helper function to call the RPC
-      const { data, error } = await getAvailableSlots(courtId, date);
-      
-      console.log('Availability data received:', data);
-      
-      if (error) throw error;
-      if (data) {
-        setSlots(data);
-      } else {
-        setSlots([]);
+      // 1. Fetch court_group_id for the selected court
+      const { data: courtDetails, error: courtDetailsError } = await supabase
+        .from('courts')
+        .select('court_group_id')
+        .eq('id', courtId)
+        .single();
+      if (courtDetailsError) throw courtDetailsError;
+      let courtIdsToCheck = [courtId];
+      if (courtDetails && courtDetails.court_group_id) {
+        // 2. If in a group, fetch all court IDs in the group
+        const { data: groupCourts, error: groupCourtsError } = await supabase
+          .from('courts')
+          .select('id')
+          .eq('court_group_id', courtDetails.court_group_id)
+          .eq('is_active', true);
+        if (groupCourtsError) throw groupCourtsError;
+        courtIdsToCheck = groupCourts.map((c: { id: string }) => c.id);
       }
+
+      // 3. Fetch available slots for the selected court (for template/pricing)
+      const { data, error } = await getAvailableSlots(courtId, date);
+      if (error) throw error;
+
+      // 4. Fetch bookings for all courts in the group (or just the selected court)
+      const { data: bookings, error: bookingsError } = await supabase
+        .from('bookings')
+        .select('court_id, start_time, end_time, booking_date')
+        .in('court_id', courtIdsToCheck)
+        .eq('booking_date', date)
+        .in('status', ['confirmed', 'pending']);
+      if (bookingsError) throw bookingsError;
+
+      // 5. Fetch blocked slots for all courts in the group (or just the selected court)
+      const { data: blockedSlots, error: blockedSlotsError } = await supabase
+        .from('blocked_slots')
+        .select('court_id, start_time, end_time, date')
+        .in('court_id', courtIdsToCheck)
+        .eq('date', date);
+      if (blockedSlotsError) throw blockedSlotsError;
+
+      // 6. Mark slots as unavailable if booked or blocked in any court in the group
+      const padTime = (t: string) => t.length === 5 ? t + ':00' : t;
+      const slotsWithStatus = data?.map(slot => {
+        const slotStart = padTime(slot.start_time);
+        const slotEnd = padTime(slot.end_time);
+        const isBooked = bookings?.some(b =>
+          padTime(b.start_time) === slotStart &&
+          padTime(b.end_time) === slotEnd
+        );
+        const isBlocked = blockedSlots?.some(bs =>
+          padTime(bs.start_time) === slotStart &&
+          padTime(bs.end_time) === slotEnd
+        );
+        return {
+          ...slot,
+          is_available: slot.is_available && !isBooked && !isBlocked
+        };
+      }) || [];
+      setSlots(slotsWithStatus);
     } catch (error: any) {
       console.error('Error fetching availability:', error);
       setError(`Error fetching availability: ${error.message}`);
