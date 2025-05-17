@@ -113,7 +113,7 @@ const NotificationBell: React.FC = () => {
   if (!user || isAdminUser) return null;
 
   return (
-    <div className="md:hidden fixed top-4 right-4 z-50">
+    <div className="md:hidden fixed top-4 right-4 z-[9999] pointer-events-auto">
       <DropdownMenu onOpenChange={handleDropdownOpen}>
         <DropdownMenuTrigger asChild>
           <button
