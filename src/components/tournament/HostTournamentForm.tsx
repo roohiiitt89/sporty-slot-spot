@@ -1,152 +1,120 @@
 
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useQuery } from "@tanstack/react-query";
+import { z } from "zod";
 import { useNavigate } from "react-router-dom";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { supabase } from "@/integrations/supabase/client";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { useToast } from "@/hooks/use-toast";
-import { Spinner } from "@/components/ui/spinner";
+import { toast } from "@/components/ui/use-toast";
+import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/context/AuthContext";
 
 const formSchema = z.object({
-  organizer_name: z.string().min(2, "Organizer name is required"),
-  tournament_name: z.string().min(3, "Tournament name is required"),
-  sport_id: z.string().min(1, "Sport is required"),
-  venue_id: z.string().min(1, "Venue is required"),
-  start_date: z.date({
-    required_error: "Start date is required",
-  }),
-  end_date: z.date({
-    required_error: "End date is required",
-  }),
-  registration_deadline: z.date({
-    required_error: "Registration deadline is required",
-  }),
-  max_participants: z.string().transform(val => parseInt(val, 10)).refine(val => val > 0, "Must be greater than 0"),
-  entry_fee: z.string().optional().transform(val => val ? parseFloat(val) : null),
-  contact_info: z.string().min(5, "Contact information is required"),
+  organizerName: z.string().min(2, { message: "Organizer name is required" }),
+  tournamentName: z.string().min(3, { message: "Tournament name is required" }),
+  sportId: z.string().uuid({ message: "Sport is required" }),
+  venueId: z.string().uuid({ message: "Venue is required" }),
+  startDate: z.date({ required_error: "Start date is required" }),
+  endDate: z.date({ required_error: "End date is required" }),
+  maxParticipants: z.number().int().min(2, { message: "At least 2 participants required" }),
+  entryFee: z.number().min(0, { message: "Entry fee must be a positive number" }),
+  contactInfo: z.string().min(5, { message: "Contact information is required" }),
   description: z.string().optional(),
-}).refine(data => data.end_date >= data.start_date, {
-  message: "End date must be on or after start date",
-  path: ["end_date"],
-}).refine(data => data.registration_deadline <= data.start_date, {
-  message: "Registration deadline must be before or on start date",
-  path: ["registration_deadline"],
 });
 
-export function HostTournamentForm() {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const { toast } = useToast();
-  const navigate = useNavigate();
+type FormValues = z.infer<typeof formSchema>;
 
-  const form = useForm<z.infer<typeof formSchema>>({
+export function HostTournamentForm() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [sports, setSports] = useState<any[]>([]);
+  const [venues, setVenues] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      organizer_name: "",
-      tournament_name: "",
-      sport_id: "",
-      venue_id: "",
-      max_participants: "8",
-      entry_fee: "",
-      contact_info: "",
+      organizerName: "",
+      tournamentName: "",
+      sportId: "",
+      venueId: "",
+      maxParticipants: 8,
+      entryFee: 0,
+      contactInfo: "",
       description: "",
     },
   });
 
-  const { data: sports } = useQuery({
-    queryKey: ["sports"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("sports")
-        .select("*")
-        .eq("is_active", true);
-      
-      if (error) {
-        console.error("Error fetching sports:", error);
-        return [];
+  // Fetch sports and venues when component mounts
+  useState(() => {
+    async function fetchData() {
+      setIsLoading(true);
+      try {
+        const { data: sportsData } = await supabase.from("sports").select("id, name");
+        const { data: venuesData } = await supabase.from("venues").select("id, name");
+        
+        if (sportsData) setSports(sportsData);
+        if (venuesData) setVenues(venuesData);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setIsLoading(false);
       }
-      
-      return data;
-    },
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    }
+    
+    fetchData();
   });
 
-  const { data: venues } = useQuery({
-    queryKey: ["venues"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("venues")
-        .select("*")
-        .eq("is_active", true);
-      
-      if (error) {
-        console.error("Error fetching venues:", error);
-        return [];
-      }
-      
-      return data;
-    },
-    staleTime: 1000 * 60 * 5, // 5 minutes
-  });
-
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    try {
-      setIsSubmitting(true);
-      
-      // Check if user is logged in
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session?.user) {
-        toast({
-          title: "Authentication required",
-          description: "Please log in to host a tournament",
-          variant: "destructive",
-        });
-        navigate("/login", { state: { returnUrl: "/tournaments/host" } });
-        return;
-      }
-      
-      // Submit the tournament host request
-      const { error } = await supabase.from("tournament_host_requests").insert({
-        user_id: session.user.id,
-        organizer_name: values.organizer_name,
-        tournament_name: values.tournament_name,
-        sport_id: values.sport_id,
-        venue_id: values.venue_id,
-        start_date: values.start_date.toISOString().split("T")[0],
-        end_date: values.end_date.toISOString().split("T")[0],
-        registration_deadline: values.registration_deadline.toISOString().split("T")[0],
-        max_participants: values.max_participants,
-        entry_fee: values.entry_fee,
-        contact_info: values.contact_info,
-        description: values.description,
-      });
-      
-      if (error) {
-        throw error;
-      }
-      
+  async function onSubmit(data: FormValues) {
+    if (!user) {
       toast({
-        title: "Request submitted",
-        description: "Your tournament hosting request has been submitted for review",
+        title: "Authentication required",
+        description: "Please sign in to host a tournament",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    
+    try {
+      const { error } = await supabase.from("tournament_host_requests").insert({
+        organizer_name: data.organizerName,
+        user_id: user.id,
+        tournament_name: data.tournamentName,
+        sport_id: data.sportId,
+        venue_id: data.venueId,
+        start_date: data.startDate,
+        end_date: data.endDate,
+        max_participants: data.maxParticipants,
+        entry_fee: data.entryFee,
+        contact_info: data.contactInfo,
+        description: data.description,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Request submitted successfully",
+        description: "We will review your tournament hosting request and get back to you soon.",
       });
       
       navigate("/tournaments");
-    } catch (error) {
-      console.error("Error submitting tournament host request:", error);
+    } catch (error: any) {
       toast({
-        title: "Error",
-        description: "Failed to submit tournament hosting request. Please try again.",
+        title: "Error submitting request",
+        description: error.message || "There was a problem submitting your request.",
         variant: "destructive",
       });
     } finally {
@@ -159,7 +127,7 @@ export function HostTournamentForm() {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <FormField
           control={form.control}
-          name="organizer_name"
+          name="organizerName"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Organizer Name</FormLabel>
@@ -173,7 +141,7 @@ export function HostTournamentForm() {
 
         <FormField
           control={form.control}
-          name="tournament_name"
+          name="tournamentName"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Tournament Name</FormLabel>
@@ -185,21 +153,25 @@ export function HostTournamentForm() {
           )}
         />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="sport_id"
+            name="sportId"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Sport</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select 
+                  onValueChange={field.onChange} 
+                  defaultValue={field.value}
+                  disabled={isLoading || sports.length === 0}
+                >
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Select a sport" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {sports?.map(sport => (
+                    {sports.map((sport) => (
                       <SelectItem key={sport.id} value={sport.id}>
                         {sport.name}
                       </SelectItem>
@@ -213,18 +185,22 @@ export function HostTournamentForm() {
 
           <FormField
             control={form.control}
-            name="venue_id"
+            name="venueId"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Venue</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select 
+                  onValueChange={field.onChange} 
+                  defaultValue={field.value}
+                  disabled={isLoading || venues.length === 0}
+                >
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Select a venue" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {venues?.map(venue => (
+                    {venues.map((venue) => (
                       <SelectItem key={venue.id} value={venue.id}>
                         {venue.name}
                       </SelectItem>
@@ -237,10 +213,10 @@ export function HostTournamentForm() {
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="start_date"
+            name="startDate"
             render={({ field }) => (
               <FormItem className="flex flex-col">
                 <FormLabel>Start Date</FormLabel>
@@ -248,13 +224,16 @@ export function HostTournamentForm() {
                   <PopoverTrigger asChild>
                     <FormControl>
                       <Button
-                        variant={"outline"}
-                        className="w-full justify-start text-left font-normal"
+                        variant="outline"
+                        className={cn(
+                          "pl-3 text-left font-normal",
+                          !field.value && "text-muted-foreground"
+                        )}
                       >
                         {field.value ? (
                           format(field.value, "PPP")
                         ) : (
-                          <span className="text-muted-foreground">Pick a date</span>
+                          <span>Pick a date</span>
                         )}
                         <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                       </Button>
@@ -266,6 +245,7 @@ export function HostTournamentForm() {
                       selected={field.value}
                       onSelect={field.onChange}
                       disabled={(date) => date < new Date()}
+                      initialFocus
                     />
                   </PopoverContent>
                 </Popover>
@@ -276,7 +256,7 @@ export function HostTournamentForm() {
 
           <FormField
             control={form.control}
-            name="end_date"
+            name="endDate"
             render={({ field }) => (
               <FormItem className="flex flex-col">
                 <FormLabel>End Date</FormLabel>
@@ -284,13 +264,16 @@ export function HostTournamentForm() {
                   <PopoverTrigger asChild>
                     <FormControl>
                       <Button
-                        variant={"outline"}
-                        className="w-full justify-start text-left font-normal"
+                        variant="outline"
+                        className={cn(
+                          "pl-3 text-left font-normal",
+                          !field.value && "text-muted-foreground"
+                        )}
                       >
                         {field.value ? (
                           format(field.value, "PPP")
                         ) : (
-                          <span className="text-muted-foreground">Pick a date</span>
+                          <span>Pick a date</span>
                         )}
                         <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                       </Button>
@@ -301,43 +284,11 @@ export function HostTournamentForm() {
                       mode="single"
                       selected={field.value}
                       onSelect={field.onChange}
-                      disabled={(date) => date < new Date()}
-                    />
-                  </PopoverContent>
-                </Popover>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="registration_deadline"
-            render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel>Registration Deadline</FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant={"outline"}
-                        className="w-full justify-start text-left font-normal"
-                      >
-                        {field.value ? (
-                          format(field.value, "PPP")
-                        ) : (
-                          <span className="text-muted-foreground">Pick a date</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value}
-                      onSelect={field.onChange}
-                      disabled={(date) => date < new Date()}
+                      disabled={(date) => 
+                        date < new Date() || 
+                        (form.getValues().startDate && date < form.getValues().startDate)
+                      }
+                      initialFocus
                     />
                   </PopoverContent>
                 </Popover>
@@ -347,15 +298,21 @@ export function HostTournamentForm() {
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="max_participants"
+            name="maxParticipants"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Maximum Participants</FormLabel>
                 <FormControl>
-                  <Input type="number" min="2" {...field} />
+                  <Input 
+                    type="number" 
+                    min="2"
+                    placeholder="Enter max participants" 
+                    {...field}
+                    onChange={(e) => field.onChange(Number(e.target.value))} 
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -364,12 +321,18 @@ export function HostTournamentForm() {
 
           <FormField
             control={form.control}
-            name="entry_fee"
+            name="entryFee"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Entry Fee (₹) (optional)</FormLabel>
+                <FormLabel>Entry Fee</FormLabel>
                 <FormControl>
-                  <Input type="number" min="0" {...field} />
+                  <Input 
+                    type="number"
+                    min="0"
+                    placeholder="Enter entry fee" 
+                    {...field}
+                    onChange={(e) => field.onChange(Number(e.target.value))} 
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -379,12 +342,12 @@ export function HostTournamentForm() {
 
         <FormField
           control={form.control}
-          name="contact_info"
+          name="contactInfo"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Contact Information</FormLabel>
               <FormControl>
-                <Input placeholder="Enter contact details (phone, email, etc.)" {...field} />
+                <Input placeholder="Enter contact details (phone or email)" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -396,11 +359,11 @@ export function HostTournamentForm() {
           name="description"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Tournament Description (optional)</FormLabel>
+              <FormLabel>Description (Optional)</FormLabel>
               <FormControl>
                 <Textarea 
-                  placeholder="Enter description, rules, etc."
-                  className="min-h-[120px]"
+                  placeholder="Enter tournament description, rules, etc." 
+                  className="resize-none min-h-[100px]"
                   {...field} 
                 />
               </FormControl>
@@ -410,7 +373,7 @@ export function HostTournamentForm() {
         />
 
         <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? <><Spinner className="mr-2" /> Submitting...</> : "Submit Request"}
+          {isSubmitting ? "Submitting..." : "Submit Request"}
         </Button>
       </form>
     </Form>

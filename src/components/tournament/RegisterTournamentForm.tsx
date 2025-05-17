@@ -1,20 +1,26 @@
+
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+import { useNavigate } from "react-router-dom";
+
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/AuthContext";
 import { TournamentWithDetails } from "@/types/tournament";
-import { Spinner } from "@/components/ui/spinner";
 
 const formSchema = z.object({
-  team_name: z.string().min(2, "Team name is required"),
-  player_count: z.string().transform(val => parseInt(val, 10)).refine(val => val > 0, "Must be greater than 0"),
+  teamName: z.string().min(3, { message: "Team name is required" }),
+  playerCount: z.number().int().min(1, { message: "At least 1 player required" }),
   notes: z.string().optional(),
 });
+
+type FormValues = z.infer<typeof formSchema>;
 
 interface RegisterTournamentFormProps {
   tournament: TournamentWithDetails;
@@ -23,75 +29,53 @@ interface RegisterTournamentFormProps {
 }
 
 export function RegisterTournamentForm({ tournament, onSuccess, onCancel }: RegisterTournamentFormProps) {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { toast } = useToast();
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      team_name: "",
-      player_count: "1",
+      teamName: "",
+      playerCount: 1,
       notes: "",
     },
   });
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(data: FormValues) {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to register for tournaments",
+        variant: "destructive",
+      });
+      navigate("/login");
+      return;
+    }
+
+    setIsSubmitting(true);
+    
     try {
-      setIsSubmitting(true);
-      
-      // Check if user is logged in
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session?.user) {
-        toast({
-          title: "Authentication required",
-          description: "Please log in to register for the tournament",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      // Check if already registered
-      const { data: existingRegistrations } = await supabase
-        .from("tournament_registrations")
-        .select("id")
-        .eq("tournament_id", tournament.id)
-        .eq("user_id", session.user.id)
-        .single();
-      
-      if (existingRegistrations) {
-        toast({
-          title: "Already registered",
-          description: "You have already registered for this tournament",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      // Submit the tournament registration
       const { error } = await supabase.from("tournament_registrations").insert({
         tournament_id: tournament.id,
-        user_id: session.user.id,
-        team_name: values.team_name,
-        player_count: values.player_count,
-        notes: values.notes,
+        user_id: user.id,
+        team_name: data.teamName,
+        player_count: data.playerCount,
+        notes: data.notes || null,
       });
-      
-      if (error) {
-        throw error;
-      }
-      
+
+      if (error) throw error;
+
       toast({
         title: "Registration successful",
-        description: "You've successfully registered for the tournament",
+        description: "You have successfully registered for this tournament.",
       });
       
       onSuccess();
-    } catch (error) {
-      console.error("Error registering for tournament:", error);
+    } catch (error: any) {
       toast({
-        title: "Error",
-        description: "Failed to register for the tournament. Please try again.",
+        title: "Registration failed",
+        description: error.message || "There was a problem with your registration.",
         variant: "destructive",
       });
     } finally {
@@ -104,7 +88,7 @@ export function RegisterTournamentForm({ tournament, onSuccess, onCancel }: Regi
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <FormField
           control={form.control}
-          name="team_name"
+          name="teamName"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Team Name</FormLabel>
@@ -118,12 +102,18 @@ export function RegisterTournamentForm({ tournament, onSuccess, onCancel }: Regi
 
         <FormField
           control={form.control}
-          name="player_count"
+          name="playerCount"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Number of Players</FormLabel>
               <FormControl>
-                <Input type="number" min="1" {...field} />
+                <Input 
+                  type="number" 
+                  min="1"
+                  placeholder="Enter number of players" 
+                  {...field}
+                  onChange={(e) => field.onChange(Number(e.target.value))} 
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -135,30 +125,25 @@ export function RegisterTournamentForm({ tournament, onSuccess, onCancel }: Regi
           name="notes"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Additional Notes (optional)</FormLabel>
+              <FormLabel>Additional Notes (Optional)</FormLabel>
               <FormControl>
-                <Input placeholder="Any special requirements or information" {...field} />
+                <Textarea 
+                  placeholder="Any special requirements or information" 
+                  className="resize-none min-h-[100px]"
+                  {...field} 
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
 
-        {tournament.entry_fee ? (
-          <div className="bg-muted p-4 rounded-md">
-            <p className="font-medium">Entry Fee: ₹{tournament.entry_fee}</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Note: Payment will be collected separately after registration approval.
-            </p>
-          </div>
-        ) : null}
-
         <div className="flex justify-end space-x-2">
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
           <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? <><Spinner className="mr-2" /> Submitting...</> : "Register"}
+            {isSubmitting ? "Registering..." : "Register"}
           </Button>
         </div>
       </form>

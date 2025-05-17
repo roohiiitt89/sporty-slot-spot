@@ -1,14 +1,14 @@
 
-import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 
 export interface RouteGuardProps {
+  children: React.ReactNode;
   requireAuth?: boolean;
-  requiredRole?: 'user' | 'admin' | 'super_admin';
-  adminOnly?: boolean;
+  role?: string; 
 }
 
-export const RouteGuard = ({ requireAuth = true, requiredRole, adminOnly = false }: RouteGuardProps) => {
+export const RouteGuard = ({ children, requireAuth = true, role }: RouteGuardProps) => {
   const { user, loading, userRole } = useAuth();
   const location = useLocation();
   const isAdmin = userRole === 'admin' || userRole === 'super_admin';
@@ -33,10 +33,10 @@ export const RouteGuard = ({ requireAuth = true, requiredRole, adminOnly = false
   }
 
   // Role-based access check
-  if (requiredRole && user) {
+  if (role && user) {
     const hasAccess = 
-      requiredRole === 'super_admin' ? userRole === 'super_admin' :
-      requiredRole === 'admin' ? (userRole === 'admin' || userRole === 'super_admin') :
+      role === 'super_admin' ? userRole === 'super_admin' :
+      role === 'admin' ? (userRole === 'admin' || userRole === 'super_admin') :
       true; // 'user' role is default
 
     if (!hasAccess) {
@@ -44,15 +44,10 @@ export const RouteGuard = ({ requireAuth = true, requiredRole, adminOnly = false
     }
   }
 
-  // Check if this is an admin-only route, and user is not admin
-  if (adminOnly && user && !isAdmin) {
-    return <Navigate to="/" />;
-  }
-
   // Always redirect admins to admin dashboard if they try to access any non-admin route
   if (user && isAdmin && !location.pathname.startsWith('/admin')) {
     return <Navigate to="/admin" />;
   }
 
-  return <Outlet />;
+  return <>{children}</>;
 };

@@ -70,8 +70,17 @@ function App() {
               <Route path="/contact" element={<Contact />} />
               <Route path="/faq" element={<Faq3Demo />} />
 
-              <Route path="/profile" element={<RouteGuard><Profile /></RouteGuard>} />
-              <Route path="/bookings" element={<RouteGuard><Bookings /></RouteGuard>} />
+              <Route path="/profile" element={
+                <RouteGuard>
+                  <Profile />
+                </RouteGuard>
+              } />
+              
+              <Route path="/bookings" element={
+                <RouteGuard>
+                  <Bookings />
+                </RouteGuard>
+              } />
               
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
@@ -91,18 +100,77 @@ function App() {
               <Route path="/tournaments/host" element={<HostTournamentPage />} />
               <Route path="/tournaments/:slug" element={<TournamentDetailsPage />} />
               
-              <Route path="/admin" element={<RouteGuard role="admin"><AdminHome /></RouteGuard>} />
-              <Route path="/admin/dashboard" element={<RouteGuard role="admin"><Dashboard /></RouteGuard>} />
-              <Route path="/admin/analytics" element={<RouteGuard role="admin"><AnalyticsDashboard /></RouteGuard>} />
-              <Route path="/admin/venues" element={<RouteGuard role="admin"><VenueManagement /></RouteGuard>} />
-              <Route path="/admin/sport-names" element={<RouteGuard role="admin"><SportDisplayNames /></RouteGuard>} />
-              <Route path="/admin/sports" element={<RouteGuard role="admin"><SportManagement /></RouteGuard>} />
-              <Route path="/admin/courts" element={<RouteGuard role="admin"><CourtManagement /></RouteGuard>} />
-              <Route path="/admin/template-slots" element={<RouteGuard role="admin"><TemplateSlotManagement /></RouteGuard>} />
-              <Route path="/admin/bookings" element={<RouteGuard role="admin"><BookingManagement /></RouteGuard>} />
-              <Route path="/admin/reviews" element={<RouteGuard role="admin"><ReviewManagement /></RouteGuard>} />
-              <Route path="/admin/messages" element={<RouteGuard role="admin"><MessageManagement /></RouteGuard>} />
-              <Route path="/admin/help-requests" element={<RouteGuard role="admin"><HelpRequestsManagement /></RouteGuard>} />
+              <Route path="/admin" element={
+                <RouteGuard role="admin">
+                  <AdminHome />
+                </RouteGuard>
+              } />
+              
+              <Route path="/admin/dashboard" element={
+                <RouteGuard role="admin">
+                  <Dashboard />
+                </RouteGuard>
+              } />
+              
+              <Route path="/admin/analytics" element={
+                <RouteGuard role="admin">
+                  <AnalyticsDashboard />
+                </RouteGuard>
+              } />
+              
+              <Route path="/admin/venues" element={
+                <RouteGuard role="admin">
+                  <VenueManagement />
+                </RouteGuard>
+              } />
+              
+              <Route path="/admin/sport-names" element={
+                <RouteGuard role="admin">
+                  <SportDisplayNames />
+                </RouteGuard>
+              } />
+              
+              <Route path="/admin/sports" element={
+                <RouteGuard role="admin">
+                  <SportManagement />
+                </RouteGuard>
+              } />
+              
+              <Route path="/admin/courts" element={
+                <RouteGuard role="admin">
+                  <CourtManagement />
+                </RouteGuard>
+              } />
+              
+              <Route path="/admin/template-slots" element={
+                <RouteGuard role="admin">
+                  <TemplateSlotManagement />
+                </RouteGuard>
+              } />
+              
+              <Route path="/admin/bookings" element={
+                <RouteGuard role="admin">
+                  <BookingManagement />
+                </RouteGuard>
+              } />
+              
+              <Route path="/admin/reviews" element={
+                <RouteGuard role="admin">
+                  <ReviewManagement />
+                </RouteGuard>
+              } />
+              
+              <Route path="/admin/messages" element={
+                <RouteGuard role="admin">
+                  <MessageManagement />
+                </RouteGuard>
+              } />
+              
+              <Route path="/admin/help-requests" element={
+                <RouteGuard role="admin">
+                  <HelpRequestsManagement />
+                </RouteGuard>
+              } />
               
               <Route path="/not-found" element={<NotFound />} />
               <Route path="*" element={<Navigate to="/not-found" replace />} />
