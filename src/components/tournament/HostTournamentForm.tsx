@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -89,6 +88,7 @@ export function HostTournamentForm() {
     setIsSubmitting(true);
     
     try {
+      // Fix the property names to match the database schema
       const { error } = await supabase.from("tournament_host_requests").insert({
         organizer_name: data.organizerName,
         user_id: user.id,

@@ -19,7 +19,7 @@ import { RouteGuard } from "@/components/RouteGuard";
 import VerifyEmail from "@/pages/VerifyEmail";
 import Bookings from "@/pages/Bookings";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import { AuthProvider } from "@/context/AuthContext";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { Toaster as SonnerToaster } from "@/components/ui/sonner";
 import "@/App.css";
 import AdminHome from "@/pages/admin/AdminHome";
@@ -40,6 +40,88 @@ import TeamDetails from "@/pages/challenge/TeamDetails";
 import { TournamentDashboard } from "@/pages/tournament/TournamentDashboard";
 import { HostTournamentPage } from "@/pages/tournament/HostTournamentPage";
 import { TournamentDetailsPage } from "@/pages/tournament/TournamentDetailsPage";
+
+// Create a wrapper component to access auth context for admin routes
+function AdminRoutes() {
+  const { userRole } = useAuth();
+  const adminVenues = []; // This should ideally be fetched from your API
+  
+  return (
+    <>
+      <Route path="/admin" element={
+        <RouteGuard role="admin">
+          <AdminHome />
+        </RouteGuard>
+      } />
+      
+      <Route path="/admin/dashboard" element={
+        <RouteGuard role="admin">
+          <Dashboard />
+        </RouteGuard>
+      } />
+      
+      <Route path="/admin/analytics" element={
+        <RouteGuard role="admin">
+          <AnalyticsDashboard />
+        </RouteGuard>
+      } />
+      
+      <Route path="/admin/venues" element={
+        <RouteGuard role="admin">
+          <VenueManagement userRole={userRole} adminVenues={adminVenues} />
+        </RouteGuard>
+      } />
+      
+      <Route path="/admin/sport-names" element={
+        <RouteGuard role="admin">
+          <SportDisplayNames userRole={userRole} adminVenues={adminVenues} />
+        </RouteGuard>
+      } />
+      
+      <Route path="/admin/sports" element={
+        <RouteGuard role="admin">
+          <SportManagement userRole={userRole} />
+        </RouteGuard>
+      } />
+      
+      <Route path="/admin/courts" element={
+        <RouteGuard role="admin">
+          <CourtManagement userRole={userRole} adminVenues={adminVenues} />
+        </RouteGuard>
+      } />
+      
+      <Route path="/admin/template-slots" element={
+        <RouteGuard role="admin">
+          <TemplateSlotManagement userRole={userRole} adminVenues={adminVenues} />
+        </RouteGuard>
+      } />
+      
+      <Route path="/admin/bookings" element={
+        <RouteGuard role="admin">
+          <BookingManagement userRole={userRole} adminVenues={adminVenues} />
+        </RouteGuard>
+      } />
+      
+      <Route path="/admin/reviews" element={
+        <RouteGuard role="admin">
+          <ReviewManagement userRole={userRole} />
+        </RouteGuard>
+      } />
+      
+      <Route path="/admin/messages" element={
+        <RouteGuard role="admin">
+          <MessageManagement userRole={userRole} adminVenues={adminVenues} />
+        </RouteGuard>
+      } />
+      
+      <Route path="/admin/help-requests" element={
+        <RouteGuard role="admin">
+          <HelpRequestsManagement userRole={userRole} />
+        </RouteGuard>
+      } />
+    </>
+  );
+}
 
 function App() {
   const queryClient = new QueryClient({
@@ -100,77 +182,8 @@ function App() {
               <Route path="/tournaments/host" element={<HostTournamentPage />} />
               <Route path="/tournaments/:slug" element={<TournamentDetailsPage />} />
               
-              <Route path="/admin" element={
-                <RouteGuard role="admin">
-                  <AdminHome />
-                </RouteGuard>
-              } />
-              
-              <Route path="/admin/dashboard" element={
-                <RouteGuard role="admin">
-                  <Dashboard />
-                </RouteGuard>
-              } />
-              
-              <Route path="/admin/analytics" element={
-                <RouteGuard role="admin">
-                  <AnalyticsDashboard />
-                </RouteGuard>
-              } />
-              
-              <Route path="/admin/venues" element={
-                <RouteGuard role="admin">
-                  <VenueManagement />
-                </RouteGuard>
-              } />
-              
-              <Route path="/admin/sport-names" element={
-                <RouteGuard role="admin">
-                  <SportDisplayNames />
-                </RouteGuard>
-              } />
-              
-              <Route path="/admin/sports" element={
-                <RouteGuard role="admin">
-                  <SportManagement />
-                </RouteGuard>
-              } />
-              
-              <Route path="/admin/courts" element={
-                <RouteGuard role="admin">
-                  <CourtManagement />
-                </RouteGuard>
-              } />
-              
-              <Route path="/admin/template-slots" element={
-                <RouteGuard role="admin">
-                  <TemplateSlotManagement />
-                </RouteGuard>
-              } />
-              
-              <Route path="/admin/bookings" element={
-                <RouteGuard role="admin">
-                  <BookingManagement />
-                </RouteGuard>
-              } />
-              
-              <Route path="/admin/reviews" element={
-                <RouteGuard role="admin">
-                  <ReviewManagement />
-                </RouteGuard>
-              } />
-              
-              <Route path="/admin/messages" element={
-                <RouteGuard role="admin">
-                  <MessageManagement />
-                </RouteGuard>
-              } />
-              
-              <Route path="/admin/help-requests" element={
-                <RouteGuard role="admin">
-                  <HelpRequestsManagement />
-                </RouteGuard>
-              } />
+              {/* Admin routes are now provided through the AdminRoutes component */}
+              <AdminRoutes />
               
               <Route path="/not-found" element={<NotFound />} />
               <Route path="*" element={<Navigate to="/not-found" replace />} />
