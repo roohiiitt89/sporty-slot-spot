@@ -15,6 +15,8 @@ import RotatingTypewriter from '@/components/RotatingTypewriter';
 import { Typewriter } from '@/components/Typewriter';
 import ProgressiveImage from '@/components/ProgressiveImage';
 import { AuroraBackgroundDemo } from "@/components/ui/demo";
+import BottomNav from '@/components/ui/BottomNav';
+import NewAIChatWidget from '@/components/NewAIChatWidget';
 
 interface Venue {
   id: string;
@@ -70,6 +72,7 @@ const Index: React.FC = () => {
     sports: true
   });
   const [locationPermissionHandled, setLocationPermissionHandled] = useState(false);
+  const [chatActive, setChatActive] = useState(false);
   
   const venuesRef = useRef<HTMLDivElement>(null);
   const sportsRef = useRef<HTMLDivElement>(null);
@@ -606,18 +609,25 @@ const Index: React.FC = () => {
         </div>
       </footer>
 
-      {isBookModalOpen && (
-        <BookSlotModal 
-          open={isBookModalOpen}
-          onOpenChange={setIsBookModalOpen}
-          selectedDate={new Date()}
-          selectedCourt={null}
-          hourlyRate={null}
-          onBookingComplete={() => {}}
-          allowCashPayments={true}
-          onClose={() => setIsBookModalOpen(false)}
-        />
-      )}
+      {/* Move these to the very end of the main div for correct overlay and stacking */}
+    {isBookModalOpen && (
+      <BookSlotModal 
+        open={isBookModalOpen}
+        onOpenChange={setIsBookModalOpen}
+        selectedDate={new Date()}
+        selectedCourt={null}
+        hourlyRate={null}
+        onBookingComplete={() => {}}
+        allowCashPayments={true}
+        onClose={() => setIsBookModalOpen(false)}
+      />
+    )}
+    {!(isBookModalOpen || chatActive) && (
+      <BottomNav onChatClick={() => setChatActive(true)} chatActive={chatActive} setChatActive={setChatActive} />
+    )}
+    {chatActive && (
+      <NewAIChatWidget isOpen={chatActive} setIsOpen={setChatActive} />
+    )}
     </div>
   );
 };
