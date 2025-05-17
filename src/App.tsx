@@ -1,200 +1,93 @@
-
-import { useState, useEffect } from "react";
-import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
-import { useLocalStorage } from "@/hooks/useLocalStorage";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
-import Home from "@/pages/Index";
-import Contact from "@/pages/Contact";
-import Profile from "@/pages/Profile";
-import NotFound from "@/pages/NotFound";
-import Login from "@/pages/Login";
-import Register from "@/pages/Register";
-import Sports from "@/pages/Sports";
-import Venues from "@/pages/Venues";
-import VenueDetails from "@/pages/VenueDetails";
-import Help from "@/pages/Help";
-import Faq3Demo from "@/pages/Faq3Demo";
-import { RouteGuard } from "@/components/RouteGuard";
-import VerifyEmail from "@/pages/VerifyEmail";
-import Bookings from "@/pages/Bookings";
-import { ThemeProvider } from "@/components/ThemeProvider";
-import { AuthProvider, useAuth } from "@/context/AuthContext";
-import { Toaster as SonnerToaster } from "@/components/ui/sonner";
-import "@/App.css";
-import AdminHome from "@/pages/admin/AdminHome";
-import Dashboard from "@/pages/admin/Dashboard";
-import VenueManagement from "@/pages/admin/VenueManagement";
-import SportManagement from "@/pages/admin/SportManagement";
-import CourtManagement from "@/pages/admin/CourtManagement";
-import BookingManagement from "@/pages/admin/BookingManagement";
-import ReviewManagement from "@/pages/admin/ReviewManagement";
-import MessageManagement from "@/pages/admin/MessageManagement";
-import HelpRequestsManagement from "@/pages/admin/HelpRequestsManagement";
-import Privacy from "@/pages/Privacy";
-import SportDisplayNames from "@/pages/admin/SportDisplayNames";
-import TemplateSlotManagement from "@/pages/admin/TemplateSlotManagement";
-import AnalyticsDashboard from "@/pages/admin/AnalyticsDashboard";
-import ChallengeDashboard from "@/pages/challenge/ChallengeDashboard";
-import TeamDetails from "@/pages/challenge/TeamDetails";
-import { TournamentDashboard } from "@/pages/tournament/TournamentDashboard";
-import { HostTournamentPage } from "@/pages/tournament/HostTournamentPage";
-import { TournamentDetailsPage } from "@/pages/tournament/TournamentDetailsPage";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider } from "./context/AuthContext";
+import { RouteGuard } from "./components/RouteGuard";
+import Index from "./pages/Index";
+import NotFound from "./pages/NotFound";
+import Venues from "./pages/Venues";
+import VenueDetails from "./pages/VenueDetails";
+import Sports from "./pages/Sports";
+import Bookings from "./pages/Bookings";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import VerifyEmail from "./pages/VerifyEmail";
+import AdminDashboard from "./pages/admin/Dashboard";
+import AdminHome from "./pages/admin/AdminHome";
+import Profile from "./pages/Profile";
+import ChallengeDashboard from "./pages/challenge/ChallengeDashboard";
+import TeamDetails from "./pages/challenge/TeamDetails";
+import NewAIChatWidget from "./components/NewAIChatWidget";
+import Faq3Demo from "./pages/Faq3Demo";
+import Help from "./pages/Help";
+import Contact from "./pages/Contact";
+import Privacy from "./pages/Privacy";
+import BottomNav from "./components/ui/BottomNav";
+import { useState } from 'react';
 
-// Create a wrapper component to access auth context for admin routes
-function AdminRoutes() {
-  const { userRole } = useAuth();
-  const adminVenues = []; // This should ideally be fetched from your API
-  
-  return (
-    <>
-      <Route path="/admin" element={
-        <RouteGuard role="admin">
-          <AdminHome />
-        </RouteGuard>
-      } />
-      
-      <Route path="/admin/dashboard" element={
-        <RouteGuard role="admin">
-          <Dashboard />
-        </RouteGuard>
-      } />
-      
-      <Route path="/admin/analytics" element={
-        <RouteGuard role="admin">
-          <AnalyticsDashboard />
-        </RouteGuard>
-      } />
-      
-      <Route path="/admin/venues" element={
-        <RouteGuard role="admin">
-          <VenueManagement userRole={userRole} adminVenues={adminVenues} />
-        </RouteGuard>
-      } />
-      
-      <Route path="/admin/sport-names" element={
-        <RouteGuard role="admin">
-          <SportDisplayNames userRole={userRole} adminVenues={adminVenues} />
-        </RouteGuard>
-      } />
-      
-      <Route path="/admin/sports" element={
-        <RouteGuard role="admin">
-          <SportManagement userRole={userRole} />
-        </RouteGuard>
-      } />
-      
-      <Route path="/admin/courts" element={
-        <RouteGuard role="admin">
-          <CourtManagement userRole={userRole} adminVenues={adminVenues} />
-        </RouteGuard>
-      } />
-      
-      <Route path="/admin/template-slots" element={
-        <RouteGuard role="admin">
-          <TemplateSlotManagement userRole={userRole} adminVenues={adminVenues} />
-        </RouteGuard>
-      } />
-      
-      <Route path="/admin/bookings" element={
-        <RouteGuard role="admin">
-          <BookingManagement userRole={userRole} adminVenues={adminVenues} />
-        </RouteGuard>
-      } />
-      
-      <Route path="/admin/reviews" element={
-        <RouteGuard role="admin">
-          <ReviewManagement userRole={userRole} />
-        </RouteGuard>
-      } />
-      
-      <Route path="/admin/messages" element={
-        <RouteGuard role="admin">
-          <MessageManagement userRole={userRole} adminVenues={adminVenues} />
-        </RouteGuard>
-      } />
-      
-      <Route path="/admin/help-requests" element={
-        <RouteGuard role="admin">
-          <HelpRequestsManagement userRole={userRole} />
-        </RouteGuard>
-      } />
-    </>
-  );
-}
+const queryClient = new QueryClient();
 
-function App() {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        refetchOnWindowFocus: false,
-      },
-    },
-  });
+const App = () => {
+  const [chatActive, setChatActive] = useState(false);
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
 
-  const [darkMode, setDarkMode] = useLocalStorage<boolean>("darkMode", false);
-
-  useEffect(() => {
-    if (darkMode) {
-      document.body.classList.add("dark");
-    } else {
-      document.body.classList.remove("dark");
-    }
-  }, [darkMode]);
+  const handleChatClick = () => setChatActive((prev) => !prev);
 
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <ThemeProvider defaultTheme={darkMode ? "dark" : "light"}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
           <AuthProvider>
             <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/contact" element={<Contact />} />
-              <Route path="/faq" element={<Faq3Demo />} />
+              {/* Public routes */}
+              <Route element={<RouteGuard requireAuth={false} />}>
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/verify-email" element={<VerifyEmail />} />
+              </Route>
 
-              <Route path="/profile" element={
-                <RouteGuard>
-                  <Profile />
-                </RouteGuard>
-              } />
+              {/* Protected routes - only for normal users */}
+              <Route element={<RouteGuard requireAuth={true} adminOnly={false} />}>
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/bookings" element={<Bookings />} />
+                <Route path="/challenge" element={<ChallengeDashboard />} />
+                <Route path="/team/:slug" element={<TeamDetails />} />
+              </Route>
               
-              <Route path="/bookings" element={
-                <RouteGuard>
-                  <Bookings />
-                </RouteGuard>
-              } />
-              
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/verify-email" element={<VerifyEmail />} />
-              
-              <Route path="/sports" element={<Sports />} />
+              {/* Admin routes - accessible to both admin and super_admin */}
+              <Route element={<RouteGuard requireAuth={true} requiredRole="admin" adminOnly={true} />}>
+                <Route path="/admin" element={<AdminHome />} />
+                <Route path="/admin/*" element={<AdminDashboard />} />
+              </Route>
+
+              {/* Root path and content routes - also protected from admin access via RouteGuard logic */}
+              <Route path="/" element={<Index />} />
               <Route path="/venues" element={<Venues />} />
               <Route path="/venues/:id" element={<VenueDetails />} />
-              
+              <Route path="/sports" element={<Sports />} />
+              <Route path="/faq" element={<Faq3Demo />} />
               <Route path="/help" element={<Help />} />
+              <Route path="/contact" element={<Contact />} />
               <Route path="/privacy" element={<Privacy />} />
-              
-              <Route path="/challenge" element={<ChallengeDashboard />} />
-              <Route path="/teams/:slug" element={<TeamDetails />} />
-              
-              <Route path="/tournaments" element={<TournamentDashboard />} />
-              <Route path="/tournaments/host" element={<HostTournamentPage />} />
-              <Route path="/tournaments/:slug" element={<TournamentDetailsPage />} />
-              
-              {/* Admin routes are now provided through the AdminRoutes component */}
-              <AdminRoutes />
-              
-              <Route path="/not-found" element={<NotFound />} />
-              <Route path="*" element={<Navigate to="/not-found" replace />} />
+              <Route path="*" element={<NotFound />} />
             </Routes>
-            <Toaster />
-            <SonnerToaster />
+            
+            {/* Always mount the chat widget on mobile, but control visibility with isOpen */}
+            {isMobile ? (
+              <NewAIChatWidget isOpen={chatActive} setIsOpen={setChatActive} />
+            ) : (
+              <NewAIChatWidget />
+            )}
+            <BottomNav onChatClick={handleChatClick} chatActive={chatActive} setChatActive={setChatActive} />
           </AuthProvider>
-        </ThemeProvider>
-      </BrowserRouter>
+        </BrowserRouter>
+      </TooltipProvider>
     </QueryClientProvider>
   );
-}
+};
 
 export default App;
