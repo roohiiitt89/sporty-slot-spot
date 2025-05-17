@@ -98,6 +98,19 @@ const NotificationBell: React.FC = () => {
     }
   };
 
+  const handleClearAll = async () => {
+    const ids = notifications.map(n => n.id);
+    if (ids.length > 0) {
+      setNotifications([]);
+      setUnreadCount(0);
+      suppressUnreadCountRef.current = true;
+      setTimeout(() => { suppressUnreadCountRef.current = false; }, 2000);
+      try {
+        await supabase.from('notifications').delete().in('id', ids);
+      } catch (e) {}
+    }
+  };
+
   // Notification type icons and colors
   const notifTypeMap: Record<string, { icon: React.ReactNode; color: string }> = {
     booking: { icon: <span role="img" aria-label="Booking">📅</span>, color: 'border-blue-400' },
@@ -129,7 +142,9 @@ const NotificationBell: React.FC = () => {
         <DropdownMenuContent align="end" className="w-80 max-h-96 overflow-y-auto animate-fade-in">
           <div className="px-3 py-2 font-semibold text-navy-dark flex justify-between items-center">
             <span>Notifications</span>
-            <Link to="/notifications" className="text-xs text-indigo hover:underline">View All</Link>
+            <div className="flex gap-2">
+              <button onClick={handleClearAll} className="text-xs text-red-500 hover:underline">Clear all</button>
+            </div>
           </div>
           {notifications.length === 0 && (
             <div className="px-4 py-2 text-gray-500">No notifications</div>
