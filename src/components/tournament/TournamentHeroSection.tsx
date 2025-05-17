@@ -1,11 +1,20 @@
 import { motion } from "framer-motion";
-import { Trophy, Users, Medal } from "lucide-react";
+import { Trophy, Users, Medal, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export function TournamentHeroSection() {
   const navigate = useNavigate();
   return (
     <div className="relative bg-gradient-to-b from-primary to-primary/80 text-primary-foreground overflow-hidden">
+      {/* Back Button */}
+      <button
+        onClick={() => navigate("/")}
+        className="absolute top-4 left-4 z-20 bg-white/70 hover:bg-white text-primary rounded-full p-2 shadow-lg transition-colors duration-200 flex items-center"
+        style={{ backdropFilter: 'blur(6px)' }}
+        aria-label="Back to Home"
+      >
+        <ArrowLeft className="w-5 h-5" />
+      </button>
       {/* Animated Trophy Icon for mobile */}
       <motion.div 
         initial={{ opacity: 0, y: -30 }} 
