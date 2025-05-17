@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -26,20 +25,18 @@ import Help from "./pages/Help";
 import Contact from "./pages/Contact";
 import Privacy from "./pages/Privacy";
 import BottomNav from "./components/ui/BottomNav";
-import AdminBottomNav from "./components/ui/AdminBottomNav";
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { TournamentDashboard } from "./pages/tournament/TournamentDashboard";
 import { TournamentDetailsPage } from "./pages/tournament/TournamentDetailsPage";
 import { HostTournamentPage } from "./pages/tournament/HostTournamentPage";
 import MorePage from "./pages/MorePage";
 import ScrollToTopOnMobile from "@/components/ScrollToTopOnMobile";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 const queryClient = new QueryClient();
 
 const App = () => {
   const [chatActive, setChatActive] = useState(false);
-  const isMobile = useIsMobile();
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
 
   const handleChatClick = () => setChatActive((prev) => !prev);
 
@@ -101,16 +98,8 @@ const App = () => {
             ) : (
               <NewAIChatWidget />
             )}
-
-            {/* Display admin bottom nav for admin routes on mobile */}
             {(!chatActive || !isMobile) && (
-              <>
-                {/* Regular bottom nav for user pages */}
-                <BottomNav onChatClick={handleChatClick} chatActive={chatActive} setChatActive={setChatActive} />
-                
-                {/* Admin bottom nav for admin pages */}
-                <AdminBottomNav onChatClick={handleChatClick} chatActive={chatActive} setChatActive={setChatActive} />
-              </>
+              <BottomNav onChatClick={handleChatClick} chatActive={chatActive} setChatActive={setChatActive} />
             )}
           </AuthProvider>
         </BrowserRouter>

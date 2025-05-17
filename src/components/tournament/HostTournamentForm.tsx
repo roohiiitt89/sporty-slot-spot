@@ -67,8 +67,7 @@ export function HostTournamentForm() {
     }
     setIsSubmitting(true);
     try {
-      // Create a single object with snake_case keys to match database column names
-      const requestData = {
+      const { error } = await (supabase.from as any)("tournament_host_requests").insert({
         organizer_name: data.organizer_name,
         user_id: user.id,
         tournament_name: data.tournament_name,
@@ -80,10 +79,7 @@ export function HostTournamentForm() {
         entry_fee: data.entry_fee || null,
         contact_info: data.contact_info,
         description: data.description || null,
-      };
-      
-      const { error } = await supabase.from("tournament_host_requests").insert(requestData);
-      
+      });
       if (error) throw error;
       toast({ title: "Request submitted", description: "Your tournament host request has been submitted. Our team will review it soon." });
       form.reset();
@@ -251,4 +247,4 @@ export function HostTournamentForm() {
       </form>
     </Form>
   );
-}
+} 
