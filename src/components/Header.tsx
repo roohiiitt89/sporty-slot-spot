@@ -1,19 +1,60 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, User, CalendarDays, LogOut, LayoutGrid } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Menu, X, User, CalendarDays, LogOut, LayoutGrid, Bell } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
+import { supabase } from '@/integrations/supabase/client';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 
 const Header: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   
   const {
     user,
     signOut,
     userRole
   } = useAuth();
+  
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [lastNotificationId, setLastNotificationId] = useState<string | null>(null);
+  const [swipeStartX, setSwipeStartX] = useState<number | null>(null);
+  const [swipedNotifId, setSwipedNotifId] = useState<string | null>(null);
+  const [selectedNotif, setSelectedNotif] = useState<any | null>(null);
+  const [showNotifModal, setShowNotifModal] = useState(false);
+  const [highlightedIds, setHighlightedIds] = useState<string[]>([]);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const prevNotifIdsRef = useRef<string[]>([]);
+  const [recentlyMarkedAllRead, setRecentlyMarkedAllRead] = useState(false);
+  const suppressUnreadCountRef = useRef(false);
+  
+  // Notification sound: useRef to persist across renders
+  const notificationAudioRef = useRef<HTMLAudioElement | null>(null);
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !notificationAudioRef.current) {
+      notificationAudioRef.current = new window.Audio('/notification.mp3');
+    }
+  }, []);
+  
+  // Store the timestamp of the last fetch to identify new notifications
+  const lastFetchTimeRef = useRef<number>(Date.now());
+  const highlightedIdsRef = useRef<Set<string>>(new Set());
+  
+  // Notification type icons and colors
+  const notifTypeMap: Record<string, { icon: React.ReactNode; color: string }> = {
+    booking: { icon: <span role="img" aria-label="Booking">📅</span>, color: 'border-blue-400' },
+    challenge: { icon: <span role="img" aria-label="Challenge">🏆</span>, color: 'border-yellow-500' },
+    tournament: { icon: <span role="img" aria-label="Tournament">🎾</span>, color: 'border-green-500' },
+    venue: { icon: <span role="img" aria-label="Venue">🏟️</span>, color: 'border-purple-500' },
+    promo: { icon: <span role="img" aria-label="Promo">🎉</span>, color: 'border-pink-500' },
+    system: { icon: <span role="img" aria-label="System">⚙️</span>, color: 'border-gray-400' },
+    payment: { icon: <span role="img" aria-label="Payment">💳</span>, color: 'border-red-500' },
+  };
+  const getNotifTypeProps = (type: string) => notifTypeMap[type] || { icon: <span role="img" aria-label="Notification">🔔</span>, color: 'border-slate-300' };
   
   useEffect(() => {
     const handleScroll = () => {
@@ -26,6 +67,52 @@ const Header: React.FC = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+  
+  useEffect(() => {
+    if (!user) return;
+    let fetchTimeout: NodeJS.Timeout | null = null;
+    const fetchNotifications = async () => {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (!error && data) {
+        const now = Date.now();
+        // Only highlight notifications created after the last fetch
+        const newNotifs = data.filter((n: any) => {
+          const created = new Date(n.created_at).getTime();
+          return created > lastFetchTimeRef.current && !highlightedIdsRef.current.has(n.id);
+        });
+        if (newNotifs.length > 0) {
+          // Play notification sound (may be blocked by browser if no user gesture)
+          if (notificationAudioRef.current) {
+            notificationAudioRef.current.currentTime = 0;
+            notificationAudioRef.current.play().catch(() => {});
+          }
+          setHighlightedIds(newNotifs.map((n: any) => n.id));
+          newNotifs.forEach((n: any) => highlightedIdsRef.current.add(n.id));
+          setTimeout(() => setHighlightedIds([]), 2000);
+        }
+        lastFetchTimeRef.current = now;
+        setNotifications(data);
+        if (suppressUnreadCountRef.current) {
+          setUnreadCount(0);
+        } else {
+          setUnreadCount(data.filter((n: any) => !n.read_status).length);
+        }
+      }
+    };
+    fetchNotifications();
+    if (dropdownOpen) {
+      fetchTimeout = setTimeout(fetchNotifications, 1200);
+    }
+    return () => {
+      if (fetchTimeout) clearTimeout(fetchTimeout);
+    };
+  // eslint-disable-next-line
+  }, [user, dropdownOpen]);
   
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
@@ -43,6 +130,97 @@ const Header: React.FC = () => {
   };
   
   const isAdminUser = userRole === 'admin' || userRole === 'super_admin';
+  
+  const markAsRead = async (id: string) => {
+    await supabase.from('notifications').update({ read_status: true }).eq('id', id);
+    setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, read_status: true } : n));
+    setUnreadCount((prev) => Math.max(0, prev - 1));
+  };
+  
+  const handleTouchStart = (e: React.TouchEvent, id: string) => {
+    setSwipeStartX(e.touches[0].clientX);
+    setSwipedNotifId(id);
+  };
+  const handleTouchMove = (e: React.TouchEvent, id: string) => {
+    if (swipedNotifId !== id || swipeStartX === null) return;
+    const deltaX = e.touches[0].clientX - swipeStartX;
+    // Optionally, you can animate the item as it moves
+  };
+  const handleTouchEnd = (e: React.TouchEvent, id: string) => {
+    if (swipedNotifId !== id || swipeStartX === null) return;
+    const deltaX = e.changedTouches[0].clientX - swipeStartX;
+    if (Math.abs(deltaX) > 60) {
+      // Swipe detected, mark as read
+      markAsRead(id);
+    }
+    setSwipeStartX(null);
+    setSwipedNotifId(null);
+  };
+  
+  const handleDropdownOpen = async (open: boolean) => {
+    setDropdownOpen(open);
+    if (open && notifications.some(n => !n.read_status)) {
+      const unreadIds = notifications.filter(n => !n.read_status).map(n => n.id);
+      if (unreadIds.length > 0) {
+        setNotifications(prev => prev.map(n => unreadIds.includes(n.id) ? { ...n, read_status: true } : n));
+        setUnreadCount(0);
+        suppressUnreadCountRef.current = true;
+        setTimeout(() => { suppressUnreadCountRef.current = false; }, 2000);
+        try {
+          await supabase
+            .from('notifications')
+            .update({ read_status: true })
+            .in('id', unreadIds);
+        } catch (e) {
+          // Optionally show error
+        }
+      }
+    }
+  };
+  
+  const handleNotificationClick = (notif: any) => {
+    markAsRead(notif.id);
+    if (notif.type === 'booking' && notif.metadata && notif.metadata.booking_id) {
+      navigate('/bookings');
+    } else if (notif.type === 'challenge' && notif.metadata && notif.metadata.challenge_id) {
+      navigate(`/challenge/${notif.metadata.challenge_id}`);
+    } else if (notif.type === 'venue' && notif.metadata && notif.metadata.venue_id) {
+      navigate(`/venues/${notif.metadata.venue_id}`);
+    } else {
+      setSelectedNotif(notif);
+      setShowNotifModal(true);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    const unreadIds = notifications.filter(n => !n.read_status).map(n => n.id);
+    if (unreadIds.length > 0) {
+      setNotifications(prev => prev.map(n => unreadIds.includes(n.id) ? { ...n, read_status: true } : n));
+      setUnreadCount(0);
+      suppressUnreadCountRef.current = true;
+      setTimeout(() => { suppressUnreadCountRef.current = false; }, 2000);
+      try {
+        await supabase.from('notifications').update({ read_status: true }).in('id', unreadIds);
+      } catch (e) {
+        // Optionally show error
+      }
+    }
+  };
+
+  const handleClearAll = async () => {
+    const ids = notifications.map(n => n.id);
+    if (ids.length > 0) {
+      setNotifications([]);
+      setUnreadCount(0);
+      suppressUnreadCountRef.current = true;
+      setTimeout(() => { suppressUnreadCountRef.current = false; }, 2000);
+      try {
+        await supabase.from('notifications').delete().in('id', ids);
+      } catch (e) {
+        // Optionally show error
+      }
+    }
+  };
   
   // Don't show the header on any admin routes
   if (isAdminUser && (location.pathname === '/admin' || location.pathname.startsWith('/admin/'))) {
@@ -110,6 +288,56 @@ const Header: React.FC = () => {
                     </div>
                   )}
                 </div>
+
+                {user && !isAdminUser && (
+                  <div className="relative">
+                    <DropdownMenu onOpenChange={handleDropdownOpen}>
+                      <DropdownMenuTrigger asChild>
+                        <button className="relative focus:outline-none">
+                          <Bell className={`w-6 h-6 ${isScrolled ? 'text-navy-dark' : 'text-white'}`} />
+                          {unreadCount > 0 && (
+                            <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full text-xs w-4 h-4 flex items-center justify-center">{unreadCount}</span>
+                          )}
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-80 max-h-96 overflow-y-auto animate-fade-in">
+                        <div className="px-3 py-2 font-semibold text-navy-dark flex justify-between items-center">
+                          <span>Notifications</span>
+                          <div className="flex gap-2">
+                            <Link to="/notifications" className="text-xs text-indigo hover:underline">View All</Link>
+                            <button onClick={handleMarkAllAsRead} className="text-xs text-indigo hover:underline">Mark all as read</button>
+                            <button onClick={handleClearAll} className="text-xs text-red-500 hover:underline">Clear all</button>
+                          </div>
+                        </div>
+                        {notifications.length === 0 && (
+                          <div className="px-4 py-2 text-gray-500">No notifications</div>
+                        )}
+                        {notifications.map((notif) => (
+                          (() => {
+                            const { icon, color } = getNotifTypeProps(notif.type);
+                            return (
+                              <DropdownMenuItem
+                                key={notif.id}
+                                className={`flex flex-row items-start gap-2 transition-all duration-150 cursor-pointer pl-2 border-l-4 ${color} ${!notif.read_status ? 'bg-indigo/10 font-semibold' : ''} hover:bg-indigo/20 ${highlightedIds.includes(notif.id) ? 'animate-pulse bg-emerald-100' : ''}`}
+                                onClick={() => handleNotificationClick(notif)}
+                                onTouchStart={(e) => handleTouchStart(e, notif.id)}
+                                onTouchMove={(e) => handleTouchMove(e, notif.id)}
+                                onTouchEnd={(e) => handleTouchEnd(e, notif.id)}
+                              >
+                                <span className="text-xl mt-0.5">{icon}</span>
+                                <span className="flex flex-col items-start gap-0.5">
+                                  <span>{notif.title}</span>
+                                  <span className="text-xs text-gray-500">{notif.message}</span>
+                                  <span className="text-[10px] text-gray-400 mt-1">{new Date(notif.created_at).toLocaleString()}</span>
+                                </span>
+                              </DropdownMenuItem>
+                            );
+                          })()
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                )}
               </>
             ) : (
               <>
@@ -137,6 +365,59 @@ const Header: React.FC = () => {
       {isMobileMenuOpen && (
         <div className="md:hidden fixed top-[61px] left-0 right-0 bg-white shadow-lg z-40">
           <div className="container mx-auto px-4 py-4 flex flex-col space-y-2">
+            <div className="flex items-center justify-between mb-2">
+              <span className="font-bold text-lg text-navy-dark">Menu</span>
+              {/* Mobile notification bell */}
+              {user && !isAdminUser && (
+                <div className="md:hidden fixed top-4 right-4 z-50">
+                  <DropdownMenu onOpenChange={handleDropdownOpen}>
+                    <DropdownMenuTrigger asChild>
+                      <button className="relative focus:outline-none bg-white/80 rounded-full shadow p-2">
+                        <Bell className="w-7 h-7 text-navy-dark" />
+                        {unreadCount > 0 && (
+                          <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full text-xs w-4 h-4 flex items-center justify-center">{unreadCount}</span>
+                        )}
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-80 max-h-96 overflow-y-auto animate-fade-in">
+                      <div className="px-3 py-2 font-semibold text-navy-dark flex justify-between items-center">
+                        <span>Notifications</span>
+                        <div className="flex gap-2">
+                          <Link to="/notifications" className="text-xs text-indigo hover:underline">View All</Link>
+                          <button onClick={handleMarkAllAsRead} className="text-xs text-indigo hover:underline">Mark all as read</button>
+                          <button onClick={handleClearAll} className="text-xs text-red-500 hover:underline">Clear all</button>
+                        </div>
+                      </div>
+                      {notifications.length === 0 && (
+                        <div className="px-4 py-2 text-gray-500">No notifications</div>
+                      )}
+                      {notifications.map((notif) => (
+                        (() => {
+                          const { icon, color } = getNotifTypeProps(notif.type);
+                          return (
+                            <DropdownMenuItem
+                              key={notif.id}
+                              className={`flex flex-row items-start gap-2 transition-all duration-150 cursor-pointer pl-2 border-l-4 ${color} ${!notif.read_status ? 'bg-indigo/10 font-semibold' : ''} hover:bg-indigo/20 ${highlightedIds.includes(notif.id) ? 'animate-pulse bg-emerald-100' : ''}`}
+                              onClick={() => handleNotificationClick(notif)}
+                              onTouchStart={(e) => handleTouchStart(e, notif.id)}
+                              onTouchMove={(e) => handleTouchMove(e, notif.id)}
+                              onTouchEnd={(e) => handleTouchEnd(e, notif.id)}
+                            >
+                              <span className="text-xl mt-0.5">{icon}</span>
+                              <span className="flex flex-col items-start gap-0.5">
+                                <span>{notif.title}</span>
+                                <span className="text-xs text-gray-500">{notif.message}</span>
+                                <span className="text-[10px] text-gray-400 mt-1">{new Date(notif.created_at).toLocaleString()}</span>
+                              </span>
+                            </DropdownMenuItem>
+                          );
+                        })()
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              )}
+            </div>
             {!isAdminUser && (
               // Regular User Mobile Navigation Links
               <>
@@ -189,6 +470,19 @@ const Header: React.FC = () => {
           </div>
         </div>
       )}
+
+      <Dialog open={showNotifModal} onOpenChange={setShowNotifModal}>
+        <DialogContent>
+          <DialogTitle>{selectedNotif?.title}</DialogTitle>
+          <div className="mt-2 text-gray-700">{selectedNotif?.message}</div>
+          {selectedNotif?.metadata && (
+            <pre className="mt-2 bg-gray-100 rounded p-2 text-xs overflow-x-auto">{JSON.stringify(selectedNotif.metadata, null, 2)}</pre>
+          )}
+          <div className="mt-4 flex justify-end">
+            <button onClick={() => setShowNotifModal(false)} className="px-4 py-2 bg-indigo text-white rounded">Close</button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </header>
   );
 };
