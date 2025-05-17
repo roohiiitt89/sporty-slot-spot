@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
@@ -11,7 +10,7 @@ import {
   ChevronUp,
   Moon,
   Sun,
-  Parkway,
+  Building2,
   Trophy,
   Workflow
 } from "lucide-react";
@@ -103,7 +102,7 @@ const Header = () => {
             to="/"
             className="text-xl font-bold text-foreground flex items-center"
           >
-            <Parkway className="h-6 w-6 mr-2 text-primary" />
+            <Building2 className="h-6 w-6 mr-2 text-primary" />
             SportMatch
           </Link>
         </div>

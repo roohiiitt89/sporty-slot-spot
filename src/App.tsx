@@ -15,11 +15,11 @@ import Venues from "@/pages/Venues";
 import VenueDetails from "@/pages/VenueDetails";
 import Help from "@/pages/Help";
 import Faq3Demo from "@/pages/Faq3Demo";
-import RouteGuard from "@/components/RouteGuard";
-import { VerifyEmail } from "@/pages/VerifyEmail";
-import { Bookings } from "@/pages/Bookings";
+import { RouteGuard } from "@/components/RouteGuard";
+import VerifyEmail from "@/pages/VerifyEmail";
+import Bookings from "@/pages/Bookings";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import { ContextWrapper } from "@/context/AuthContext";
+import { AuthProvider } from "@/context/AuthContext";
 import { Toaster as SonnerToaster } from "@/components/ui/sonner";
 import "@/App.css";
 import AdminHome from "@/pages/admin/AdminHome";
@@ -31,12 +31,12 @@ import BookingManagement from "@/pages/admin/BookingManagement";
 import ReviewManagement from "@/pages/admin/ReviewManagement";
 import MessageManagement from "@/pages/admin/MessageManagement";
 import HelpRequestsManagement from "@/pages/admin/HelpRequestsManagement";
-import { Privacy } from "@/pages/Privacy";
+import Privacy from "@/pages/Privacy";
 import SportDisplayNames from "@/pages/admin/SportDisplayNames";
 import TemplateSlotManagement from "@/pages/admin/TemplateSlotManagement";
 import AnalyticsDashboard from "@/pages/admin/AnalyticsDashboard";
-import { ChallengeDashboard } from "@/pages/challenge/ChallengeDashboard";
-import { TeamDetails } from "@/pages/challenge/TeamDetails";
+import ChallengeDashboard from "@/pages/challenge/ChallengeDashboard";
+import TeamDetails from "@/pages/challenge/TeamDetails";
 import { TournamentDashboard } from "@/pages/tournament/TournamentDashboard";
 import { HostTournamentPage } from "@/pages/tournament/HostTournamentPage";
 import { TournamentDetailsPage } from "@/pages/tournament/TournamentDetailsPage";
@@ -64,7 +64,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <ThemeProvider defaultTheme={darkMode ? "dark" : "light"}>
-          <ContextWrapper>
+          <AuthProvider>
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/contact" element={<Contact />} />
@@ -109,7 +109,7 @@ function App() {
             </Routes>
             <Toaster />
             <SonnerToaster />
-          </ContextWrapper>
+          </AuthProvider>
         </ThemeProvider>
       </BrowserRouter>
     </QueryClientProvider>

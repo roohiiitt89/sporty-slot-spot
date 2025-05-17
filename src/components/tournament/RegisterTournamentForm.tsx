@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -74,7 +73,7 @@ export function RegisterTournamentForm({ tournament, onSuccess, onCancel }: Regi
         tournament_id: tournament.id,
         user_id: session.user.id,
         team_name: values.team_name,
-        player_count: values.player_count as unknown as number,
+        player_count: values.player_count,
         notes: values.notes,
       });
       
