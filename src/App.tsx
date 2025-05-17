@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { RouteGuard } from "./components/RouteGuard";
 import Index from "./pages/Index";
@@ -25,7 +25,7 @@ import Help from "./pages/Help";
 import Contact from "./pages/Contact";
 import Privacy from "./pages/Privacy";
 import BottomNav from "./components/ui/BottomNav";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { TournamentDashboard } from "./pages/tournament/TournamentDashboard";
 import { TournamentDetailsPage } from "./pages/tournament/TournamentDetailsPage";
 import { HostTournamentPage } from "./pages/tournament/HostTournamentPage";
@@ -36,8 +36,16 @@ const queryClient = new QueryClient();
 const App = () => {
   const [chatActive, setChatActive] = useState(false);
   const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+  const location = useLocation();
 
   const handleChatClick = () => setChatActive((prev) => !prev);
+
+  // Scroll to top on route change (mobile only)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+      window.scrollTo({ top: 0, behavior: 'auto' });
+    }
+  }, [location.pathname]);
 
   return (
     <QueryClientProvider client={queryClient}>
