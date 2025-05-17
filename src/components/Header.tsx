@@ -69,6 +69,7 @@ const Header: React.FC = () => {
                 <Link to="/" className={`font-medium transition-colors duration-300 ${isScrolled ? 'text-navy-dark hover:text-indigo' : 'text-white hover:text-indigo-light'}`}>Home</Link>
                 <Link to="/venues" className={`font-medium transition-colors duration-300 ${isScrolled ? 'text-navy-dark hover:text-indigo' : 'text-white hover:text-indigo-light'}`}>Venues</Link>
                 <Link to="/sports" className={`font-medium transition-colors duration-300 ${isScrolled ? 'text-navy-dark hover:text-indigo' : 'text-white hover:text-indigo-light'}`}>Sports</Link>
+                <Link to="/tournaments" className={`font-medium transition-colors duration-300 ${isScrolled ? 'text-navy-dark hover:text-indigo' : 'text-white hover:text-indigo-light'}`}>Tournaments</Link>
               </>
             )}
             
@@ -142,6 +143,7 @@ const Header: React.FC = () => {
                 <Link to="/" className="font-medium text-navy-dark hover:text-indigo py-2" onClick={toggleMobileMenu}>Home</Link>
                 <Link to="/venues" className="font-medium text-navy-dark hover:text-indigo py-2" onClick={toggleMobileMenu}>Venues</Link>
                 <Link to="/sports" className="font-medium text-navy-dark hover:text-indigo py-2" onClick={toggleMobileMenu}>Sports</Link>
+                <Link to="/tournaments" className="font-medium text-navy-dark hover:text-indigo py-2" onClick={toggleMobileMenu}>Tournaments</Link>
               </>
             )}
             
