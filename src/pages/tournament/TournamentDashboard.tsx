@@ -30,7 +30,7 @@ export function TournamentDashboard() {
     <div className="min-h-screen bg-background">
       <TournamentHeroSection />
       
-      <div className="container px-4 py-12">
+      <div className="container px-4 py-12" id="tournament-list">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <div>
             <h2 className="text-3xl font-bold">Tournaments</h2>
