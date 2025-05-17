@@ -31,6 +31,7 @@ import { TournamentDetailsPage } from "./pages/tournament/TournamentDetailsPage"
 import { HostTournamentPage } from "./pages/tournament/HostTournamentPage";
 import MorePage from "./pages/MorePage";
 import ScrollToTopOnMobile from "@/components/ScrollToTopOnMobile";
+import NotificationBell from './components/NotificationBell';
 
 const queryClient = new QueryClient();
 
@@ -48,6 +49,8 @@ const App = () => {
         <BrowserRouter>
           <AuthProvider>
             <ScrollToTopOnMobile />
+            {/* Always show NotificationBell at top level on mobile */}
+            {isMobile && <NotificationBell />}
             <Routes>
               {/* Public routes */}
               <Route element={<RouteGuard requireAuth={false} />}>
