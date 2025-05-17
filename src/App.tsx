@@ -26,6 +26,10 @@ import Contact from "./pages/Contact";
 import Privacy from "./pages/Privacy";
 import BottomNav from "./components/ui/BottomNav";
 import { useState } from 'react';
+import { TournamentDashboard } from "./pages/tournament/TournamentDashboard";
+import { TournamentDetailsPage } from "./pages/tournament/TournamentDetailsPage";
+import { HostTournamentPage } from "./pages/tournament/HostTournamentPage";
+import MorePage from "./pages/MorePage";
 
 const queryClient = new QueryClient();
 
@@ -56,12 +60,22 @@ const App = () => {
                 <Route path="/bookings" element={<Bookings />} />
                 <Route path="/challenge" element={<ChallengeDashboard />} />
                 <Route path="/team/:slug" element={<TeamDetails />} />
+                <Route path="/more" element={<MorePage />} />
               </Route>
               
               {/* Admin routes - accessible to both admin and super_admin */}
               <Route element={<RouteGuard requireAuth={true} requiredRole="admin" adminOnly={true} />}>
                 <Route path="/admin" element={<AdminHome />} />
                 <Route path="/admin/*" element={<AdminDashboard />} />
+              </Route>
+
+              {/* Tournament routes */}
+              {/* Public: View tournaments and details */}
+              <Route path="/tournaments" element={<TournamentDashboard />} />
+              <Route path="/tournaments/:slug" element={<TournamentDetailsPage />} />
+              {/* Protected: Only logged-in users can host */}
+              <Route element={<RouteGuard requireAuth={true} adminOnly={false} />}>
+                <Route path="/tournaments/host" element={<HostTournamentPage />} />
               </Route>
 
               {/* Root path and content routes - also protected from admin access via RouteGuard logic */}
