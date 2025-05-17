@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -57,7 +56,7 @@ export function HostTournamentForm() {
   });
 
   // Fetch sports and venues when component mounts
-  useState(() => {
+  useEffect(() => {
     async function fetchData() {
       setIsLoading(true);
       try {
@@ -74,7 +73,7 @@ export function HostTournamentForm() {
     }
     
     fetchData();
-  });
+  }, []);
 
   async function onSubmit(data: FormValues) {
     if (!user) {
@@ -89,9 +88,8 @@ export function HostTournamentForm() {
     setIsSubmitting(true);
     
     try {
-      // Make sure property names match the database schema
-      const { error } = await supabase.from("tournament_host_requests").insert({
-        user_id: user.id,
+      // Make sure property names exactly match the database schema
+      const { error } = await supabase.from("tournament_host_requests").insert([{
         tournament_name: data.tournamentName,
         organizer_name: data.organizerName,
         sport_id: data.sportId,
@@ -102,7 +100,8 @@ export function HostTournamentForm() {
         entry_fee: data.entryFee,
         contact_info: data.contactInfo,
         description: data.description,
-      });
+        user_id: user.id
+      }]);
 
       if (error) throw error;
 
