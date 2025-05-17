@@ -1,55 +1,105 @@
-import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Home, Calendar, Map, User, MessageCircle } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
 
-const navItems = [
-  { to: '/', label: 'Home', icon: <Home /> },
-  { to: '/venues', label: 'Venues', icon: <Map /> },
-  { to: '/bookings', label: 'Bookings', icon: <Calendar /> },
-  { to: '/profile', label: 'Profile', icon: <User /> },
-];
+import { useState, useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { Home, User, Map, Dumbbell, Plus, Trophy } from "lucide-react";
 
-const BottomNav: React.FC<{ onChatClick?: () => void; chatActive?: boolean; setChatActive?: (open: boolean) => void }> = ({ onChatClick, chatActive, setChatActive }) => {
-  const { user } = useAuth();
+const BottomNav = () => {
   const location = useLocation();
+  const [visible, setVisible] = useState(true);
+  const [lastScrollTop, setLastScrollTop] = useState(0);
 
-  // Only show on mobile and when logged in
-  if (!user || typeof window === 'undefined' || window.innerWidth > 768) return null;
+  useEffect(() => {
+    const handleScroll = () => {
+      const st = window.scrollY;
+      if (st > lastScrollTop && st > 100) {
+        // Scrolling down
+        setVisible(false);
+      } else {
+        // Scrolling up
+        setVisible(true);
+      }
+      setLastScrollTop(st);
+    };
 
-  const handleNavClick = (to: string) => {
-    if (setChatActive) setChatActive(false); // Close chat modal on nav
-  };
+    window.addEventListener("scroll", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, [lastScrollTop]);
+
+  if (location.pathname.startsWith("/admin")) {
+    return null;
+  }
 
   return (
-    <nav className="fixed bottom-3 left-1/2 -translate-x-1/2 z-50 w-[90vw] max-w-sm rounded-xl bg-navy-light/80 backdrop-blur-md border border-navy/40 flex justify-between items-end px-1.5 py-1.5 shadow-xl md:hidden transition-all duration-300">
-      {navItems.map((item, idx) => (
+    <div
+      className={`md:hidden fixed bottom-0 left-0 right-0 bg-background border-t border-border py-2 px-6 ${
+        visible ? "translate-y-0" : "translate-y-full"
+      } transition-transform duration-300 z-50`}
+    >
+      <div className="flex justify-around items-center">
         <Link
-          key={item.to}
-          to={item.to}
-          className={`flex-1 flex flex-col items-center justify-center py-1 transition-all duration-200 rounded-lg mx-0.5 group ${location.pathname === item.to ? 'text-indigo-light scale-110 bg-indigo/10 shadow-lg' : 'text-white hover:bg-navy/40 hover:scale-105'} `}
-          onClick={() => handleNavClick(item.to)}
+          to="/"
+          className={`flex flex-col items-center ${
+            location.pathname === "/"
+              ? "text-primary"
+              : "text-muted-foreground"
+          }`}
         >
-          <span className={`text-xl flex items-center justify-center transition-all duration-200 group-hover:scale-125 group-hover:text-emerald-400 ${location.pathname === item.to ? 'text-indigo-light scale-125' : ''}`}>
-            {item.icon}
-          </span>
-          <span className="text-xs mt-0.5 font-semibold drop-shadow">{item.label}</span>
+          <Home className="h-5 w-5" />
+          <span className="text-xs mt-1">Home</span>
         </Link>
-      ))}
-      {/* Chat button inline with nav, animated */}
-      <button
-        className={`flex-1 flex flex-col items-center justify-center py-1 transition-all duration-200 rounded-lg mx-0.5 group ${chatActive ? 'text-indigo-light scale-110 bg-indigo/10 shadow-lg' : 'text-white hover:bg-navy/40 hover:scale-105'}`}
-        onClick={onChatClick}
-        aria-label="Open Chat"
-        style={{ zIndex: 1 }}
-      >
-        <span className={`text-xl flex items-center justify-center transition-all duration-200 group-hover:scale-125 group-hover:text-fuchsia-400 ${chatActive ? 'text-indigo-light scale-125' : ''}`}>
-          <MessageCircle />
-        </span>
-        <span className="text-xs mt-0.5 font-bold drop-shadow">Chat</span>
-      </button>
-    </nav>
+
+        <Link
+          to="/sports"
+          className={`flex flex-col items-center ${
+            location.pathname.includes("/sports")
+              ? "text-primary"
+              : "text-muted-foreground"
+          }`}
+        >
+          <Dumbbell className="h-5 w-5" />
+          <span className="text-xs mt-1">Sports</span>
+        </Link>
+
+        <Link
+          to="/venues"
+          className={`flex flex-col items-center ${
+            location.pathname.includes("/venues")
+              ? "text-primary"
+              : "text-muted-foreground"
+          }`}
+        >
+          <Map className="h-5 w-5" />
+          <span className="text-xs mt-1">Venues</span>
+        </Link>
+
+        <Link
+          to="/tournaments"
+          className={`flex flex-col items-center ${
+            location.pathname.includes("/tournament")
+              ? "text-primary"
+              : "text-muted-foreground"
+          }`}
+        >
+          <Trophy className="h-5 w-5" />
+          <span className="text-xs mt-1">Tournaments</span>
+        </Link>
+
+        <Link
+          to="/profile"
+          className={`flex flex-col items-center ${
+            location.pathname.includes("/profile")
+              ? "text-primary"
+              : "text-muted-foreground"
+          }`}
+        >
+          <User className="h-5 w-5" />
+          <span className="text-xs mt-1">Profile</span>
+        </Link>
+      </div>
+    </div>
   );
 };
 
-export default BottomNav; 
+export default BottomNav;

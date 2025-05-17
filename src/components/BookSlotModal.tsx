@@ -897,11 +897,11 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className={
-        `fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto flex flex-col min-h-[60vh] sm:min-h-[70vh] md:min-h-[60vh] p-0 sm:p-0 md:p-0`
+        `fixed inset-0 bg-black/90 backdrop-blur-sm z-[80] flex items-center justify-center p-4 overflow-y-auto flex flex-col min-h-[60vh] sm:min-h-[70vh] md:min-h-[60vh] p-0 sm:p-0 md:p-0`
       }
     >
       {bookingInProgress && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black bg-opacity-80 min-h-screen w-full">
+        <div className="fixed inset-0 z-[90] flex flex-col items-center justify-center bg-black bg-opacity-80 min-h-screen w-full">
           <Loader className="animate-spin text-emerald-400" size={48} />
           <p className="mt-4 text-lg text-white font-semibold">Booking in progress...</p>
         </div>
@@ -910,7 +910,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-        className="bg-gray-900 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-emerald-800/30"
+        className="bg-gray-900 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-emerald-800/30 mb-24"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}

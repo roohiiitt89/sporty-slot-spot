@@ -1,189 +1,338 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, User, CalendarDays, LogOut, LayoutGrid } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
+import { useState, useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
+import {
+  Menu,
+  X,
+  User,
+  LogIn,
+  LogOut,
+  ChevronDown,
+  ChevronUp,
+  Moon,
+  Sun,
+  Building2,
+  Trophy,
+  Workflow
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/context/AuthContext";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 
-const Header: React.FC = () => {
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
+const Header = () => {
+  const [darkMode, setDarkMode] = useLocalStorage("darkMode", false);
+  const [isOpen, setIsOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const { user, signOut } = useAuth();
   const location = useLocation();
-  
-  const {
-    user,
-    signOut,
-    userRole
-  } = useAuth();
-  
+
+  const toggleMenu = () => {
+    setIsOpen(!isOpen);
+  };
+
   useEffect(() => {
-    const handleScroll = () => {
-      if (window.scrollY > 50) {
-        setIsScrolled(true);
-      } else {
-        setIsScrolled(false);
+    const checkIfAdmin = async () => {
+      try {
+        const { data, error } = await supabase.rpc("is_admin");
+        if (error) throw error;
+        setIsAdmin(data);
+      } catch (error) {
+        console.error("Error checking admin status:", error);
+        setIsAdmin(false);
       }
     };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-  
-  const toggleMobileMenu = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
-    if (isProfileOpen) setIsProfileOpen(false);
-  };
-  
-  const toggleProfileMenu = () => {
-    setIsProfileOpen(!isProfileOpen);
-  };
-  
-  const handleSignOut = async () => {
-    await signOut();
-    setIsProfileOpen(false);
-    if (isMobileMenuOpen) setIsMobileMenuOpen(false);
-  };
-  
-  const isAdminUser = userRole === 'admin' || userRole === 'super_admin';
-  
-  // Don't show the header on any admin routes
-  if (isAdminUser && (location.pathname === '/admin' || location.pathname.startsWith('/admin/'))) {
-    return null;
-  }
-  
-  return (
-    <header className={`fixed w-full z-50 transition-all duration-300 ${isScrolled ? 'bg-white shadow-md py-2' : 'bg-transparent py-4'}`}>
-      <div className="container mx-auto px-4">
-        <div className="flex justify-between items-center">
-          <Link to={isAdminUser ? "/admin" : "/"} className="flex items-center">
-            <span className={`text-2xl font-bold transition-colors duration-300 ${isScrolled ? 'text-indigo' : 'text-white'}`}>
-  Grid
-  <span className="text-green-400">२</span>
-  Play
-</span>
-          </Link>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-8">
-            {!isAdminUser && (
-              // Regular User Navigation Links
-              <>
-                <Link to="/" className={`font-medium transition-colors duration-300 ${isScrolled ? 'text-navy-dark hover:text-indigo' : 'text-white hover:text-indigo-light'}`}>Home</Link>
-                <Link to="/venues" className={`font-medium transition-colors duration-300 ${isScrolled ? 'text-navy-dark hover:text-indigo' : 'text-white hover:text-indigo-light'}`}>Venues</Link>
-                <Link to="/sports" className={`font-medium transition-colors duration-300 ${isScrolled ? 'text-navy-dark hover:text-indigo' : 'text-white hover:text-indigo-light'}`}>Sports</Link>
-              </>
+    if (user) {
+      checkIfAdmin();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const isScrolled = window.scrollY > 10;
+      if (isScrolled !== scrolled) {
+        setScrolled(isScrolled);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, [scrolled]);
+
+  useEffect(() => {
+    // Close mobile menu when route changes
+    setIsOpen(false);
+  }, [location.pathname]);
+
+  const toggleDarkMode = () => {
+    setDarkMode(!darkMode);
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  };
+
+  return (
+    <header
+      className={`sticky top-0 z-50 w-full transition-all duration-300 ${
+        scrolled
+          ? "bg-background/80 backdrop-blur-md shadow-sm"
+          : location.pathname === "/"
+          ? "bg-transparent"
+          : "bg-background"
+      }`}
+    >
+      <div className="container mx-auto flex items-center justify-between h-16 md:h-20 px-4">
+        <div className="flex items-center">
+          <Link
+            to="/"
+            className="text-xl font-bold text-foreground flex items-center"
+          >
+            <Building2 className="h-6 w-6 mr-2 text-primary" />
+            SportMatch
+          </Link>
+        </div>
+
+        {/* Desktop Navigation */}
+        <nav className="hidden md:flex space-x-4">
+          <Link
+            to="/venues"
+            className={`px-3 py-2 rounded-md text-sm font-medium ${
+              location.pathname.startsWith("/venues")
+                ? "text-primary"
+                : "text-foreground hover:text-primary transition-colors"
+            }`}
+          >
+            Venues
+          </Link>
+          <Link
+            to="/sports"
+            className={`px-3 py-2 rounded-md text-sm font-medium ${
+              location.pathname.startsWith("/sports")
+                ? "text-primary"
+                : "text-foreground hover:text-primary transition-colors"
+            }`}
+          >
+            Sports
+          </Link>
+          <Link
+            to="/challenge"
+            className={`px-3 py-2 rounded-md text-sm font-medium ${
+              location.pathname.startsWith("/challenge") || location.pathname.startsWith("/teams")
+                ? "text-primary"
+                : "text-foreground hover:text-primary transition-colors"
+            }`}
+          >
+            <div className="flex items-center">
+              <Workflow className="mr-1 h-4 w-4" />
+              Challenge
+            </div>
+          </Link>
+          <Link
+            to="/tournaments"
+            className={`px-3 py-2 rounded-md text-sm font-medium ${
+              location.pathname.startsWith("/tournament")
+                ? "text-primary"
+                : "text-foreground hover:text-primary transition-colors"
+            }`}
+          >
+            <div className="flex items-center">
+              <Trophy className="mr-1 h-4 w-4" />
+              Tournaments
+            </div>
+          </Link>
+        </nav>
+
+        <div className="flex items-center space-x-2 md:space-x-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleDarkMode}
+            className="hidden md:inline-flex"
+            aria-label="Toggle theme"
+          >
+            {darkMode ? (
+              <Sun className="h-5 w-5" />
+            ) : (
+              <Moon className="h-5 w-5" />
             )}
-            
-            {/* Show different options based on authentication status */}
-            {user ? (
-              <>
-                {!isAdminUser && (
-                  <Link to="/bookings" className={`flex items-center font-medium transition-colors duration-300 ${isScrolled ? 'text-navy-dark hover:text-indigo' : 'text-white hover:text-indigo-light'}`}>
-                    <CalendarDays className="w-4 h-4 mr-1" />
+          </Button>
+
+          {user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="hidden md:inline-flex gap-2"
+                >
+                  <User className="h-4 w-4" />
+                  {user?.email?.split("@")[0]}
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                  <Link to="/profile" className="cursor-pointer">
+                    <User className="mr-2 h-4 w-4" />
+                    Profile
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/bookings" className="cursor-pointer">
                     My Bookings
                   </Link>
+                </DropdownMenuItem>
+                {isAdmin && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link to="/admin" className="cursor-pointer">
+                        Admin Dashboard
+                      </Link>
+                    </DropdownMenuItem>
+                  </>
                 )}
-                
-                {/* Profile dropdown */}
-                <div className="relative">
-                  <button onClick={toggleProfileMenu} className={`flex items-center font-medium transition-colors duration-300 ${isScrolled ? 'text-navy-dark hover:text-indigo' : 'text-white hover:text-indigo-light'}`}>
-                    <User className="w-4 h-4 mr-1" />
-                    Profile
-                  </button>
-                  
-                  {isProfileOpen && (
-                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
-                      {!isAdminUser && (
-                        <Link to="/profile" className="block px-4 py-2 text-sm text-navy-dark hover:bg-slate-light" onClick={() => setIsProfileOpen(false)}>
-                          My Profile
-                        </Link>
-                      )}
-                      {isAdminUser && (
-                        <Link to="/admin" className="flex items-center px-4 py-2 text-sm text-navy-dark hover:bg-slate-light" onClick={() => setIsProfileOpen(false)}>
-                          <LayoutGrid className="w-4 h-4 mr-1" />
-                          Admin Dashboard
-                        </Link>
-                      )}
-                      <button onClick={handleSignOut} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center">
-                        <LogOut className="w-4 h-4 mr-1" />
-                        Sign Out
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </>
-            ) : (
-              <>
-                <Link to="/login" className={`flex items-center font-medium transition-colors duration-300 ${isScrolled ? 'text-navy-dark hover:text-indigo' : 'text-white hover:text-indigo-light'}`}>
-                  <User className="w-4 h-4 mr-1" />
-                  Sign In
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <div className="hidden md:flex space-x-2">
+              <Button asChild variant="outline">
+                <Link to="/login">
+                  <LogIn className="mr-2 h-4 w-4" />
+                  Sign in
                 </Link>
-                <Link to="/register" className={`nike-button ${isScrolled ? 'bg-indigo text-white' : 'bg-white text-indigo'}`}>
-                  Sign Up
-                </Link>
-              </>
-            )}
-          </nav>
-
-          {/* Mobile Menu Button */}
-          {(!user) && (
-            <button onClick={toggleMobileMenu} className={`md:hidden ${isScrolled ? 'text-navy-dark' : 'text-white'}`}>
-              {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
+              </Button>
+              <Button asChild>
+                <Link to="/register">Sign up</Link>
+              </Button>
+            </div>
           )}
+
+          {/* Mobile menu button */}
+          <Button
+            className="md:hidden"
+            size="icon"
+            variant="ghost"
+            onClick={toggleMenu}
+          >
+            {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </Button>
         </div>
       </div>
 
-      {/* Mobile Menu */}
-      {isMobileMenuOpen && (
-        <div className="md:hidden fixed top-[61px] left-0 right-0 bg-white shadow-lg z-40">
-          <div className="container mx-auto px-4 py-4 flex flex-col space-y-2">
-            {!isAdminUser && (
-              // Regular User Mobile Navigation Links
-              <>
-                <Link to="/" className="font-medium text-navy-dark hover:text-indigo py-2" onClick={toggleMobileMenu}>Home</Link>
-                <Link to="/venues" className="font-medium text-navy-dark hover:text-indigo py-2" onClick={toggleMobileMenu}>Venues</Link>
-                <Link to="/sports" className="font-medium text-navy-dark hover:text-indigo py-2" onClick={toggleMobileMenu}>Sports</Link>
-              </>
-            )}
-            
-            {user ? (
-              <>
-                {!isAdminUser && (
-                  <Link to="/bookings" className="flex items-center font-medium text-navy-dark hover:text-indigo py-2" onClick={toggleMobileMenu}>
-                    <CalendarDays className="w-4 h-4 mr-1" />
+      {/* Mobile Navigation */}
+      {isOpen && (
+        <div className="md:hidden h-screen w-full bg-background">
+          <div className="px-4 py-2">
+            <nav className="flex flex-col space-y-4">
+              <Link
+                to="/venues"
+                className="px-3 py-4 border-b border-border text-lg font-medium flex justify-between items-center"
+              >
+                Venues
+              </Link>
+              <Link
+                to="/sports"
+                className="px-3 py-4 border-b border-border text-lg font-medium flex justify-between items-center"
+              >
+                Sports
+              </Link>
+              <Link
+                to="/challenge"
+                className="px-3 py-4 border-b border-border text-lg font-medium flex justify-between items-center"
+              >
+                <div className="flex items-center">
+                  <Workflow className="mr-2 h-5 w-5" />
+                  Challenge Mode
+                </div>
+              </Link>
+              <Link
+                to="/tournaments"
+                className="px-3 py-4 border-b border-border text-lg font-medium flex justify-between items-center"
+              >
+                <div className="flex items-center">
+                  <Trophy className="mr-2 h-5 w-5" />
+                  Tournaments
+                </div>
+              </Link>
+
+              {user ? (
+                <>
+                  <Link
+                    to="/profile"
+                    className="px-3 py-4 border-b border-border text-lg font-medium"
+                  >
+                    Profile
+                  </Link>
+                  <Link
+                    to="/bookings"
+                    className="px-3 py-4 border-b border-border text-lg font-medium"
+                  >
                     My Bookings
                   </Link>
-                )}
-                
-                {isAdminUser && (
-                  <Link to="/admin" className="flex items-center font-medium text-navy-dark hover:text-indigo py-2" onClick={toggleMobileMenu}>
-                    <LayoutGrid className="w-4 h-4 mr-1" />
-                    Admin Dashboard
+                  {isAdmin && (
+                    <Link
+                      to="/admin"
+                      className="px-3 py-4 border-b border-border text-lg font-medium"
+                    >
+                      Admin Dashboard
+                    </Link>
+                  )}
+                  <button
+                    onClick={handleSignOut}
+                    className="px-3 py-4 border-b border-border text-lg font-medium text-left w-full flex items-center"
+                  >
+                    <LogOut className="mr-2 h-5 w-5" /> Sign out
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    to="/login"
+                    className="px-3 py-4 border-b border-border text-lg font-medium"
+                  >
+                    Sign in
                   </Link>
-                )}
-                
-                {!isAdminUser && (
-                  <Link to="/profile" className="flex items-center font-medium text-navy-dark hover:text-indigo py-2" onClick={toggleMobileMenu}>
-                    <User className="w-4 h-4 mr-1" />
-                    My Profile
+                  <Link
+                    to="/register"
+                    className="px-3 py-4 border-b border-border text-lg font-medium"
+                  >
+                    Sign up
                   </Link>
-                )}
-                
-                <button onClick={handleSignOut} className="flex items-center font-medium text-red-600 hover:text-red-800 py-2 w-full text-left">
-                  <LogOut className="w-4 h-4 mr-1" />
-                  Sign Out
-                </button>
-              </>
-            ) : (
-              <>
-                <Link to="/login" className="flex items-center font-medium text-navy-dark hover:text-indigo py-2" onClick={toggleMobileMenu}>
-                  <User className="w-4 h-4 mr-1" />
-                  Sign In
-                </Link>
-                <Link to="/register" className="bg-indigo text-white py-2 px-4 rounded text-center font-medium" onClick={toggleMobileMenu}>
-                  Sign Up
-                </Link>
-              </>
-            )}
+                </>
+              )}
+              <div className="flex items-center justify-between px-3 py-4">
+                <span className="text-lg font-medium">
+                  {darkMode ? "Light" : "Dark"} Mode
+                </span>
+                <Button variant="ghost" size="icon" onClick={toggleDarkMode}>
+                  {darkMode ? (
+                    <Sun className="h-6 w-6" />
+                  ) : (
+                    <Moon className="h-6 w-6" />
+                  )}
+                </Button>
+              </div>
+            </nav>
           </div>
         </div>
       )}
