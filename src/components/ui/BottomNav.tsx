@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Calendar, Map, User, MessageCircle } from 'lucide-react';
+import { Home, Calendar, Map, User, MoreHorizontal } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 const navItems = [
-  { to: '/', label: 'Home', icon: <Home /> },
-  { to: '/venues', label: 'Venues', icon: <Map /> },
-  { to: '/bookings', label: 'Bookings', icon: <Calendar /> },
-  { to: '/profile', label: 'Profile', icon: <User /> },
+  { to: '/', label: 'Home', icon: <Home className="w-6 h-6" /> },
+  { to: '/venues', label: 'Venues', icon: <Map className="w-6 h-6" /> },
+  { to: '/bookings', label: 'Bookings', icon: <Calendar className="w-6 h-6" /> },
+  { to: '/profile', label: 'Profile', icon: <User className="w-6 h-6" /> },
+  { to: '/more', label: 'More', icon: <MoreHorizontal className="w-6 h-6" /> },
 ];
 
 const BottomNav: React.FC<{ onChatClick?: () => void; chatActive?: boolean; setChatActive?: (open: boolean) => void }> = ({ onChatClick, chatActive, setChatActive }) => {
@@ -30,24 +31,17 @@ const BottomNav: React.FC<{ onChatClick?: () => void; chatActive?: boolean; setC
           className={`flex-1 flex flex-col items-center justify-center py-1 transition-all duration-200 rounded-lg mx-0.5 group ${location.pathname === item.to ? 'text-indigo-light scale-110 bg-indigo/10 shadow-lg' : 'text-white hover:bg-navy/40 hover:scale-105'} `}
           onClick={() => handleNavClick(item.to)}
         >
-          <span className={`text-xl flex items-center justify-center transition-all duration-200 group-hover:scale-125 group-hover:text-emerald-400 ${location.pathname === item.to ? 'text-indigo-light scale-125' : ''}`}>
+          <span className={`text-xl flex items-center justify-center align-middle transition-all duration-200 group-hover:scale-125 group-hover:text-emerald-400 ${location.pathname === item.to ? 'text-indigo-light scale-125' : ''}`}
+            style={{ minHeight: 24, minWidth: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {item.icon}
           </span>
-          <span className="text-xs mt-0.5 font-semibold drop-shadow">{item.label}</span>
+          {item.label === 'Tournaments' ? (
+            <span className="text-xs mt-0.5 font-semibold drop-shadow hidden sm:block">{item.label}</span>
+          ) : (
+            <span className="text-xs mt-0.5 font-semibold drop-shadow">{item.label}</span>
+          )}
         </Link>
       ))}
-      {/* Chat button inline with nav, animated */}
-      <button
-        className={`flex-1 flex flex-col items-center justify-center py-1 transition-all duration-200 rounded-lg mx-0.5 group ${chatActive ? 'text-indigo-light scale-110 bg-indigo/10 shadow-lg' : 'text-white hover:bg-navy/40 hover:scale-105'}`}
-        onClick={onChatClick}
-        aria-label="Open Chat"
-        style={{ zIndex: 1 }}
-      >
-        <span className={`text-xl flex items-center justify-center transition-all duration-200 group-hover:scale-125 group-hover:text-fuchsia-400 ${chatActive ? 'text-indigo-light scale-125' : ''}`}>
-          <MessageCircle />
-        </span>
-        <span className="text-xs mt-0.5 font-bold drop-shadow">Chat</span>
-      </button>
     </nav>
   );
 };
