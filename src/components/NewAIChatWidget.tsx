@@ -579,7 +579,7 @@ const NewAIChatWidget: React.FC<NewAIChatWidgetProps> = ({ isOpen: isOpenProp, s
         }}
         className={cn(
           isMobile
-            ? "fixed inset-0 z-50 flex flex-col bg-gradient-to-b from-gray-900 via-gray-900 to-black border-emerald-500/20"
+            ? "fixed inset-0 z-[80] flex flex-col bg-gradient-to-b from-gray-900 via-gray-900 to-black border-emerald-500/20"
             : "fixed bottom-24 right-6 w-[90vw] sm:w-[400px] max-h-[600px] rounded-2xl shadow-2xl z-40 overflow-hidden bg-gradient-to-b from-gray-900 via-gray-900 to-black border border-emerald-500/20",
           !isOpen && "pointer-events-none"
         )}
