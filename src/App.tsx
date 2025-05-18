@@ -33,24 +33,13 @@ import MorePage from "./pages/MorePage";
 import ScrollToTopOnMobile from "@/components/ScrollToTopOnMobile";
 import NotificationBell from './components/NotificationBell';
 import { HelmetProvider } from 'react-helmet-async';
+import AdminRedirector from './components/AdminRedirector';
 
 const queryClient = new QueryClient();
 
 const App = () => {
   const [chatActive, setChatActive] = useState(false);
   const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
-
-  // Admin redirect logic
-  const location = useLocation();
-  const navigate = useNavigate();
-  const { user, userRole } = useAuth();
-  useEffect(() => {
-    if (user && (userRole === 'admin' || userRole === 'super_admin')) {
-      if (!location.pathname.startsWith('/admin')) {
-        navigate('/admin#dashboard', { replace: true });
-      }
-    }
-  }, [user, userRole, location, navigate]);
 
   const handleChatClick = () => setChatActive((prev) => !prev);
 
@@ -63,6 +52,8 @@ const App = () => {
           <BrowserRouter>
             <AuthProvider>
               <ScrollToTopOnMobile />
+              {isMobile && <NotificationBell />}
+              <AdminRedirector />
               <Routes>
                 {/* Public routes */}
                 <Route element={<RouteGuard requireAuth={false} />}>
@@ -116,8 +107,6 @@ const App = () => {
               {(!chatActive || !isMobile) && (
                 <BottomNav onChatClick={handleChatClick} chatActive={chatActive} setChatActive={setChatActive} />
               )}
-              {/* Always show NotificationBell at top level on mobile, after AuthProvider so user context is available */}
-              {isMobile && <NotificationBell />}
             </AuthProvider>
           </BrowserRouter>
         </TooltipProvider>
