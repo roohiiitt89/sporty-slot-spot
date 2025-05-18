@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -238,18 +239,18 @@ const Venues = () => {
         onOpenChange={setIsCreateVenueModalOpen}
       />
         
-        {bookingModalOpen && (
-            <BookSlotModal
-                isOpen={true} // Changed from open to isOpen
-                onOpenChange={setBookingModalOpen}
-                selectedDate={selectedDate}
-                selectedCourt={null}
-                hourlyRate={null}
-                onBookingComplete={handleBookingComplete}
-                allowCashPayments={allowCashPayments}
-                onClose={() => setBookingModalOpen(false)}
-            />
-        )}
+      {bookingModalOpen && (
+        <BookSlotModal
+          isOpen={bookingModalOpen} 
+          onOpenChange={setBookingModalOpen}
+          selectedDate={selectedDate}
+          selectedCourt={null}
+          hourlyRate={null}
+          onBookingComplete={handleBookingComplete}
+          allowCashPayments={allowCashPayments}
+          onClose={() => setBookingModalOpen(false)}
+        />
+      )}
     </div>
   );
 };
