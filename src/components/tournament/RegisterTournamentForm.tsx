@@ -12,7 +12,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
-import { TournamentWithDetails } from "@/types/tournament";
+import { Tournament } from "@/types/tournament";
 
 const formSchema = z.object({
   teamName: z.string().min(3, { message: "Team name is required" }),
@@ -23,7 +23,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 interface RegisterTournamentFormProps {
-  tournament: TournamentWithDetails;
+  tournament: Tournament;
   onSuccess: () => void;
   onCancel: () => void;
 }

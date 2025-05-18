@@ -16,6 +16,7 @@ declare global {
 }
 
 interface BookSlotModalProps {
+  isOpen: boolean;
   onClose: () => void;
   venueId?: string;
   sportId?: string;
@@ -50,7 +51,7 @@ interface TimeSlot {
   price: string;
 }
 
-const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId }) => {
+const BookSlotModal: React.FC<BookSlotModalProps> = ({ isOpen, onClose, venueId, sportId }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [venues, setVenues] = useState<Venue[]>([]);
@@ -901,7 +902,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       }
     >
       {bookingInProgress && (
-        <div className="fixed inset-0 z-[90] flex flex-col items-center justify-center bg-black bg-opacity-80 min-h-screen w-full">
+        <div className="fixed inset-0 z-[90] flex flex-col items-center justify-center bg-black bg-opacity-800 min-h-screen w-full">
           <Loader className="animate-spin text-emerald-400" size={48} />
           <p className="mt-4 text-lg text-white font-semibold">Booking in progress...</p>
         </div>
@@ -1578,3 +1579,5 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
 };
 
 export default BookSlotModal;
+
+</edits_to_apply>

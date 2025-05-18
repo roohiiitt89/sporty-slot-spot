@@ -1,168 +1,257 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { MapPin, Star, ArrowLeft, MessageCircle, Navigation, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/context/AuthContext';
-import { useGeolocation, calculateDistance } from '@/hooks/use-geolocation';
-import { format } from 'date-fns';
-import Header from '../components/Header';
-import BookSlotModal from '../components/BookSlotModal';
-import ChatModal from '../components/ChatModal';
-import { ReviewModal } from '@/components/ReviewModal';
-import { VenueReviews } from '@/components/VenueReviews';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { Calendar } from "react-date-range";
+import "react-date-range/dist/styles.css";
+import "react-date-range/dist/theme/default.css";
+import { format } from "date-fns";
+import { useQuery } from "@tanstack/react-query";
+
 import { Button } from "@/components/ui/button";
-import SportDisplayName from '@/components/SportDisplayName';
-import { getVenueSportDisplayNames } from '@/utils/sportDisplayNames';
-import AvailabilityWidget from '@/components/AvailabilityWidget';
-import VenueImageCarousel from '@/components/VenueImageCarousel';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { toast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { Icons } from "@/components/ui/icons";
+import { cn } from "@/lib/utils";
+import { Map } from "@/components/Map";
+import { BookSlotModal } from "@/components/BookSlotModal";
+import { CalendarIcon, CheckCircle2, ChevronLeft, ChevronRight, Clock, CreditCard, Filter, Locate, MapPin, Phone, Star, Utensils } from "lucide-react";
 
-interface Venue {
+interface Review {
   id: string;
-  name: string;
-  location: string;
-  image_url: string;
-  images: string[] | null;
-  description: string;
+  user_id: string;
+  venue_id: string;
   rating: number;
-  contact_number: string;
-  opening_hours: string;
-  latitude: number | null;
-  longitude: number | null;
+  comment: string;
+  created_at: string;
+  user_profile: {
+    full_name: string;
+    profile_name: string;
+  };
 }
 
-interface Sport {
-  id: string;
-  name: string;
-}
-
-interface Court {
-  id: string;
-  name: string;
-  sport_id: string;
-  sport: Sport;
-}
-
-// Additional interface to match the actual Supabase response
-interface CourtWithSports {
-  id: string;
-  name: string;
-  sport_id: string;
-  sports: Sport;
-}
-
-const VenueDetails: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+export default function VenueDetails() {
+  const { id: venueId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { latitude, longitude } = useGeolocation();
-  const [venue, setVenue] = useState<Venue | null>(null);
-  const [courts, setCourts] = useState<Court[]>([]);
-  const [sports, setSports] = useState<Sport[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isBookModalOpen, setIsBookModalOpen] = useState(false);
-  const [isChatModalOpen, setIsChatModalOpen] = useState(false);
-  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
-  const [sportDisplayNames, setSportDisplayNames] = useState<Record<string, string>>({});
-  const [distance, setDistance] = useState<number | null>(null);
-  const isMobile = useIsMobile();
-  const [venueImages, setVenueImages] = useState<string[]>([]);
+  const { toast } = useToast();
 
-  // Use isMobile to conditionally apply mobile-optimized classes
-  const containerClass = isMobile ? 'max-w-screen-sm mx-auto px-2' : 'container mx-auto px-4';
+  const [date, setDate] = useState(new Date());
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [loadingReviews, setLoadingReviews] = useState(true);
+  const [bookingModalOpen, setBookingModalOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedCourt, setSelectedCourt] = useState<any>(null);
+  const [hourlyRate, setHourlyRate] = useState<number | null>(null);
+  const [allowCashPayments, setAllowCashPayments] = useState(false);
+  const [isMapOpen, setIsMapOpen] = useState(false);
+
+  const [newReview, setNewReview] = useState({
+    rating: 5,
+    comment: "",
+  });
+
+  const { data: venue, isLoading } = useQuery(
+    ["venue", venueId],
+    async () => {
+      const { data, error } = await supabase
+        .from("venues")
+        .select("*")
+        .eq("id", venueId)
+        .single();
+
+      if (error) {
+        console.error("Error fetching venue:", error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch venue details.",
+          variant: "destructive",
+        });
+        return null;
+      }
+      return data;
+    }
+  );
 
   useEffect(() => {
-    const fetchVenueDetails = async () => {
+    const fetchReviews = async () => {
+      setLoadingReviews(true);
       try {
-        if (!id) return;
+        const { data, error } = await supabase
+          .from("reviews")
+          .select(
+            `
+            id,
+            user_id,
+            venue_id,
+            rating,
+            comment,
+            created_at,
+            user_profile:profiles (full_name, profile_name)
+          `
+          )
+          .eq("venue_id", venueId)
+          .order("created_at", { ascending: false });
 
-        // Fetch venue details
-        const { data: venueData, error: venueError } = await supabase
-          .from('venues')
-          .select('*')
-          .eq('id', id)
-          .single();
-
-        if (venueError) throw venueError;
-        setVenue(venueData);
-        
-        // Set up venue images - from images array if exists, or from single image_url
-        if (venueData.images && Array.isArray(venueData.images) && venueData.images.length > 0) {
-          setVenueImages(venueData.images);
-        } else if (venueData.image_url) {
-          setVenueImages([venueData.image_url]);
-        } else {
-          // Fallback image
-          setVenueImages(['https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000']);
+        if (error) {
+          console.error("Error fetching reviews:", error);
+          toast({
+            title: "Error",
+            description: "Failed to fetch reviews.",
+            variant: "destructive",
+          });
+          return;
         }
-
-        // Calculate distance if we have coordinates
-        if (latitude && longitude && venueData.latitude && venueData.longitude) {
-          const calculatedDistance = calculateDistance(
-            latitude,
-            longitude,
-            venueData.latitude,
-            venueData.longitude
-          );
-          setDistance(calculatedDistance);
-        }
-
-        // Fetch custom sport display names for this venue
-        const customNames = await getVenueSportDisplayNames(id);
-        setSportDisplayNames(customNames);
-
-        // Fetch courts for this venue with related sports
-        const { data: courtsData, error: courtsError } = await supabase
-          .from('courts')
-          .select(`
-            id, 
-            name, 
-            sport_id,
-            sports:sport_id (id, name)
-          `)
-          .eq('venue_id', id)
-          .eq('is_active', true);
-
-        if (courtsError) throw courtsError;
-        
-        // Transform the data to match the Court interface
-        const transformedCourts = courtsData.map((court: CourtWithSports) => ({
-          id: court.id,
-          name: court.name,
-          sport_id: court.sport_id,
-          sport: court.sports
-        }));
-        
-        setCourts(transformedCourts);
-
-        // Extract unique sports from courts
-        const uniqueSports = Array.from(
-          new Set(courtsData.map(court => court.sports.id))
-        ).map(sportId => {
-          const court = courtsData.find(c => c.sports.id === sportId);
-          return court?.sports || null;
-        }).filter(Boolean) as Sport[];
-
-        setSports(uniqueSports);
+        setReviews(data || []);
       } catch (error) {
-        console.error('Error fetching venue details:', error);
+        console.error("Error fetching reviews:", error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch reviews.",
+          variant: "destructive",
+        });
       } finally {
-        setLoading(false);
+        setLoadingReviews(false);
       }
     };
 
-    fetchVenueDetails();
-  }, [id, latitude, longitude]);
+    if (venueId) {
+      fetchReviews();
+    }
+  }, [venueId]);
 
-  if (loading) {
+  const handleReviewSubmit = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to submit a review.",
+        variant: "destructive",
+      });
+      navigate("/login");
+      return;
+    }
+
+    if (!newReview.comment.trim()) {
+      toast({
+        title: "Validation error",
+        description: "Comment cannot be empty.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.from("reviews").insert([
+        {
+          user_id: user.id,
+          venue_id: venueId,
+          rating: newReview.rating,
+          comment: newReview.comment,
+        },
+      ]);
+
+      if (error) {
+        console.error("Error submitting review:", error);
+        toast({
+          title: "Error",
+          description: "Failed to submit review.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Success",
+        description: "Review submitted successfully!",
+      });
+
+      // Optimistically update the reviews
+      setReviews([
+        ...reviews,
+        {
+          id: data[0].id,
+          user_id: user.id,
+          venue_id: venueId,
+          rating: newReview.rating,
+          comment: newReview.comment,
+          created_at: new Date().toISOString(),
+          user_profile: {
+            full_name: user.user_metadata.full_name,
+            profile_name: user.user_metadata.profile_name,
+          },
+        },
+      ]);
+
+      // Clear the review form
+      setNewReview({
+        rating: 5,
+        comment: "",
+      });
+    } catch (error) {
+      console.error("Error submitting review:", error);
+      toast({
+        title: "Error",
+        description: "Failed to submit review.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleBookingComplete = () => {
+    setBookingModalOpen(false);
+    toast({
+      title: "Booking Successful",
+      description: "Your slot has been booked successfully!",
+    });
+  };
+
+  if (isLoading) {
     return (
-      <div className={containerClass + ' min-h-screen bg-black'}>
-        <Header />
-        <div className="container mx-auto px-4 py-32">
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo"></div>
+      <div className="container mx-auto p-4">
+        <div className="mb-4">
+          <Skeleton className="h-8 w-32" />
+          <Skeleton className="h-6 w-48 mt-2" />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="md:col-span-2">
+            <Skeleton className="h-64 w-full" />
+            <div className="mt-4">
+              <Skeleton className="h-8 w-48" />
+              <Skeleton className="h-4 w-full mt-2" />
+              <Skeleton className="h-4 w-full mt-2" />
+            </div>
+          </div>
+
+          <div>
+            <Skeleton className="h-48 w-full" />
+            <div className="mt-4">
+              <Skeleton className="h-8 w-32" />
+              <Skeleton className="h-4 w-full mt-2" />
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-8">
+          <Skeleton className="h-8 w-48" />
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <div key={index} className="p-4 border rounded-md">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-full mt-2" />
+                <Skeleton className="h-4 w-full mt-2" />
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -171,447 +260,226 @@ const VenueDetails: React.FC = () => {
 
   if (!venue) {
     return (
-      <div className={containerClass + ' min-h-screen bg-black'}>
-        <Header />
-        <div className="container mx-auto px-4 py-32">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold text-white mb-4">Venue not found</h2>
-            <button
-              onClick={() => navigate('/venues')}
-              className="px-4 py-2 bg-indigo text-white rounded-md hover:bg-indigo-dark transition-colors"
-            >
-              Back to Venues
-            </button>
-          </div>
+      <div className="container mx-auto p-4">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold">Venue Not Found</h1>
+          <p className="text-gray-500">
+            Sorry, the venue you are looking for does not exist.
+          </p>
+          <Button onClick={() => navigate("/venues")}>
+            Back to Venues
+          </Button>
         </div>
       </div>
     );
   }
 
-  const MobileLayout = () => (
-    <>
-      {/* Booking Section - Now at the top for mobile */}
-      <Card className="bg-navy-light border-navy shadow-lg mb-6">
-        <CardContent className="p-4">
-          <h2 className="text-xl font-bold text-white mb-3">Book this Venue</h2>
-          <Button
-            onClick={() => setIsBookModalOpen(true)}
-            className="w-full py-6 bg-[#1e3b2c] text-white font-semibold hover:bg-[#2a4d3a] transition-colors"
-          >
-            Book Now
-          </Button>
-          
-          {user && (
-            <Button
-              onClick={() => setIsChatModalOpen(true)}
-              variant="outline"
-              className="w-full mt-3 flex items-center justify-center border-gray-600 text-gray-300 hover:bg-navy hover:text-white"
-            >
-              <MessageCircle className="mr-2 h-4 w-4" />
-              Chat with Venue
-            </Button>
-          )}
-          
-          {/* Info Card */}
-          <div className="mt-4 bg-navy/50 rounded-lg p-3 border border-indigo/20">
-            <h3 className="font-medium text-white mb-2 text-sm">Venue Highlights</h3>
-            <ul className="space-y-2 text-xs text-gray-300">
-              <li className="flex items-start gap-2">
-                <Star className="h-4 w-4 text-[#2def80] flex-shrink-0 mt-0.5" />
-                <span>Rated {venue?.rating?.toFixed(1) || '4.5'}/5.0 by users</span>
-              </li>
-              {distance !== null && (
-                <li className="flex items-start gap-2">
-                  <Navigation className="h-4 w-4 text-[#2def80] flex-shrink-0 mt-0.5" />
-                  <span>
-                    {distance < 1 
-                      ? `${(distance * 1000).toFixed(0)} meters from you` 
-                      : `${distance.toFixed(1)} km from you`}
-                  </span>
-                </li>
-              )}
-              <li className="flex items-start gap-2">
-                <Clock className="h-4 w-4 text-[#2def80] flex-shrink-0 mt-0.5" />
-                <span>Booking slots available daily</span>
-              </li>
-            </ul>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Regular content */}
-      <Card className="bg-navy-light border-navy shadow-lg mb-6">
-        <CardContent className="p-4">
-          <h2 className="text-xl font-bold text-white mb-3">About This Venue</h2>
-          <p className="text-gray-300 mb-4 text-sm">
-            {venue?.description || 'This venue offers state-of-the-art facilities for multiple sports activities.'}
-          </p>
-          
-          <div className="grid grid-cols-1 gap-4">
-            {/* Opening Hours */}
-            <div>
-              <h3 className="font-semibold text-base mb-1 text-white">Opening Hours</h3>
-              <p className="text-gray-300 whitespace-pre-line text-sm">
-                {venue?.opening_hours || 'Monday - Friday: 6:00 AM - 10:00 PM\nSaturday - Sunday: 8:00 AM - 8:00 PM'}
-              </p>
-            </div>
-            
-            {/* Contact Info */}
-            <div>
-              <h3 className="font-semibold text-base mb-1 text-white">Contact</h3>
-              <p className="text-gray-300 text-sm">
-                {venue?.contact_number || 'Phone not available'}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-      
-      {/* Sports Available */}
-      <Card className="bg-navy-light border-navy shadow-lg mb-6">
-        <CardContent className="p-4">
-          <h2 className="text-xl font-bold text-white mb-3">Sports Available</h2>
-          
-          {sports.length > 0 ? (
-            <div className="grid grid-cols-3 gap-2">
-              {sports.map(sport => (
-                <div key={sport.id} className="bg-navy/70 text-white p-2 rounded-lg text-center hover:bg-[#1e3b2c] transition-colors border border-navy">
-                  <h3 className="font-semibold text-xs">
-                    {id && (
-                      <SportDisplayName 
-                        venueId={id} 
-                        sportId={sport.id} 
-                        defaultName={sport.name} 
-                      />
-                    )}
-                  </h3>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-300 text-sm">No sports information available for this venue.</p>
-          )}
-        </CardContent>
-      </Card>
-      
-      {/* Courts Available */}
-      <Card className="bg-navy-light border-navy shadow-lg mb-6">
-        <CardContent className="p-4">
-          <h2 className="text-xl font-bold text-white mb-3">Courts Available</h2>
-          
-          {courts.length > 0 ? (
-            <div className="grid grid-cols-2 gap-2">
-              {courts.map(court => (
-                <div key={court.id} className="border border-navy bg-navy/50 rounded-lg p-3 hover:border-[#1e3b2c] transition-colors">
-                  <h3 className="font-semibold text-white text-xs">{court.name}</h3>
-                  <p className="text-gray-300 text-xs mt-1">
-                    Sport: {id && (
-                      <SportDisplayName
-                        venueId={id}
-                        sportId={court.sport_id}
-                        defaultName={court.sport?.name || 'N/A'}
-                      />
-                    )}
-                  </p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-300 text-sm">No court information available for this venue.</p>
-          )}
-        </CardContent>
-      </Card>
-      
-      {/* Reviews Section */}
-      <Card className="bg-navy-light border-navy shadow-lg">
-        <CardContent className="p-4">
-          <div className="flex justify-between items-center mb-3">
-            <h2 className="text-xl font-bold text-white">Reviews</h2>
-            {user && (
-              <Button
-                onClick={() => setIsReviewModalOpen(true)}
-                className="bg-[#1e3b2c] hover:bg-[#2a4d3a] text-white text-xs px-2 py-1 h-auto"
-              >
-                Write a Review
-              </Button>
-            )}
-          </div>
-          
-          <div className="bg-navy/50 rounded-lg p-3 border border-navy">
-            <VenueReviews venueId={id || ''} />
-          </div>
-        </CardContent>
-      </Card>
-    </>
-  );
-
-  const DesktopLayout = () => (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      <div className="lg:col-span-2">
-        <Card className="bg-navy-light border-navy shadow-lg mb-8">
-          <CardContent className="p-6">
-            <h2 className="text-2xl font-bold text-white mb-4">About This Venue</h2>
-            <p className="text-gray-300 mb-6">
-              {venue?.description || 'This venue offers state-of-the-art facilities for multiple sports activities. Perfect for both casual play and professional training.'}
-            </p>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Opening Hours */}
-              <div>
-                <h3 className="font-semibold text-lg mb-2 text-white">Opening Hours</h3>
-                <p className="text-gray-300 whitespace-pre-line">
-                  {venue?.opening_hours || 'Monday - Friday: 6:00 AM - 10:00 PM\nSaturday - Sunday: 8:00 AM - 8:00 PM'}
-                </p>
-              </div>
-              
-              {/* Contact Info */}
-              <div>
-                <h3 className="font-semibold text-lg mb-2 text-white">Contact</h3>
-                <p className="text-gray-300">
-                  {venue?.contact_number || 'Phone not available'}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        {/* Sports Available */}
-        <Card className="bg-navy-light border-navy shadow-lg mb-8">
-          <CardContent className="p-6">
-            <h2 className="text-2xl font-bold text-white mb-4">Sports Available</h2>
-            
-            {sports.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
-                {sports.map(sport => (
-                  <div key={sport.id} className="bg-navy/70 text-white p-3 rounded-lg text-center hover:bg-[#1e3b2c] transition-colors border border-navy">
-                    <h3 className="font-semibold text-sm">
-                      {id && (
-                        <SportDisplayName 
-                          venueId={id} 
-                          sportId={sport.id} 
-                          defaultName={sport.name} 
-                        />
-                      )}
-                    </h3>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-300">No sports information available for this venue.</p>
-            )}
-          </CardContent>
-        </Card>
-        
-        {/* Courts Available */}
-        <Card className="bg-navy-light border-navy shadow-lg mb-8">
-          <CardContent className="p-6">
-            <h2 className="text-2xl font-bold text-white mb-4">Courts Available</h2>
-            
-            {courts.length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {courts.map(court => (
-                  <div key={court.id} className="border border-navy bg-navy/50 rounded-lg p-4 hover:border-[#1e3b2c] transition-colors">
-                    <h3 className="font-semibold text-white text-sm">{court.name}</h3>
-                    <p className="text-gray-300 text-xs mt-1">
-                      Sport: {id && (
-                        <SportDisplayName
-                          venueId={id}
-                          sportId={court.sport_id}
-                          defaultName={court.sport?.name || 'N/A'}
-                        />
-                      )}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-300">No court information available for this venue.</p>
-            )}
-          </CardContent>
-        </Card>
-        
-        {/* Reviews Section */}
-        <Card className="bg-navy-light border-navy shadow-lg">
-          <CardContent className="p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold text-white">Reviews</h2>
-              {user && (
-                <Button
-                  onClick={() => setIsReviewModalOpen(true)}
-                  className="bg-[#1e3b2c] hover:bg-[#2a4d3a] text-white"
-                >
-                  Write a Review
-                </Button>
-              )}
-            </div>
-            
-            <div className="bg-navy/50 rounded-lg p-4 border border-navy">
-              <VenueReviews venueId={id || ''} />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-      
-      {/* Booking Section */}
-      <div className="lg:col-span-1">
-        <Card className="bg-navy-light border-navy shadow-lg sticky top-24">
-          <CardContent className="p-6">
-            <h2 className="text-2xl font-bold text-white mb-4">Book this Venue</h2>
-            <p className="text-gray-300 mb-6">Ready to play? Book a slot at this venue now.</p>
-            
-            <Button
-              onClick={() => setIsBookModalOpen(true)}
-              className="w-full py-6 bg-[#1e3b2c] text-white font-semibold hover:bg-[#2a4d3a] transition-colors"
-            >
-              Book Now
-            </Button>
-            
-            {user && (
-              <Button
-                onClick={() => setIsChatModalOpen(true)}
-                variant="outline"
-                className="w-full mt-3 flex items-center justify-center border-gray-600 text-gray-300 hover:bg-navy hover:text-white"
-              >
-                <MessageCircle className="mr-2 h-4 w-4" />
-                Chat with Venue
-              </Button>
-            )}
-            
-            {/* Info Card */}
-            <div className="mt-6 bg-navy/50 rounded-lg p-4 border border-navy">
-              <h3 className="font-medium text-white mb-2">Venue Highlights</h3>
-              <ul className="space-y-2 text-sm text-gray-300">
-                <li className="flex items-start gap-2">
-                  <Star className="h-4 w-4 text-[#2def80] flex-shrink-0 mt-0.5" />
-                  <span>Rated {venue?.rating?.toFixed(1) || '4.5'}/5.0 by users</span>
-                </li>
-                {distance !== null && (
-                  <li className="flex items-start gap-2">
-                    <Navigation className="h-4 w-4 text-[#2def80] flex-shrink-0 mt-0.5" />
-                    <span>
-                      {distance < 1 
-                        ? `${(distance * 1000).toFixed(0)}m away` 
-                        : `${distance.toFixed(1)}km away`}
-                    </span>
-                  </li>
-                )}
-                <li className="flex items-start gap-2">
-                  <Clock className="h-4 w-4 text-[#2def80] flex-shrink-0 mt-0.5" />
-                  <span>Booking slots available daily</span>
-                </li>
-              </ul>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
-
   return (
-    <div className={containerClass + ' min-h-screen bg-navy-dark'}>
-      <Header />
-      
-      {/* Back Button */}
-      <div className="container mx-auto px-4 py-4">
-        <button
-          onClick={() => navigate('/venues')}
-          className="flex items-center text-gray-400 hover:text-white transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Venues
-        </button>
+    <div className="container mx-auto p-4">
+      <Button variant="ghost" onClick={() => navigate("/venues")} className="mb-4">
+        <ChevronLeft className="mr-2 h-4 w-4" />
+        Back to Venues
+      </Button>
+
+      <div className="mb-4">
+        <h1 className="text-2xl font-bold">{venue.name}</h1>
+        <p className="text-gray-500">
+          <MapPin className="inline-block mr-1" size={16} />
+          {venue.address}, {venue.city}, {venue.state}
+        </p>
       </div>
 
-      {/* Hero Section with Image Carousel */}
-      <div className="relative w-full h-[40vh] md:h-[50vh] lg:h-[60vh] mb-8 overflow-hidden">
-        <Carousel className="w-full h-full">
-          <CarouselContent>
-            {venueImages.map((image, index) => (
-              <CarouselItem key={index} className="w-full h-full">
-                <div className="relative w-full h-full">
-                  <img
-                    src={image}
-                    alt={`${venue?.name} - View ${index + 1}`}
-                    className="w-full h-full object-cover"
-                    loading={index === 0 ? 'eager' : 'lazy'}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-navy-dark via-navy-dark/70 to-transparent" />
-                </div>
-              </CarouselItem>
-            ))}
-          </CarouselContent>
-          <div className="absolute bottom-20 md:bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2 z-20">
-            <CarouselPrevious className="h-8 w-8 rounded-full bg-black/50 hover:bg-black/70 text-white border-white/20" />
-            <CarouselNext className="h-8 w-8 rounded-full bg-black/50 hover:bg-black/70 text-white border-white/20" />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="md:col-span-2">
+          <img
+            src={venue.image_url || "/placeholder.jpg"}
+            alt={venue.name}
+            className="w-full h-64 object-cover rounded-md"
+          />
+
+          <div className="mt-4">
+            <h2 className="text-xl font-semibold">Description</h2>
+            <p className="text-gray-700">{venue.description || "No description available."}</p>
           </div>
-        </Carousel>
-        
-        {/* Venue Title Overlay - Improved mobile visibility */}
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-navy-dark via-navy-dark/90 to-transparent">
-          <div className="container mx-auto p-4 md:p-6">
-            <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold text-white mb-2 drop-shadow-lg">
-              {venue?.name}
-            </h1>
-            <div className="flex flex-col md:flex-row md:items-center text-gray-200 md:space-x-4 space-y-2 md:space-y-0">
+        </div>
+
+        <div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Venue Details</CardTitle>
+              <CardDescription>Quick overview</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
               <div className="flex items-center">
-                <MapPin className="w-4 h-4 mr-1 drop-shadow" />
-                <span className="text-sm md:text-base drop-shadow-lg">{venue?.location}</span>
+                <MapPin className="mr-2 h-4 w-4" />
+                <span>{venue.address}</span>
               </div>
               <div className="flex items-center">
-                <Star className="w-4 h-4 mr-1 text-[#2def80] drop-shadow" />
-                <span className="text-sm md:text-base drop-shadow-lg">{venue?.rating?.toFixed(1) || '4.5'}</span>
+                <Phone className="mr-2 h-4 w-4" />
+                <span>{venue.contact_number}</span>
               </div>
-              {distance !== null && (
-                <div className="flex items-center">
-                  <Navigation className="w-4 h-4 mr-1 text-[#2def80] drop-shadow" />
-                  <span className="text-sm md:text-base drop-shadow-lg">
-                    {distance < 1 
-                      ? `${(distance * 1000).toFixed(0)}m away` 
-                      : `${distance.toFixed(1)}km away`}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
+              <div className="flex items-center">
+                <Utensils className="mr-2 h-4 w-4" />
+                <span>{venue.amenities || "No amenities listed"}</span>
+              </div>
+              <Button variant="secondary" className="w-full justify-center" onClick={() => setIsMapOpen(true)}>
+                <Locate className="mr-2 h-4 w-4" />
+                View on Map
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="container mx-auto px-4 pb-16">
-        {isMobile ? <MobileLayout /> : <DesktopLayout />}
+      <div className="mt-8">
+        <h2 className="text-xl font-semibold">Book a Slot</h2>
+        <div className="flex items-center space-x-2 mb-4">
+          <CalendarIcon className="h-5 w-5 text-gray-500" />
+          <span>Select Date:</span>
+          <Input
+            type="date"
+            value={format(date, "yyyy-MM-dd")}
+            onChange={(e) => setDate(new Date(e.target.value))}
+            className="w-32"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {venue.courts &&
+            JSON.parse(venue.courts).map((court: any) => (
+              <Card key={court.id} className="cursor-pointer hover:shadow-md transition-shadow">
+                <CardHeader>
+                  <CardTitle>{court.name}</CardTitle>
+                  <CardDescription>
+                    Hourly Rate: ₹{court.hourly_rate}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                    <span>Available</span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="mt-4 w-full"
+                    onClick={() => {
+                      setSelectedDate(date);
+                      setSelectedCourt(court);
+                      setHourlyRate(court.hourly_rate);
+                      setAllowCashPayments(venue.allow_cash_payments);
+                      setBookingModalOpen(true);
+                    }}
+                  >
+                    Book Now
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+        </div>
       </div>
 
-      {/* Modals */}
-      {isBookModalOpen && (
+      <div className="mt-8">
+        <h2 className="text-xl font-semibold">Reviews</h2>
+        <div className="mb-4">
+          <Textarea
+            placeholder="Write your review here..."
+            value={newReview.comment}
+            onChange={(e) =>
+              setNewReview({ ...newReview, comment: e.target.value })
+            }
+            className="w-full mb-2"
+          />
+          <div className="flex items-center space-x-2 mb-2">
+            <Label>Rating:</Label>
+            <Select
+              value={newReview.rating.toString()}
+              onValueChange={(value) =>
+                setNewReview({ ...newReview, rating: parseInt(value) })
+              }
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Select rating" />
+              </SelectTrigger>
+              <SelectContent>
+                {[1, 2, 3, 4, 5].map((rating) => (
+                  <SelectItem key={rating} value={rating.toString()}>
+                    {rating} Stars
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button onClick={handleReviewSubmit}>Submit Review</Button>
+        </div>
+
+        {loadingReviews ? (
+          <div className="animate-pulse">
+            <Skeleton className="h-6 w-full mb-2" />
+            <Skeleton className="h-6 w-full mb-2" />
+            <Skeleton className="h-6 w-full mb-2" />
+          </div>
+        ) : (
+          reviews.map((review) => (
+            <Card key={review.id} className="mb-4">
+              <CardHeader>
+                <div className="flex items-center space-x-4">
+                  <div className="rounded-full bg-gray-200 w-10 h-10 flex items-center justify-center">
+                    {review.user_profile?.profile_name
+                      ? review.user_profile.profile_name
+                      : review.user_profile?.full_name
+                        ? review.user_profile.full_name.substring(0, 2).toUpperCase()
+                        : "NA"}
+                  </div>
+                  <div>
+                    <CardTitle>{review.user_profile?.full_name || "Anonymous"}</CardTitle>
+                    <div className="flex items-center space-x-1 text-sm text-gray-500">
+                      <Star className="h-4 w-4" />
+                      <span>{review.rating}</span>
+                      <span className="ml-2">
+                        {format(new Date(review.created_at), "MMM dd, yyyy")}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p>{review.comment}</p>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
+
+      {bookingModalOpen && (
         <BookSlotModal
-          open={isBookModalOpen}
-          onOpenChange={setIsBookModalOpen}
-          selectedDate={new Date()}
+          isOpen={true} // Changed from open to isOpen based on the error message
+          onOpenChange={setBookingModalOpen}
+          selectedDate={selectedDate}
           selectedCourt={null}
           hourlyRate={null}
-          onBookingComplete={() => {}}
-          allowCashPayments={true}
-          onClose={() => setIsBookModalOpen(false)}
-          venueId={id || ''}
+          onBookingComplete={handleBookingComplete}
+          allowCashPayments={allowCashPayments}
+          onClose={() => setBookingModalOpen(false)}
+          venueId={venueId}
         />
       )}
-      {isChatModalOpen && venue && (
-        <ChatModal
-          onClose={() => setIsChatModalOpen(false)}
-          venueId={id || ''}
-          venueName={venue.name}
-        />
-      )}
-      {isReviewModalOpen && venue && (
-        <ReviewModal
-          venueId={id || ''}
-          venueName={venue.name}
-          onClose={() => setIsReviewModalOpen(false)}
-          bookingId=""
-        />
-      )}
+
+      <Dialog open={isMapOpen} onOpenChange={setIsMapOpen}>
+        <DialogContent className="sm:max-w-[625px]">
+          <DialogHeader>
+            <DialogTitle>Venue Location</DialogTitle>
+            <DialogDescription>
+              See the exact location of {venue.name} on the map.
+            </DialogDescription>
+          </DialogHeader>
+          <Map address={venue.address} city={venue.city} state={venue.state} />
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="secondary">Close</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
-};
-
-export default VenueDetails;
+}

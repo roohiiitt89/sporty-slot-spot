@@ -110,6 +110,8 @@ export function TournamentDetailsPage() {
     );
   }
 
+  const registrationCount = tournament?.registration_count || 0;
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container px-4 py-12">
@@ -223,7 +225,7 @@ export function TournamentDetailsPage() {
                     <h3 className="font-medium">Participants</h3>
                   </div>
                   <p className="text-muted-foreground">
-                    {tournament.registration_count} / {tournament.max_participants} registered
+                    {registrationCount} / {tournament.max_participants} registered
                   </p>
                 </div>
                 
