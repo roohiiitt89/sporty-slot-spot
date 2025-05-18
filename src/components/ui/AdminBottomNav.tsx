@@ -59,9 +59,16 @@ const AdminBottomNav: React.FC = () => {
   // Only show on mobile
   if (typeof window === 'undefined' || window.innerWidth > 768) return null;
 
-  // Function to toggle section expansion
-  const toggleSection = (sectionId: string) => {
-    setExpandedSection(expandedSection === sectionId ? null : sectionId);
+  // Function to handle section click
+  const handleSectionClick = (sectionId: string, path: string) => {
+    if (expandedSection === sectionId) {
+      // If already expanded, collapse it
+      setExpandedSection(null);
+    } else {
+      // If not expanded, expand it and navigate to the main section path
+      setExpandedSection(sectionId);
+      navigate(path);
+    }
   };
 
   // Function to determine if a navigation item is active
@@ -111,7 +118,7 @@ const AdminBottomNav: React.FC = () => {
             >
               <button 
                 className="flex flex-col items-center w-full"
-                onClick={() => toggleSection(section.id)}
+                onClick={() => handleSectionClick(section.id, section.path)}
               >
                 <span className="text-xl flex items-center justify-center transition-all">
                   {section.icon}

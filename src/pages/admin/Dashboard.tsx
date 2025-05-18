@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // Admin pages
 import VenueManagement from './VenueManagement';
@@ -99,7 +100,7 @@ const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [adminVenues, setAdminVenues] = useState<Array<{ venue_id: string }>>([]);
   const [profileOpen, setProfileOpen] = useState(false);
-  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const fetchUserRoleAndVenues = async () => {

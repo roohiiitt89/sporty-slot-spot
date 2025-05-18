@@ -36,12 +36,13 @@ import ScrollToTopOnMobile from "@/components/ScrollToTopOnMobile";
 import NotificationBell from './components/NotificationBell';
 import { HelmetProvider } from 'react-helmet-async';
 import AdminRedirector from './components/AdminRedirector';
+import { useIsMobile } from './hooks/use-mobile';
 
 const queryClient = new QueryClient();
 
 const App = () => {
   const [chatActive, setChatActive] = useState(false);
-  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+  const isMobile = useIsMobile();
 
   const handleChatClick = () => setChatActive((prev) => !prev);
 
