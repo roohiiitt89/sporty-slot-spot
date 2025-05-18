@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { BarChart2, Calendar, Settings, MoreHorizontal, ChevronDown, ChevronUp } from 'lucide-react';
 
 // Define the main navigation sections and their subsections
@@ -53,6 +53,7 @@ const navSections = [
 
 const AdminBottomNav: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   
   // Only show on mobile
