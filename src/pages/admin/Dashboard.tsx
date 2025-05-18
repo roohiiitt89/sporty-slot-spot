@@ -148,8 +148,8 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  // Function to determine if mobile navigation should be hidden
-  const shouldHideMobileNav = () => {
+  // Function to determine if sidebar should be hidden on mobile
+  const shouldHideSidebar = () => {
     return isMobile;
   };
 
@@ -220,7 +220,7 @@ const Dashboard: React.FC = () => {
       <div className="container mx-auto px-4 py-4">
         <div className="flex flex-col md:flex-row gap-6">
           {/* Sidebar - Hide on mobile */}
-          {!shouldHideMobileNav() && (
+          {!shouldHideSidebar() && (
             <div className="w-full md:w-1/5">
               <div className="bg-white rounded-lg shadow-sm p-4">
                 <h2 className="font-bold text-xl mb-4 text-navy-dark border-b pb-2">
@@ -259,7 +259,7 @@ const Dashboard: React.FC = () => {
           )}
 
           {/* Main Content */}
-          <div className={`w-full ${!shouldHideMobileNav() ? 'md:w-4/5' : ''}`}>
+          <div className={`w-full ${!shouldHideSidebar() ? 'md:w-4/5' : ''}`}>
             <div className="bg-white rounded-lg shadow-sm p-6">
               <Routes>
                 <Route path="/" element={<AnalyticsDashboard />} />
@@ -295,8 +295,8 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Add some bottom padding to ensure the mobile nav doesn't cover content */}
-      {isMobile && <div className="h-24"></div>}
+      {/* Add bottom padding to ensure the mobile nav doesn't cover content */}
+      {isMobile && <div className="h-32"></div>}
     </div>
   );
 };

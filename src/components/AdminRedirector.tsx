@@ -11,22 +11,23 @@ const AdminRedirector = () => {
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    // Only redirect on non-mobile devices or if explicitly on the root path
     if (user && (userRole === 'admin' || userRole === 'super_admin')) {
-      // For mobile users, send to analytics page
-      if (isMobile && location.pathname === '/') {
-        navigate('/admin/analytics', { replace: true });
+      // Only redirect if we're on the root path or the /admin path
+      if (location.pathname === '/') {
+        // For mobile, send to analytics page
+        if (isMobile) {
+          navigate('/admin/analytics', { replace: true });
+        } else {
+          // For desktop, send to admin dashboard
+          navigate('/admin', { replace: true });
+        }
       } 
       // For mobile users, when directly accessing /admin
       else if (isMobile && location.pathname === '/admin') {
         navigate('/admin/analytics', { replace: true });
       }
-      // For desktop users, maintain existing behavior
-      else if (!isMobile && !location.pathname.startsWith('/admin')) {
-        navigate('/admin', { replace: true });
-      }
     }
-  }, [user, userRole, location, navigate, isMobile]);
+  }, [user, userRole, location.pathname, navigate, isMobile]);
 
   return null;
 };

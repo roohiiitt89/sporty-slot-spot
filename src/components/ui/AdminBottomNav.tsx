@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { BarChart2, Calendar, Settings, MoreHorizontal, ChevronDown, ChevronUp } from 'lucide-react';
 
@@ -55,9 +55,33 @@ const AdminBottomNav: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
+  
+  useEffect(() => {
+    // Set initial mobile state
+    const checkMobile = () => {
+      setIsMobileViewport(window.innerWidth < 768);
+    };
+    
+    // Check on mount and add resize listener
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    // Find active section based on current path and expand it on mount
+    const currentSection = navSections.find(section => 
+      location.pathname.startsWith(section.path) || 
+      section.subSections.some(subSection => location.pathname === subSection.path)
+    );
+    
+    if (currentSection) {
+      setExpandedSection(currentSection.id);
+    }
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, [location.pathname]);
   
   // Only show on mobile
-  if (typeof window === 'undefined' || window.innerWidth > 768) return null;
+  if (!isMobileViewport) return null;
 
   // Function to handle section click
   const handleSectionClick = (sectionId: string, path: string) => {
@@ -109,29 +133,25 @@ const AdminBottomNav: React.FC = () => {
             key={section.id} 
             className="flex-1"
           >
-            <div 
-              className={`flex flex-col items-center justify-center py-1 px-1 transition-all ${
+            <button 
+              className={`flex flex-col items-center justify-center w-full py-1 px-1 transition-all ${
                 isActiveSection(section.path)
                   ? 'text-indigo-light'
                   : 'text-white'
               }`}
+              onClick={() => handleSectionClick(section.id, section.path)}
             >
-              <button 
-                className="flex flex-col items-center w-full"
-                onClick={() => handleSectionClick(section.id, section.path)}
-              >
-                <span className="text-xl flex items-center justify-center transition-all">
-                  {section.icon}
-                </span>
-                <span className="text-xs mt-0.5 font-semibold">
-                  {section.label}
-                </span>
-                {expandedSection === section.id ? 
-                  <ChevronUp className="w-4 h-4 mt-1" /> : 
-                  <ChevronDown className="w-4 h-4 mt-1" />
-                }
-              </button>
-            </div>
+              <span className="text-xl flex items-center justify-center transition-all">
+                {section.icon}
+              </span>
+              <span className="text-xs mt-0.5 font-semibold">
+                {section.label}
+              </span>
+              {expandedSection === section.id ? 
+                <ChevronUp className="w-4 h-4 mt-1" /> : 
+                <ChevronDown className="w-4 h-4 mt-1" />
+              }
+            </button>
           </div>
         ))}
       </nav>

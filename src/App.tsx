@@ -48,7 +48,7 @@ const App = () => {
 
   // Check if current route is admin
   const AppContent = () => {
-    const { userRole } = useAuth();
+    const { user, userRole } = useAuth();
     const isAdminUser = userRole === 'admin' || userRole === 'super_admin';
     
     return (
