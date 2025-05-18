@@ -23,21 +23,15 @@ const BottomNav: React.FC<{ onChatClick?: () => void; chatActive?: boolean; setC
   };
 
   return (
-    <nav className="fixed bottom-3 left-1/2 -translate-x-1/2 z-50 w-[90vw] max-w-sm rounded-xl bg-gradient-to-t from-black/70 via-navy-light/80 to-transparent backdrop-blur-md border border-navy/40 shadow-xl flex justify-between items-end px-1.5 py-1.5 md:hidden transition-all duration-300">
+    <nav className="fixed bottom-3 left-1/2 -translate-x-1/2 z-50 w-[90vw] max-w-sm rounded-xl bg-navy-light/80 backdrop-blur-md border border-navy/40 flex justify-between items-end px-1.5 py-1.5 shadow-xl md:hidden transition-all duration-300">
       {navItems.map((item, idx) => (
         <Link
           key={item.to}
           to={item.to}
-          className={`flex-1 flex flex-col items-center justify-center py-1 transition-all duration-200 rounded-lg mx-0.5 group
-            ${location.pathname === item.to
-              ? 'text-emerald-400 scale-110 bg-emerald-900/10 shadow-lg'
-              : 'text-white hover:bg-emerald-400/80 hover:scale-105'}
-          `}
+          className={`flex-1 flex flex-col items-center justify-center py-1 transition-all duration-200 rounded-lg mx-0.5 group ${location.pathname === item.to ? 'text-indigo-light scale-110 bg-indigo/10 shadow-lg' : 'text-white hover:bg-navy/40 hover:scale-105'} `}
           onClick={() => handleNavClick(item.to)}
         >
-          <span className={`text-xl flex items-center justify-center align-middle transition-all duration-200
-            group-hover:scale-125 group-hover:text-emerald-400
-            ${location.pathname === item.to ? 'text-emerald-400 scale-125' : ''}`}
+          <span className={`text-xl flex items-center justify-center align-middle transition-all duration-200 group-hover:scale-125 group-hover:text-emerald-400 ${location.pathname === item.to ? 'text-indigo-light scale-125' : ''}`}
             style={{ minHeight: 24, minWidth: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {item.icon}
           </span>
