@@ -36,25 +36,24 @@ import ScrollToTopOnMobile from "@/components/ScrollToTopOnMobile";
 import NotificationBell from './components/NotificationBell';
 import { HelmetProvider } from 'react-helmet-async';
 import AdminRedirector from './components/AdminRedirector';
-import { useIsMobile } from './hooks/use-mobile';
 
 const queryClient = new QueryClient();
 
 const App = () => {
   const [chatActive, setChatActive] = useState(false);
-  const isMobile = useIsMobile();
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
 
   const handleChatClick = () => setChatActive((prev) => !prev);
 
   // Check if current route is admin
   const AppContent = () => {
-    const { user, userRole } = useAuth();
+    const { userRole } = useAuth();
     const isAdminUser = userRole === 'admin' || userRole === 'super_admin';
     
     return (
       <>
         <ScrollToTopOnMobile />
-        {isMobile && !isAdminUser && <NotificationBell />}
+        {isMobile && <NotificationBell />}
         <AdminRedirector />
         <Routes>
           {/* Public routes */}
@@ -76,27 +75,6 @@ const App = () => {
           {/* Admin routes - accessible to both admin and super_admin */}
           <Route element={<RouteGuard requireAuth={true} requiredRole="admin" adminOnly={true} />}>
             <Route path="/admin" element={<AdminHome />} />
-            
-            {/* Main admin sections */}
-            <Route path="/admin/analytics" element={<AdminDashboard />} />
-            <Route path="/admin/analytics/booking-trends" element={<AdminDashboard />} />
-            <Route path="/admin/analytics/popular-sports" element={<AdminDashboard />} />
-            <Route path="/admin/analytics/peak-hours" element={<AdminDashboard />} />
-            <Route path="/admin/analytics/recent-bookings" element={<AdminDashboard />} />
-            
-            <Route path="/admin/bookings" element={<AdminDashboard />} />
-            <Route path="/admin/bookings/new" element={<AdminDashboard />} />
-            <Route path="/admin/bookings/block" element={<AdminDashboard />} />
-            
-            <Route path="/admin/venues" element={<AdminDashboard />} />
-            <Route path="/admin/sports" element={<AdminDashboard />} />
-            <Route path="/admin/manage" element={<AdminDashboard />} />
-            
-            <Route path="/admin/reviews" element={<AdminDashboard />} />
-            <Route path="/admin/messages" element={<AdminDashboard />} />
-            <Route path="/admin/help-requests" element={<AdminDashboard />} />
-            <Route path="/admin/more" element={<AdminDashboard />} />
-            
             <Route path="/admin/*" element={<AdminDashboard />} />
           </Route>
 
@@ -130,10 +108,10 @@ const App = () => {
 
         {/* Show appropriate bottom nav based on user role and if chat is not active */}
         {(!chatActive || !isMobile) && (
-          isMobile && isAdminUser ? (
+          isMobile && isAdminUser && window.location.pathname.includes('/admin') ? (
             <AdminBottomNav />
           ) : (
-            isMobile && !isAdminUser && <BottomNav onChatClick={handleChatClick} chatActive={chatActive} setChatActive={setChatActive} />
+            <BottomNav onChatClick={handleChatClick} chatActive={chatActive} setChatActive={setChatActive} />
           )
         )}
       </>

@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
@@ -17,15 +16,10 @@ import {
   Star, 
   HelpCircle,
   UserCircle,
-  LogOut,
-  TrendingUp,
-  Award,
-  Clock,
-  ListChecks
+  LogOut
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { useIsMobile } from '@/hooks/use-mobile';
 
 // Admin pages
 import VenueManagement from './VenueManagement';
@@ -39,60 +33,6 @@ import MessageManagement from './MessageManagement';
 import ReviewManagement from './ReviewManagement';
 import HelpRequestsManagement from './HelpRequestsManagement';
 
-// Define specific analytics sections
-const BookingTrends = () => <div className="p-4"><h2 className="text-xl font-bold mb-4">Booking Trends</h2><p>Booking trends analysis content will appear here.</p></div>;
-const PopularSports = () => <div className="p-4"><h2 className="text-xl font-bold mb-4">Popular Sports</h2><p>Popular sports analytics content will appear here.</p></div>;
-const PeakHours = () => <div className="p-4"><h2 className="text-xl font-bold mb-4">Peak Hours</h2><p>Peak hours analysis content will appear here.</p></div>;
-const RecentBookings = () => <div className="p-4"><h2 className="text-xl font-bold mb-4">Recent Bookings</h2><p>Recent bookings list will appear here.</p></div>;
-
-// Define booking management sections
-const BookForCustomer = () => <div className="p-4"><h2 className="text-xl font-bold mb-4">Book for Customer</h2><p>Create new booking for customers here.</p></div>;
-const BlockTimeSlots = () => <div className="p-4"><h2 className="text-xl font-bold mb-4">Block Time Slots</h2><p>Block time slots on the calendar here.</p></div>;
-
-// More section page
-const MoreSection = () => {
-  const navigate = useNavigate();
-  return (
-    <div className="p-4">
-      <h2 className="text-xl font-bold mb-4">More Options</h2>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Button variant="outline" className="p-4 h-auto flex flex-col items-center" onClick={() => navigate('/admin/reviews')}>
-          <Star className="h-8 w-8 mb-2" />
-          <span>Reviews</span>
-        </Button>
-        <Button variant="outline" className="p-4 h-auto flex flex-col items-center" onClick={() => navigate('/admin/messages')}>
-          <MessageCircle className="h-8 w-8 mb-2" />
-          <span>Messages</span>
-        </Button>
-        <Button variant="outline" className="p-4 h-auto flex flex-col items-center" onClick={() => navigate('/admin/help-requests')}>
-          <HelpCircle className="h-8 w-8 mb-2" />
-          <span>Help Desk</span>
-        </Button>
-      </div>
-    </div>
-  );
-};
-
-// Manage section page
-const ManageSection = () => {
-  const navigate = useNavigate();
-  return (
-    <div className="p-4">
-      <h2 className="text-xl font-bold mb-4">Manage</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Button variant="outline" className="p-4 h-auto flex flex-col items-center" onClick={() => navigate('/admin/venues')}>
-          <Map className="h-8 w-8 mb-2" />
-          <span>Venues</span>
-        </Button>
-        <Button variant="outline" className="p-4 h-auto flex flex-col items-center" onClick={() => navigate('/admin/sports')}>
-          <Dumbbell className="h-8 w-8 mb-2" />
-          <span>Sports</span>
-        </Button>
-      </div>
-    </div>
-  );
-};
-
 const Dashboard: React.FC = () => {
   const { user, userRole, signOut } = useAuth();
   const location = useLocation();
@@ -100,7 +40,6 @@ const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [adminVenues, setAdminVenues] = useState<Array<{ venue_id: string }>>([]);
   const [profileOpen, setProfileOpen] = useState(false);
-  const isMobile = useIsMobile();
 
   useEffect(() => {
     const fetchUserRoleAndVenues = async () => {
@@ -146,11 +85,6 @@ const Dashboard: React.FC = () => {
         variant: "destructive",
       });
     }
-  };
-
-  // Function to determine if sidebar should be hidden on mobile
-  const shouldHideSidebar = () => {
-    return isMobile;
   };
 
   if (loading) {
@@ -219,84 +153,133 @@ const Dashboard: React.FC = () => {
       
       <div className="container mx-auto px-4 py-4">
         <div className="flex flex-col md:flex-row gap-6">
-          {/* Sidebar - Hide on mobile */}
-          {!shouldHideSidebar() && (
-            <div className="w-full md:w-1/5">
-              <div className="bg-white rounded-lg shadow-sm p-4">
-                <h2 className="font-bold text-xl mb-4 text-navy-dark border-b pb-2">
-                  {userRole === 'super_admin' ? 'Super Admin Dashboard' : 'Venue Admin Dashboard'}
-                </h2>
-                <nav className="space-y-1">
-                  {navItems.map((item) => {
-                    // For regular admins, hide certain options
-                    if (userRole === 'admin' && (item.path === '/admin/sports')) {
-                      return null;
-                    }
-                    
-                    const isActive = 
-                      item.exact 
-                        ? location.pathname === item.path
-                        : location.pathname.startsWith(item.path);
-                    
-                    return (
-                      <Link
-                        key={item.path}
-                        to={item.path}
-                        className={`block px-4 py-2 rounded-md flex items-center transition-colors ${
-                          isActive
-                            ? 'bg-indigo text-white'
-                            : 'hover:bg-slate-light'
-                        }`}
-                      >
-                        {item.icon}
-                        {item.title}
-                      </Link>
-                    );
-                  })}
-                </nav>
-              </div>
+          {/* Sidebar */}
+          <div className="w-full md:w-1/5">
+            <div className="bg-white rounded-lg shadow-sm p-4">
+              <h2 className="font-bold text-xl mb-4 text-navy-dark border-b pb-2">
+                {userRole === 'super_admin' ? 'Super Admin Dashboard' : 'Venue Admin Dashboard'}
+              </h2>
+              <nav className="space-y-1">
+                {navItems.map((item) => {
+                  // For regular admins, hide certain options
+                  if (userRole === 'admin' && (item.path === '/admin/sports')) {
+                    return null;
+                  }
+                  
+                  const isActive = 
+                    item.exact 
+                      ? location.pathname === item.path
+                      : location.pathname.startsWith(item.path);
+                  
+                  return (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      className={`block px-4 py-2 rounded-md flex items-center transition-colors ${
+                        isActive
+                          ? 'bg-indigo text-white'
+                          : 'hover:bg-slate-light'
+                      }`}
+                    >
+                      {item.icon}
+                      {item.title}
+                    </Link>
+                  );
+                })}
+              </nav>
             </div>
-          )}
+          </div>
 
           {/* Main Content */}
-          <div className={`w-full ${!shouldHideSidebar() ? 'md:w-4/5' : ''}`}>
+          <div className="w-full md:w-4/5">
             <div className="bg-white rounded-lg shadow-sm p-6">
               <Routes>
-                <Route path="/" element={<AnalyticsDashboard />} />
-                
-                {/* Analytics Routes */}
-                <Route path="/analytics" element={<AnalyticsDashboard />} />
-                <Route path="/analytics/booking-trends" element={<BookingTrends />} />
-                <Route path="/analytics/popular-sports" element={<PopularSports />} />
-                <Route path="/analytics/peak-hours" element={<PeakHours />} />
-                <Route path="/analytics/recent-bookings" element={<RecentBookings />} />
-                
-                {/* Bookings Routes */}
-                <Route path="/bookings" element={<BookingManagement userRole={userRole} adminVenues={adminVenues} />} />
-                <Route path="/bookings/new" element={<BookForCustomer />} />
-                <Route path="/bookings/block" element={<BlockTimeSlots />} />
-                
-                {/* Manage Routes */}
+                <Route
+                  path="/"
+                  element={
+                    <div className="space-y-6">
+                      <h1 className="text-2xl font-bold text-navy-dark">
+                        {userRole === 'super_admin' 
+                          ? 'Welcome to Super Admin Dashboard' 
+                          : 'Welcome to Venue Admin Dashboard'}
+                      </h1>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {userRole === 'super_admin' ? (
+                          // Show all options for super admin
+                          navItems.slice(1).map((item) => (
+                            <Link
+                              key={item.path}
+                              to={item.path}
+                              className="bg-white border border-slate-light rounded-lg p-6 hover:shadow-md transition-shadow flex flex-col items-center text-center"
+                            >
+                              <div className="w-12 h-12 bg-indigo-light rounded-full flex items-center justify-center text-indigo mb-4">
+                                {item.icon}
+                              </div>
+                              <h3 className="text-lg font-semibold mb-1">{item.title}</h3>
+                              <p className="text-navy text-sm">Manage {item.title.toLowerCase()}</p>
+                            </Link>
+                          ))
+                        ) : (
+                          // Only show relevant options for venue admin
+                          navItems.slice(1)
+                            .filter(item => item.path !== '/admin/sports' && item.path !== '/admin/help-requests')
+                            .map((item) => (
+                              <Link
+                                key={item.path}
+                                to={item.path}
+                                className="bg-white border border-slate-light rounded-lg p-6 hover:shadow-md transition-shadow flex flex-col items-center text-center"
+                              >
+                                <div className="w-12 h-12 bg-indigo-light rounded-full flex items-center justify-center text-indigo mb-4">
+                                  {item.icon}
+                                </div>
+                                <h3 className="text-lg font-semibold mb-1">{item.title}</h3>
+                                <p className="text-navy text-sm">
+                                  {item.path === '/admin/venues' 
+                                    ? 'View your venues' 
+                                    : `Manage ${item.title.toLowerCase()}`}
+                                </p>
+                              </Link>
+                            ))
+                        )}
+                      </div>
+                      
+                      <div className="mt-8 p-4 bg-blue-50 rounded-lg border border-blue-200 flex items-start">
+                        <Info className="text-blue-500 mr-3 mt-1" />
+                        <div>
+                          <h3 className="font-semibold text-blue-800 mb-1">
+                            {userRole === 'super_admin' ? 'Super Administrator Access' : 'Venue Administrator Access'}
+                          </h3>
+                          <p className="text-blue-700 text-sm">
+                            {userRole === 'super_admin' 
+                              ? 'As a super administrator, you have full access to manage all venues, sports, courts, and bookings across the platform.'
+                              : `As a venue administrator, you can manage bookings and courts for your assigned venues.`}
+                          </p>
+                          {userRole === 'admin' && adminVenues.length > 0 && (
+                            <p className="text-blue-700 text-sm mt-2">
+                              You are managing {adminVenues.length} venue{adminVenues.length !== 1 ? 's' : ''}.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  }
+                />
                 <Route path="/venues" element={<VenueManagement userRole={userRole} adminVenues={adminVenues} />} />
                 <Route path="/sports" element={<SportManagement userRole={userRole} />} />
                 <Route path="/courts" element={<CourtManagement userRole={userRole} adminVenues={adminVenues} />} />
-                <Route path="/manage" element={<ManageSection />} />
-                
-                {/* More Routes */}
+                <Route path="/bookings" element={<BookingManagement userRole={userRole} adminVenues={adminVenues} />} />
                 <Route path="/template-slots" element={<TemplateSlotManagement userRole={userRole} adminVenues={adminVenues} />} />
                 <Route path="/sport-display-names" element={<SportDisplayNames userRole={userRole} adminVenues={adminVenues} />} />
-                <Route path="/reviews" element={<ReviewManagement userRole={userRole} adminVenues={adminVenues} />} />
+                <Route path="/analytics" element={<AnalyticsDashboard />} />
                 <Route path="/messages" element={<MessageManagement userRole={userRole} adminVenues={adminVenues} />} />
+                <Route path="/reviews" element={<ReviewManagement userRole={userRole} adminVenues={adminVenues} />} />
                 <Route path="/help-requests" element={<HelpRequestsManagement userRole={userRole} />} />
-                <Route path="/more" element={<MoreSection />} />
               </Routes>
             </div>
           </div>
         </div>
       </div>
-
-      {/* Add bottom padding to ensure the mobile nav doesn't cover content */}
-      {isMobile && <div className="h-32"></div>}
     </div>
   );
 };
