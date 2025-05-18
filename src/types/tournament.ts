@@ -23,12 +23,6 @@ export interface Tournament {
   is_approved: boolean;
 }
 
-export interface TournamentWithDetails extends Tournament {
-  // Additional properties for detailed tournament view
-  registration_count?: number;
-  // Any other properties needed for TournamentWithDetails
-}
-
 export interface TournamentRegistration {
   id: string;
   tournament_id: string;
