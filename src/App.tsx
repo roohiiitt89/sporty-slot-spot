@@ -2,8 +2,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "./context/AuthContext";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import { RouteGuard } from "./components/RouteGuard";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
@@ -25,13 +25,14 @@ import Help from "./pages/Help";
 import Contact from "./pages/Contact";
 import Privacy from "./pages/Privacy";
 import BottomNav from "./components/ui/BottomNav";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { TournamentDashboard } from "./pages/tournament/TournamentDashboard";
 import { TournamentDetailsPage } from "./pages/tournament/TournamentDetailsPage";
 import { HostTournamentPage } from "./pages/tournament/HostTournamentPage";
 import MorePage from "./pages/MorePage";
 import ScrollToTopOnMobile from "@/components/ScrollToTopOnMobile";
 import NotificationBell from './components/NotificationBell';
+import { HelmetProvider } from 'react-helmet-async';
 
 const queryClient = new QueryClient();
 
@@ -39,75 +40,89 @@ const App = () => {
   const [chatActive, setChatActive] = useState(false);
   const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
 
+  // Admin redirect logic
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { user, userRole } = useAuth();
+  useEffect(() => {
+    if (user && (userRole === 'admin' || userRole === 'super_admin')) {
+      if (!location.pathname.startsWith('/admin')) {
+        navigate('/admin#dashboard', { replace: true });
+      }
+    }
+  }, [user, userRole, location, navigate]);
+
   const handleChatClick = () => setChatActive((prev) => !prev);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AuthProvider>
-            <ScrollToTopOnMobile />
-            {/* Always show NotificationBell at top level on mobile */}
-            {isMobile && <NotificationBell />}
-            <Routes>
-              {/* Public routes */}
-              <Route element={<RouteGuard requireAuth={false} />}>
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                <Route path="/verify-email" element={<VerifyEmail />} />
-              </Route>
+    <HelmetProvider>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AuthProvider>
+              <ScrollToTopOnMobile />
+              <Routes>
+                {/* Public routes */}
+                <Route element={<RouteGuard requireAuth={false} />}>
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/register" element={<Register />} />
+                  <Route path="/verify-email" element={<VerifyEmail />} />
+                </Route>
 
-              {/* Protected routes - only for normal users */}
-              <Route element={<RouteGuard requireAuth={true} adminOnly={false} />}>
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/bookings" element={<Bookings />} />
-                <Route path="/challenge" element={<ChallengeDashboard />} />
-                <Route path="/team/:slug" element={<TeamDetails />} />
-                <Route path="/more" element={<MorePage />} />
-              </Route>
+                {/* Protected routes - only for normal users */}
+                <Route element={<RouteGuard requireAuth={true} adminOnly={false} />}>
+                  <Route path="/profile" element={<Profile />} />
+                  <Route path="/bookings" element={<Bookings />} />
+                  <Route path="/challenge" element={<ChallengeDashboard />} />
+                  <Route path="/team/:slug" element={<TeamDetails />} />
+                  <Route path="/more" element={<MorePage />} />
+                </Route>
+                
+                {/* Admin routes - accessible to both admin and super_admin */}
+                <Route element={<RouteGuard requireAuth={true} requiredRole="admin" adminOnly={true} />}>
+                  <Route path="/admin" element={<AdminHome />} />
+                  <Route path="/admin/*" element={<AdminDashboard />} />
+                </Route>
+
+                {/* Tournament routes */}
+                {/* Public: View tournaments and details */}
+                <Route path="/tournaments" element={<TournamentDashboard />} />
+                <Route path="/tournaments/:slug" element={<TournamentDetailsPage />} />
+                {/* Protected: Only logged-in users can host */}
+                <Route element={<RouteGuard requireAuth={true} adminOnly={false} />}>
+                  <Route path="/tournaments/host" element={<HostTournamentPage />} />
+                </Route>
+
+                {/* Root path and content routes - also protected from admin access via RouteGuard logic */}
+                <Route path="/" element={<Index />} />
+                <Route path="/venues" element={<Venues />} />
+                <Route path="/venues/:id" element={<VenueDetails />} />
+                <Route path="/sports" element={<Sports />} />
+                <Route path="/faq" element={<Faq3Demo />} />
+                <Route path="/help" element={<Help />} />
+                <Route path="/contact" element={<Contact />} />
+                <Route path="/privacy" element={<Privacy />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
               
-              {/* Admin routes - accessible to both admin and super_admin */}
-              <Route element={<RouteGuard requireAuth={true} requiredRole="admin" adminOnly={true} />}>
-                <Route path="/admin" element={<AdminHome />} />
-                <Route path="/admin/*" element={<AdminDashboard />} />
-              </Route>
-
-              {/* Tournament routes */}
-              {/* Public: View tournaments and details */}
-              <Route path="/tournaments" element={<TournamentDashboard />} />
-              <Route path="/tournaments/:slug" element={<TournamentDetailsPage />} />
-              {/* Protected: Only logged-in users can host */}
-              <Route element={<RouteGuard requireAuth={true} adminOnly={false} />}>
-                <Route path="/tournaments/host" element={<HostTournamentPage />} />
-              </Route>
-
-              {/* Root path and content routes - also protected from admin access via RouteGuard logic */}
-              <Route path="/" element={<Index />} />
-              <Route path="/venues" element={<Venues />} />
-              <Route path="/venues/:id" element={<VenueDetails />} />
-              <Route path="/sports" element={<Sports />} />
-              <Route path="/faq" element={<Faq3Demo />} />
-              <Route path="/help" element={<Help />} />
-              <Route path="/contact" element={<Contact />} />
-              <Route path="/privacy" element={<Privacy />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-            
-            {/* Always mount the chat widget on mobile, but control visibility with isOpen */}
-            {isMobile ? (
-              <NewAIChatWidget isOpen={chatActive} setIsOpen={setChatActive} />
-            ) : (
-              <NewAIChatWidget />
-            )}
-            {(!chatActive || !isMobile) && (
-              <BottomNav onChatClick={handleChatClick} chatActive={chatActive} setChatActive={setChatActive} />
-            )}
-          </AuthProvider>
-        </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
+              {/* Always mount the chat widget on mobile, but control visibility with isOpen */}
+              {isMobile ? (
+                <NewAIChatWidget isOpen={chatActive} setIsOpen={setChatActive} />
+              ) : (
+                <NewAIChatWidget />
+              )}
+              {(!chatActive || !isMobile) && (
+                <BottomNav onChatClick={handleChatClick} chatActive={chatActive} setChatActive={setChatActive} />
+              )}
+              {/* Always show NotificationBell at top level on mobile, after AuthProvider so user context is available */}
+              {isMobile && <NotificationBell />}
+            </AuthProvider>
+          </BrowserRouter>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </HelmetProvider>
   );
 };
 
