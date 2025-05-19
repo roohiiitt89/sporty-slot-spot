@@ -27,10 +27,10 @@ const BookSlotModalWrapper: React.FC<BookSlotModalWrapperProps> = ({
   venueId,
   sportId
 }) => {
-  // This wrapper converts 'open' to 'isOpen' for BookSlotModal
+  // Since BookSlotModal expects 'open', we pass it through directly
   return (
     <BookSlotModal
-      isOpen={open} // Changed from 'open' to 'isOpen'
+      open={open}
       onOpenChange={onOpenChange}
       selectedDate={selectedDate}
       selectedCourt={selectedCourt}

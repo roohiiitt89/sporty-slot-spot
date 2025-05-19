@@ -40,6 +40,42 @@ const RealTimeAvailabilityTab: React.FC<RealTimeAvailabilityTabProps> = ({
   const [allowCashPayments, setAllowCashPayments] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [availableCourts, setAvailableCourts] = useState<Array<{ id: string; name: string }>>(courts);
+  
+  // Fetch courts if none are provided
+  useEffect(() => {
+    const fetchCourts = async () => {
+      if (!venueId || courts.length > 0) return;
+      
+      try {
+        setIsLoading(true);
+        const { data, error } = await supabase
+          .from('courts')
+          .select('id, name')
+          .eq('venue_id', venueId)
+          .eq('is_active', true);
+          
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          setAvailableCourts(data);
+          setSelectedCourtId(data[0].id);
+          setSelectedCourtName(data[0].name);
+        }
+      } catch (err) {
+        console.error('Error fetching courts:', err);
+        toast({
+          title: "Error",
+          description: "Failed to load courts. Please try again.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchCourts();
+  }, [venueId, courts]);
   
   // Use useCallback to prevent recreation of these functions on each render
   const fetchCourtDetails = useCallback(async (courtId: string) => {
@@ -169,7 +205,8 @@ const RealTimeAvailabilityTab: React.FC<RealTimeAvailabilityTabProps> = ({
 
   // Handle court selection
   const handleCourtSelect = (courtId: string) => {
-    const court = courts.find(c => c.id === courtId);
+    const courtsToUse = courts.length > 0 ? courts : availableCourts;
+    const court = courtsToUse.find(c => c.id === courtId);
     if (court) {
       setSelectedCourtId(courtId);
       setSelectedCourtName(court.name);
@@ -188,7 +225,18 @@ const RealTimeAvailabilityTab: React.FC<RealTimeAvailabilityTabProps> = ({
     setTimeout(() => setIsRefreshing(false), 100);
   };
 
-  if (!courts || courts.length === 0) {
+  const courtsToDisplay = courts.length > 0 ? courts : availableCourts;
+
+  if (isLoading && courtsToDisplay.length === 0) {
+    return (
+      <div className="text-center py-12 bg-gray-50 rounded-lg">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-sport-green mx-auto mb-4"></div>
+        <p className="text-gray-600">Loading courts...</p>
+      </div>
+    );
+  }
+
+  if (courtsToDisplay.length === 0) {
     return (
       <div className="text-center py-12 bg-gray-50 rounded-lg">
         <p className="text-gray-600">No courts available for this venue</p>
@@ -228,7 +276,7 @@ const RealTimeAvailabilityTab: React.FC<RealTimeAvailabilityTabProps> = ({
           
           {/* Court Selector */}
           <div className="flex flex-wrap gap-2">
-            {courts.map(court => (
+            {courtsToDisplay.map(court => (
               <Button
                 key={court.id}
                 variant={selectedCourtId === court.id ? 'default' : 'outline'}
