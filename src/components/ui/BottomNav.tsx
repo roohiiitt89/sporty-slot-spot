@@ -12,11 +12,11 @@ const navItems = [
 ];
 
 const BottomNav: React.FC<{ onChatClick?: () => void; chatActive?: boolean; setChatActive?: (open: boolean) => void }> = ({ onChatClick, chatActive, setChatActive }) => {
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
   const location = useLocation();
 
-  // Only show on mobile and when logged in
-  if (!user || typeof window === 'undefined' || window.innerWidth > 768) return null;
+  // Only show on mobile and when logged in and NOT admin
+  if (!user || typeof window === 'undefined' || window.innerWidth > 768 || userRole === 'admin' || userRole === 'super_admin') return null;
 
   const handleNavClick = (to: string) => {
     if (setChatActive) setChatActive(false); // Close chat modal on nav
