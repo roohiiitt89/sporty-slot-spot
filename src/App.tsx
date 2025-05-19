@@ -83,7 +83,7 @@ const App = () => {
                 <Route path="/bookings" element={<Bookings />} />
                 <Route path="/challenge" element={<ChallengeDashboard />} />
                 <Route path="/team/:slug" element={<TeamDetails />} />
-                  <Route path="/more" element={<MorePage />} />
+                <Route path="/more" element={<MorePage />} />
               </Route>
               
               {/* Admin routes - accessible to both admin and super_admin */}
@@ -92,27 +92,30 @@ const App = () => {
                 <Route path="/admin/*" element={<AdminDashboard />} />
               </Route>
 
-              {/* Mobile analytics test routes */}
-              <Route path="/admin/analytics-mobile" element={<AnalyticsDashboard_Mobile />} />
-              <Route path="/admin/booking-trends-mobile" element={<BookingTrends_Mobile />} />
-              <Route path="/admin/popular-sports-mobile" element={<PopularSports_Mobile />} />
-              <Route path="/admin/peak-hours-mobile" element={<PeakHours_Mobile />} />
-              <Route path="/admin/recent-bookings-mobile" element={<RecentBookings_Mobile />} />
+              {/* Mobile admin routes */}
+              <Route element={<RouteGuard requireAuth={true} requiredRole="admin" adminOnly={true} />}>
+                {/* Mobile admin home */}
+                <Route path="/admin/mobile-home" element={<AdminHome_Mobile />} />
+                
+                {/* Mobile analytics routes */}
+                <Route path="/admin/analytics-mobile" element={<AnalyticsDashboard_Mobile />} />
+                <Route path="/admin/booking-trends-mobile" element={<BookingTrends_Mobile />} />
+                <Route path="/admin/popular-sports-mobile" element={<PopularSports_Mobile />} />
+                <Route path="/admin/peak-hours-mobile" element={<PeakHours_Mobile />} />
+                <Route path="/admin/recent-bookings-mobile" element={<RecentBookings_Mobile />} />
 
-              {/* Mobile bookings test routes */}
-              <Route path="/admin/bookings-mobile" element={<Bookings_Mobile />} />
-              <Route path="/admin/book-for-customer-mobile" element={<BookForCustomer_Mobile />} />
-              <Route path="/admin/block-time-slots-mobile" element={<BlockTimeSlots_Mobile />} />
+                {/* Mobile bookings routes */}
+                <Route path="/admin/bookings-mobile" element={<Bookings_Mobile />} />
+                <Route path="/admin/book-for-customer-mobile" element={<BookForCustomer_Mobile />} />
+                <Route path="/admin/block-time-slots-mobile" element={<BlockTimeSlots_Mobile />} />
 
-              {/* Mobile admin home test route */}
-              <Route path="/admin/mobile-home" element={<AdminHome_Mobile />} />
-
-              {/* Mobile admin section test routes */}
-              <Route path="/admin/venues-mobile" element={<VenueManagement_Mobile />} />
-              <Route path="/admin/sports-mobile" element={<SportManagement_Mobile />} />
-              <Route path="/admin/reviews-mobile" element={<ReviewManagement_Mobile />} />
-              <Route path="/admin/messages-mobile" element={<MessageManagement_Mobile />} />
-              <Route path="/admin/help-mobile" element={<HelpRequestsManagement_Mobile />} />
+                {/* Mobile admin section routes */}
+                <Route path="/admin/venues-mobile" element={<VenueManagement_Mobile />} />
+                <Route path="/admin/sports-mobile" element={<SportManagement_Mobile />} />
+                <Route path="/admin/reviews-mobile" element={<ReviewManagement_Mobile />} />
+                <Route path="/admin/messages-mobile" element={<MessageManagement_Mobile />} />
+                <Route path="/admin/help-mobile" element={<HelpRequestsManagement_Mobile />} />
+              </Route>
 
               {/* Tournament routes */}
               {/* Public: View tournaments and details */}
@@ -141,12 +144,12 @@ const App = () => {
             ) : (
               <NewAIChatWidget />
             )}
-              {(!chatActive || !isMobile) && (
-                <>
-                  <AdminBottomNav />
-                  <BottomNav onChatClick={handleChatClick} chatActive={chatActive} setChatActive={setChatActive} />
-                </>
-              )}
+            {(!chatActive || !isMobile) && (
+              <>
+                <AdminBottomNav />
+                <BottomNav onChatClick={handleChatClick} chatActive={chatActive} setChatActive={setChatActive} />
+              </>
+            )}
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
