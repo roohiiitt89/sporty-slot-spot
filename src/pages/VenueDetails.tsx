@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MapPin, Star, ArrowLeft, MessageCircle, Navigation, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -7,7 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useGeolocation, calculateDistance } from '@/hooks/use-geolocation';
 import { format } from 'date-fns';
 import Header from '../components/Header';
-import { BookSlotModal } from '../components/BookSlotModal';
+import BookSlotModal from '../components/BookSlotModal';
 import ChatModal from '../components/ChatModal';
 import { ReviewModal } from '@/components/ReviewModal';
 import { VenueReviews } from '@/components/VenueReviews';
