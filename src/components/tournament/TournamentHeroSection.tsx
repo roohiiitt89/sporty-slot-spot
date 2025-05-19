@@ -1,8 +1,13 @@
+
 import { motion } from "framer-motion";
 import { Trophy, Users, Medal, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-export function TournamentHeroSection() {
+interface TournamentHeroSectionProps {
+  onBookNowClick?: () => void;
+}
+
+export function TournamentHeroSection({ onBookNowClick }: TournamentHeroSectionProps = {}) {
   const navigate = useNavigate();
   return (
     <div className="relative bg-gradient-to-b from-primary to-primary/80 text-primary-foreground overflow-hidden">
@@ -68,12 +73,12 @@ export function TournamentHeroSection() {
               whileTap={{ scale: 0.95 }}
               whileHover={{ scale: 1.05 }}
               className="mt-2 md:mt-4 px-6 py-3 rounded-lg bg-yellow-400 text-navy font-bold shadow-lg text-base md:text-lg transition hover:bg-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-500"
-              onClick={() => {
+              onClick={onBookNowClick || (() => {
                 const el = document.getElementById('tournament-list');
                 if (el) {
                   el.scrollIntoView({ behavior: 'smooth' });
                 }
-              }}
+              })}
             >
               View Tournaments
             </motion.button>
