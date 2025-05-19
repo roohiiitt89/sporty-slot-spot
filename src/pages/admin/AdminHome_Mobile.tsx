@@ -1,9 +1,14 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
-import { BarChart, Calendar, Map, Users, Star, MessageCircle, HelpCircle, LogOut, ChevronRight } from 'lucide-react';
+import { 
+  BarChart, Calendar, Map, Users, Star, MessageCircle, 
+  HelpCircle, LogOut, ChevronRight, AlertCircle, Loader2 
+} from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { supabase } from '@/integrations/supabase/client';
+import { format } from 'date-fns';
 
 // Admin quick links with enhanced styling and organization
 const quickLinks = [
@@ -58,17 +63,178 @@ const quickLinks = [
   },
 ];
 
+interface QuickStats {
+  todayBookings: number;
+  averageRating: number;
+  occupancyRate: number;
+  isLoading: boolean;
+}
+
 const AdminHome_Mobile: React.FC = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const [stats, setStats] = useState<QuickStats>({
+    todayBookings: 0,
+    averageRating: 0,
+    occupancyRate: 0,
+    isLoading: true
+  });
+  const [adminVenues, setAdminVenues] = useState<Array<{ venue_id: string }>>([]);
   
   // If not on mobile, redirect to desktop admin
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isMobile) {
       navigate('/admin');
     }
   }, [isMobile, navigate]);
+
+  // Fetch admin venues first
+  useEffect(() => {
+    const fetchAdminVenues = async () => {
+      try {
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        if (!currentUser) return;
+
+        const { data: userData } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', currentUser.id)
+          .single();
+          
+        if (userData?.role === 'admin') {
+          // If admin, get their venues
+          const { data: venues } = await supabase.rpc('get_admin_venues');
+          setAdminVenues(venues || []);
+        } else if (userData?.role === 'super_admin') {
+          // Super admin has access to all venues, so we leave adminVenues empty
+          setAdminVenues([]);
+        }
+      } catch (error) {
+        console.error('Error fetching admin venues:', error);
+      }
+    };
+    fetchAdminVenues();
+  }, []);
+
+  // Fetch real dashboard metrics
+  useEffect(() => {
+    const fetchDashboardMetrics = async () => {
+      try {
+        // Set loading state
+        setStats(prev => ({ ...prev, isLoading: true }));
+
+        // Get today's date
+        const today = format(new Date(), 'yyyy-MM-dd');
+        
+        // Prepare venue filter for admin
+        let venueFilter = {};
+        if (adminVenues.length > 0) {
+          const venueIds = adminVenues.map(v => v.venue_id);
+          venueFilter = { venue_id: { in: venueIds } };
+        }
+
+        // 1. Fetch today's bookings count
+        const { data: todayBookings, error: bookingsError } = await supabase
+          .from('bookings')
+          .select('id', { count: 'exact' })
+          .eq('booking_date', today)
+          .in('status', ['confirmed', 'pending', 'completed'])
+          .match(venueFilter);
+          
+        if (bookingsError) throw bookingsError;
+        
+        // 2. Fetch average rating
+        const { data: ratingsData, error: ratingsError } = await supabase
+          .from('reviews')
+          .select('rating')
+          .match({ ...venueFilter, is_approved: true });
+          
+        if (ratingsError) throw ratingsError;
+        
+        const averageRating = ratingsData.length > 0 
+          ? ratingsData.reduce((acc, review) => acc + review.rating, 0) / ratingsData.length 
+          : 0;
+        
+        // 3. Calculate occupancy rate (simplified version)
+        // Here we'll check past 7 days bookings vs available slots
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const sevenDaysAgoStr = format(sevenDaysAgo, 'yyyy-MM-dd');
+        
+        const { data: recentBookingsCount, error: recentBookingsError } = await supabase
+          .from('bookings')
+          .select('id', { count: 'exact' })
+          .gte('booking_date', sevenDaysAgoStr)
+          .lte('booking_date', today)
+          .in('status', ['confirmed', 'completed'])
+          .match(venueFilter);
+          
+        if (recentBookingsError) throw recentBookingsError;
+        
+        // For simplicity, we'll use a target of 10 bookings per day per venue as "full capacity"
+        let venueCount = 1; // Default to 1 if no venues
+        if (adminVenues.length > 0) {
+          venueCount = adminVenues.length;
+        } else {
+          // For super admin, get total venue count
+          const { count, error: venueCountError } = await supabase
+            .from('venues')
+            .select('*', { count: 'exact' });
+            
+          if (!venueCountError && count !== null) {
+            venueCount = count;
+          }
+        }
+        
+        // Simplified occupancy calculation (adjust as needed for your business logic)
+        const targetBookings = venueCount * 10 * 7; // 10 bookings per day per venue for 7 days
+        const occupancyRate = targetBookings > 0 
+          ? Math.min(100, Math.round((recentBookingsCount?.count || 0) * 100 / targetBookings)) 
+          : 0;
+        
+        // Update state with real data
+        setStats({
+          todayBookings: todayBookings?.count || 0,
+          averageRating: parseFloat(averageRating.toFixed(1)),
+          occupancyRate,
+          isLoading: false
+        });
+      } catch (error) {
+        console.error('Error fetching dashboard metrics:', error);
+        setStats(prev => ({ ...prev, isLoading: false }));
+      }
+    };
+
+    fetchDashboardMetrics();
+    
+    // Set up realtime subscription for bookings table to refresh data when changes occur
+    const bookingsChannel = supabase.channel('public:bookings')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'bookings' }, 
+        () => {
+          // Refresh metrics when bookings change
+          fetchDashboardMetrics();
+        }
+      )
+      .subscribe();
+
+    // Set up realtime subscription for reviews
+    const reviewsChannel = supabase.channel('public:reviews')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'reviews' }, 
+        () => {
+          // Refresh metrics when reviews change
+          fetchDashboardMetrics();
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(bookingsChannel);
+      supabase.removeChannel(reviewsChannel);
+    };
+  }, [adminVenues]);
 
   const handleLogout = async () => {
     try {
@@ -120,20 +286,26 @@ const AdminHome_Mobile: React.FC = () => {
       <section className="px-4 mb-4">
         <div className="bg-navy-800/70 rounded-xl p-4 border border-navy-700/50">
           <h3 className="text-sm uppercase text-indigo-300 font-semibold mb-2 tracking-wider">Quick Status</h3>
-          <div className="grid grid-cols-3 gap-2">
-            <Link to="/admin/bookings-mobile" className="bg-gradient-to-br from-emerald-500/20 to-emerald-700/20 rounded-lg p-2 border border-emerald-500/30">
-              <div className="text-2xl font-bold text-emerald-400">12</div>
-              <div className="text-xs text-gray-300">Today's Bookings</div>
-            </Link>
-            <Link to="/admin/reviews-mobile" className="bg-gradient-to-br from-amber-500/20 to-amber-700/20 rounded-lg p-2 border border-amber-500/30">
-              <div className="text-2xl font-bold text-amber-400">4.8</div>
-              <div className="text-xs text-gray-300">Avg. Rating</div>
-            </Link>
-            <Link to="/admin/analytics-mobile" className="bg-gradient-to-br from-blue-500/20 to-blue-700/20 rounded-lg p-2 border border-blue-500/30">
-              <div className="text-2xl font-bold text-blue-400">87%</div>
-              <div className="text-xs text-gray-300">Occupancy</div>
-            </Link>
-          </div>
+          {stats.isLoading ? (
+            <div className="flex justify-center items-center py-6">
+              <Loader2 className="h-8 w-8 animate-spin text-indigo-400" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-2">
+              <Link to="/admin/bookings-mobile" className="bg-gradient-to-br from-emerald-500/20 to-emerald-700/20 rounded-lg p-2 border border-emerald-500/30">
+                <div className="text-2xl font-bold text-emerald-400">{stats.todayBookings}</div>
+                <div className="text-xs text-gray-300">Today's Bookings</div>
+              </Link>
+              <Link to="/admin/reviews-mobile" className="bg-gradient-to-br from-amber-500/20 to-amber-700/20 rounded-lg p-2 border border-amber-500/30">
+                <div className="text-2xl font-bold text-amber-400">{stats.averageRating}</div>
+                <div className="text-xs text-gray-300">Avg. Rating</div>
+              </Link>
+              <Link to="/admin/analytics-mobile" className="bg-gradient-to-br from-blue-500/20 to-blue-700/20 rounded-lg p-2 border border-blue-500/30">
+                <div className="text-2xl font-bold text-blue-400">{stats.occupancyRate}%</div>
+                <div className="text-xs text-gray-300">Occupancy</div>
+              </Link>
+            </div>
+          )}
         </div>
       </section>
 

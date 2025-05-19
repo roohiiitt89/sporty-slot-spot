@@ -1,14 +1,14 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AdminAvailabilityWidget from '@/components/AdminAvailabilityWidget';
 import AvailabilityWidget from '@/components/AvailabilityWidget';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 
 interface RealTimeAvailabilityTabProps {
   userRole: string | null;
@@ -38,23 +38,14 @@ const RealTimeAvailabilityTab: React.FC<RealTimeAvailabilityTabProps> = ({
   const [selectedSlot, setSelectedSlot] = useState<{ start_time: string; end_time: string; is_available: boolean } | null>(null);
   const [courtDetails, setCourtDetails] = useState<Court | null>(null);
   const [allowCashPayments, setAllowCashPayments] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   
-  // Fetch court details including hourly rate
-  useEffect(() => {
-    if (selectedCourtId) {
-      fetchCourtDetails(selectedCourtId);
-    }
-  }, [selectedCourtId]);
-
-  // Fetch venue details to check cash payments setting
-  useEffect(() => {
-    if (venueId) {
-      fetchVenueDetails(venueId);
-    }
-  }, [venueId]);
-
-  const fetchCourtDetails = async (courtId: string) => {
+  // Use useCallback to prevent recreation of these functions on each render
+  const fetchCourtDetails = useCallback(async (courtId: string) => {
+    if (!courtId) return;
+    
     try {
+      setIsLoading(true);
       const { data, error } = await supabase
         .from('courts')
         .select('id, name, hourly_rate, venue_id')
@@ -65,11 +56,21 @@ const RealTimeAvailabilityTab: React.FC<RealTimeAvailabilityTabProps> = ({
       setCourtDetails(data);
     } catch (err) {
       console.error('Error fetching court details:', err);
+      toast({
+        title: "Error",
+        description: "Failed to load court details. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, []);
 
-  const fetchVenueDetails = async (venueId: string) => {
+  const fetchVenueDetails = useCallback(async (venueId: string) => {
+    if (!venueId) return;
+    
     try {
+      setIsLoading(true);
       const { data, error } = await supabase
         .from('venues')
         .select('allow_cash_payments')
@@ -80,8 +81,73 @@ const RealTimeAvailabilityTab: React.FC<RealTimeAvailabilityTabProps> = ({
       setAllowCashPayments(data.allow_cash_payments !== false); // Default to true if null
     } catch (err) {
       console.error('Error fetching venue details:', err);
+      toast({
+        title: "Error",
+        description: "Failed to load venue details. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, []);
+
+  // Fetch court details immediately when selectedCourtId changes
+  useEffect(() => {
+    if (selectedCourtId) {
+      fetchCourtDetails(selectedCourtId);
+    }
+  }, [selectedCourtId, fetchCourtDetails]);
+
+  // Fetch venue details immediately when venueId changes
+  useEffect(() => {
+    if (venueId) {
+      fetchVenueDetails(venueId);
+    }
+  }, [venueId, fetchVenueDetails]);
+
+  // Set up real-time subscription for courts and venues changes
+  useEffect(() => {
+    if (!selectedCourtId && !venueId) return;
+
+    // Courts channel subscription
+    const courtsChannel = supabase.channel('courts_channel')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'courts',
+          filter: selectedCourtId ? `id=eq.${selectedCourtId}` : undefined
+        }, 
+        () => {
+          if (selectedCourtId) {
+            fetchCourtDetails(selectedCourtId);
+          }
+        }
+      )
+      .subscribe();
+
+    // Venues channel subscription
+    const venuesChannel = supabase.channel('venues_channel')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'venues',
+          filter: venueId ? `id=eq.${venueId}` : undefined
+        }, 
+        () => {
+          if (venueId) {
+            fetchVenueDetails(venueId);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(courtsChannel);
+      supabase.removeChannel(venuesChannel);
+    };
+  }, [selectedCourtId, venueId, fetchCourtDetails, fetchVenueDetails]);
 
   // Handle court selection
   const handleCourtSelect = (courtId: string) => {
@@ -144,6 +210,7 @@ const RealTimeAvailabilityTab: React.FC<RealTimeAvailabilityTabProps> = ({
                 variant={selectedCourtId === court.id ? 'default' : 'outline'}
                 onClick={() => handleCourtSelect(court.id)}
                 className="text-xs h-9"
+                disabled={isLoading}
               >
                 {court.name}
               </Button>

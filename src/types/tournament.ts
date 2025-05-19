@@ -23,7 +23,7 @@ export interface Tournament {
   is_approved: boolean;
 }
 
-// Update TournamentWithDetails to extend Tournament properly
+// Make TournamentWithDetails extend Tournament properly
 export interface TournamentWithDetails extends Tournament {
   registration_count: number; // Make this required in the extended interface
   registered_users?: TournamentRegistration[];
