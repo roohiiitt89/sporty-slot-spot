@@ -41,6 +41,7 @@ const RealTimeAvailabilityTab: React.FC<RealTimeAvailabilityTabProps> = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [availableCourts, setAvailableCourts] = useState<Array<{ id: string; name: string }>>(courts);
+  const [lastRefresh, setLastRefresh] = useState<number>(Date.now());
   
   // Fetch courts if none are provided
   useEffect(() => {
@@ -49,6 +50,7 @@ const RealTimeAvailabilityTab: React.FC<RealTimeAvailabilityTabProps> = ({
       
       try {
         setIsLoading(true);
+        console.log("Fetching courts for venue:", venueId);
         const { data, error } = await supabase
           .from('courts')
           .select('id, name')
@@ -58,6 +60,7 @@ const RealTimeAvailabilityTab: React.FC<RealTimeAvailabilityTabProps> = ({
         if (error) throw error;
         
         if (data && data.length > 0) {
+          console.log("Courts fetched:", data);
           setAvailableCourts(data);
           setSelectedCourtId(data[0].id);
           setSelectedCourtName(data[0].name);
@@ -83,6 +86,7 @@ const RealTimeAvailabilityTab: React.FC<RealTimeAvailabilityTabProps> = ({
     
     try {
       setIsLoading(true);
+      console.log("Fetching details for court:", courtId);
       const { data, error } = await supabase
         .from('courts')
         .select('id, name, hourly_rate, venue_id')
@@ -90,6 +94,7 @@ const RealTimeAvailabilityTab: React.FC<RealTimeAvailabilityTabProps> = ({
         .single();
 
       if (error) throw error;
+      console.log("Court details fetched:", data);
       setCourtDetails(data);
     } catch (err) {
       console.error('Error fetching court details:', err);
@@ -108,6 +113,7 @@ const RealTimeAvailabilityTab: React.FC<RealTimeAvailabilityTabProps> = ({
     
     try {
       setIsLoading(true);
+      console.log("Fetching details for venue:", venueId);
       const { data, error } = await supabase
         .from('venues')
         .select('allow_cash_payments')
@@ -115,6 +121,7 @@ const RealTimeAvailabilityTab: React.FC<RealTimeAvailabilityTabProps> = ({
         .single();
 
       if (error) throw error;
+      console.log("Venue details fetched:", data);
       setAllowCashPayments(data.allow_cash_payments !== false); // Default to true if null
     } catch (err) {
       console.error('Error fetching venue details:', err);
@@ -190,8 +197,22 @@ const RealTimeAvailabilityTab: React.FC<RealTimeAvailabilityTabProps> = ({
         },
         () => {
           // Force refresh of the availability widget when bookings change
-          setIsRefreshing(true);
-          setTimeout(() => setIsRefreshing(false), 100);
+          setLastRefresh(Date.now());
+        }
+      )
+      .subscribe();
+
+    // Blocked slots channel subscription for real-time updates
+    const blockedSlotsChannel = supabase.channel('blocked_slots_channel')
+      .on('postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'blocked_slots'
+        },
+        () => {
+          // Force refresh of the availability widget when blocked slots change
+          setLastRefresh(Date.now());
         }
       )
       .subscribe();
@@ -200,6 +221,7 @@ const RealTimeAvailabilityTab: React.FC<RealTimeAvailabilityTabProps> = ({
       supabase.removeChannel(courtsChannel);
       supabase.removeChannel(venuesChannel);
       supabase.removeChannel(bookingsChannel);
+      supabase.removeChannel(blockedSlotsChannel);
     };
   }, [selectedCourtId, venueId, fetchCourtDetails, fetchVenueDetails]);
 
@@ -221,8 +243,7 @@ const RealTimeAvailabilityTab: React.FC<RealTimeAvailabilityTabProps> = ({
 
   // Manual refresh function
   const handleManualRefresh = () => {
-    setIsRefreshing(true);
-    setTimeout(() => setIsRefreshing(false), 100);
+    setLastRefresh(Date.now());
   };
 
   const courtsToDisplay = courts.length > 0 ? courts : availableCourts;
@@ -266,6 +287,8 @@ const RealTimeAvailabilityTab: React.FC<RealTimeAvailabilityTabProps> = ({
                   if (date) {
                     setSelectedDate(date);
                     setSelectedSlot(null); // Reset selected slot when changing date
+                    // Force refresh when date changes
+                    setLastRefresh(Date.now());
                   }
                 }}
                 initialFocus
@@ -295,18 +318,18 @@ const RealTimeAvailabilityTab: React.FC<RealTimeAvailabilityTabProps> = ({
           variant="outline" 
           size="sm" 
           onClick={handleManualRefresh}
-          disabled={isLoading || isRefreshing}
+          disabled={isLoading}
           className="flex items-center gap-1"
         >
-          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          <RefreshCw className="h-4 w-4" />
           <span>Refresh</span>
         </Button>
       </div>
 
       {/* Availability Widget */}
-      {!isRefreshing && selectedCourtId ? (
+      {selectedCourtId ? (
         <AdminAvailabilityWidget 
-          key={`${selectedCourtId}-${format(selectedDate, 'yyyy-MM-dd')}`}
+          key={`${selectedCourtId}-${format(selectedDate, 'yyyy-MM-dd')}-${lastRefresh}`}
           courtId={selectedCourtId}
           date={format(selectedDate, 'yyyy-MM-dd')}
           venueName={venueName}
@@ -314,7 +337,7 @@ const RealTimeAvailabilityTab: React.FC<RealTimeAvailabilityTabProps> = ({
         />
       ) : (
         <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <p className="text-gray-600">{isRefreshing ? 'Refreshing availability data...' : 'Please select a court to view availability'}</p>
+          <p className="text-gray-600">Please select a court to view availability</p>
         </div>
       )}
     </div>

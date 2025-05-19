@@ -81,6 +81,7 @@ const AdminHome_Mobile: React.FC = () => {
     isLoading: true
   });
   const [adminVenues, setAdminVenues] = useState<Array<{ venue_id: string }>>([]);
+  const [userRoleState, setUserRoleState] = useState<string | null>(null);
   
   // If not on mobile, redirect to desktop admin
   useEffect(() => {
@@ -96,17 +97,25 @@ const AdminHome_Mobile: React.FC = () => {
         const { data: { user: currentUser } } = await supabase.auth.getUser();
         if (!currentUser) return;
 
-        const { data: userRoles } = await supabase
+        // Get user role from user_roles table instead of profiles
+        const { data: userRoles, error: roleError } = await supabase
           .from('user_roles')
           .select('role')
           .eq('user_id', currentUser.id)
           .single();
           
-        if (userRoles && userRoles.role === 'admin') {
+        if (roleError) {
+          console.error('Error fetching user role:', roleError);
+          return;
+        }
+          
+        setUserRoleState(userRoles?.role || null);
+        
+        if (userRoles?.role === 'admin') {
           // If admin, get their venues
           const { data: venues } = await supabase.rpc('get_admin_venues');
           setAdminVenues(venues || []);
-        } else if (userRoles && userRoles.role === 'super_admin') {
+        } else if (userRoles?.role === 'super_admin') {
           // Super admin has access to all venues, so we leave adminVenues empty
           setAdminVenues([]);
         }

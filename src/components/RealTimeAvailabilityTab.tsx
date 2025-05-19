@@ -50,6 +50,7 @@ const RealTimeAvailabilityTab: React.FC<RealTimeAvailabilityTabProps> = ({
     
     try {
       setIsLoading(true);
+      console.log("Fetching details for court:", courtId);
       const { data, error } = await supabase
         .from('courts')
         .select('id, name, hourly_rate, venue_id')
@@ -57,6 +58,7 @@ const RealTimeAvailabilityTab: React.FC<RealTimeAvailabilityTabProps> = ({
         .single();
 
       if (error) throw error;
+      console.log("Court details fetched:", data);
       setCourtDetails(data);
     } catch (err) {
       console.error('Error fetching court details:', err);
@@ -75,6 +77,7 @@ const RealTimeAvailabilityTab: React.FC<RealTimeAvailabilityTabProps> = ({
     
     try {
       setIsLoading(true);
+      console.log("Fetching details for venue:", venueId);
       const { data, error } = await supabase
         .from('venues')
         .select('allow_cash_payments')
@@ -82,6 +85,7 @@ const RealTimeAvailabilityTab: React.FC<RealTimeAvailabilityTabProps> = ({
         .single();
 
       if (error) throw error;
+      console.log("Venue details fetched:", data);
       setAllowCashPayments(data.allow_cash_payments !== false); // Default to true if null
     } catch (err) {
       console.error('Error fetching venue details:', err);

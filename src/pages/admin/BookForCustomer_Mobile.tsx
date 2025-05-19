@@ -38,6 +38,7 @@ const BookForCustomer_Mobile: React.FC = () => {
         }
         
         if (data && data.length > 0) {
+          console.log("Admin venues fetched:", data);
           setAdminVenues(data);
           // Select first venue by default
           setSelectedVenueId(data[0].venue_id);
@@ -74,6 +75,7 @@ const BookForCustomer_Mobile: React.FC = () => {
       
       try {
         setLoading(true);
+        console.log("Fetching courts for venue:", selectedVenueId);
         const { data, error } = await supabase
           .from('courts')
           .select('id, name, hourly_rate')
@@ -83,6 +85,7 @@ const BookForCustomer_Mobile: React.FC = () => {
         if (error) throw error;
         
         if (data && data.length > 0) {
+          console.log("Courts fetched:", data);
           setCourts(data);
           // Select first court by default
           setSelectedCourtId(data[0].id);
@@ -152,6 +155,9 @@ const BookForCustomer_Mobile: React.FC = () => {
       setSelectedVenueName(venue.venue_name);
       setAllowCashPayments(venue.allow_cash_payments !== false);
       setSelectedSlot(null);
+      // Reset court selection when venue changes
+      setSelectedCourtId('');
+      setSelectedCourtName('');
     }
   };
 
