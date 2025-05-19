@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
 import { Calendar as CalendarIcon, RefreshCw } from 'lucide-react';
@@ -6,9 +5,8 @@ import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import AdminAvailabilityWidget from '@/components/AdminAvailabilityWidget';
-import AvailabilityWidget from '@/components/AvailabilityWidget';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/components/ui/use-toast';
 
 interface RealTimeAvailabilityTabProps {
   userRole: string | null;
@@ -39,7 +37,6 @@ const RealTimeAvailabilityTab: React.FC<RealTimeAvailabilityTabProps> = ({
   const [courtDetails, setCourtDetails] = useState<Court | null>(null);
   const [allowCashPayments, setAllowCashPayments] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [availableCourts, setAvailableCourts] = useState<Array<{ id: string; name: string }>>(courts);
   const [lastRefresh, setLastRefresh] = useState<number>(Date.now());
   const [selectedVenueId, setSelectedVenueId] = useState<string>(venueId || '');

@@ -1,7 +1,15 @@
 
 import { Database } from '@/integrations/supabase/types';
 
-export type Tournament = Database['public']['Tables']['tournaments']['Row'];
+export type Tournament = Database['public']['Tables']['tournaments']['Row'] & {
+  registration_count?: number;
+  created_by?: string;
+  organizer_name?: string;
+  contact_info?: string;
+  is_approved?: boolean;
+  venue_name?: string;
+  sport_name?: string;
+};
 
 export interface TournamentWithDetails extends Tournament {
   registration_count: number;
