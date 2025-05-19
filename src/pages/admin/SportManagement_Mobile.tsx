@@ -37,7 +37,7 @@ const SportManagement_Mobile: React.FC = () => {
       if (error) throw error;
       setSports(data || []);
     } catch (error) {
-      // handle error
+      console.error('Error fetching sports:', error);
     } finally {
       setLoading(false);
     }
@@ -74,23 +74,40 @@ const SportManagement_Mobile: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentSport.name) return;
+    
     try {
       if (isEditing && currentSport.id) {
         const { error } = await supabase
           .from('sports')
-          .update(currentSport)
+          .update({
+            name: currentSport.name,
+            description: currentSport.description,
+            icon: currentSport.icon,
+            is_active: currentSport.is_active
+          })
           .eq('id', currentSport.id);
         if (error) throw error;
       } else {
+        // Ensure name is provided as it's required by the database
+        if (!currentSport.name) {
+          alert("Sport name is required");
+          return;
+        }
+        
         const { error } = await supabase
           .from('sports')
-          .insert(currentSport);
+          .insert({
+            name: currentSport.name,
+            description: currentSport.description || null,
+            icon: currentSport.icon || null,
+            is_active: currentSport.is_active
+          });
         if (error) throw error;
       }
       closeModal();
       fetchSports();
     } catch (error) {
-      // handle error
+      console.error('Error saving sport:', error);
     }
   };
 
@@ -184,4 +201,4 @@ const SportManagement_Mobile: React.FC = () => {
   );
 };
 
-export default SportManagement_Mobile; 
+export default SportManagement_Mobile;

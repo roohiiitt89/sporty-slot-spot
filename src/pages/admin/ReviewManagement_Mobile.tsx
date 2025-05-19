@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,16 +26,37 @@ const ReviewManagement_Mobile: React.FC = () => {
 
   useEffect(() => {
     const fetchReviews = async () => {
-      let query = supabase.from('reviews').select('*');
-      if (userRole === 'admin') {
-        const { data } = await supabase.rpc('get_admin_venues');
-        setAdminVenues(data || []);
-        const venueIds = (data || []).map((v: any) => v.venue_id);
-        if (venueIds.length > 0) query = query.in('venue_id', venueIds);
+      try {
+        let query = supabase.from('reviews').select('*, venues(name)');
+        if (userRole === 'admin') {
+          const { data } = await supabase.rpc('get_admin_venues');
+          setAdminVenues(data || []);
+          const venueIds = (data || []).map((v: any) => v.venue_id);
+          if (venueIds.length > 0) query = query.in('venue_id', venueIds);
+        }
+        const { data: reviewsData, error } = await query.order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        
+        // Transform the data to match our Review interface
+        const formattedReviews: Review[] = (reviewsData || []).map((review: any) => ({
+          id: review.id,
+          venue_id: review.venue_id,
+          venue_name: review.venues?.name || 'Unknown Venue',
+          user_id: review.user_id,
+          user_name: review.user_name || 'Anonymous',
+          rating: review.rating,
+          comment: review.comment,
+          created_at: review.created_at,
+          is_approved: review.is_approved
+        }));
+        
+        setReviews(formattedReviews);
+      } catch (error) {
+        console.error('Error fetching reviews:', error);
+      } finally {
+        setLoading(false);
       }
-      const { data: reviewsData } = await query.order('created_at', { ascending: false });
-      setReviews(reviewsData || []);
-      setLoading(false);
     };
     fetchReviews();
   }, [userRole]);

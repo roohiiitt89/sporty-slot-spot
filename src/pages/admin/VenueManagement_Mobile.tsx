@@ -23,7 +23,12 @@ const VenueManagement_Mobile: React.FC = () => {
   const [venues, setVenues] = useState<Venue[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentVenue, setCurrentVenue] = useState<Partial<Venue>>({});
+  const [currentVenue, setCurrentVenue] = useState<Partial<Venue>>({
+    name: '',
+    location: '',
+    description: '',
+    is_active: true
+  });
   const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
@@ -92,17 +97,46 @@ const VenueManagement_Mobile: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentVenue.name || !currentVenue.location) return;
+    
     try {
       if (isEditing && currentVenue.id) {
         const { error } = await supabase
           .from('venues')
-          .update(currentVenue)
+          .update({
+            name: currentVenue.name,
+            location: currentVenue.location,
+            description: currentVenue.description,
+            capacity: currentVenue.capacity,
+            contact_number: currentVenue.contact_number,
+            opening_hours: currentVenue.opening_hours,
+            image_url: currentVenue.image_url,
+            is_active: currentVenue.is_active,
+            latitude: currentVenue.latitude,
+            longitude: currentVenue.longitude
+          })
           .eq('id', currentVenue.id);
         if (error) throw error;
       } else {
+        // Ensure required fields are provided
+        if (!currentVenue.name || !currentVenue.location) {
+          alert("Venue name and location are required");
+          return;
+        }
+        
         const { error } = await supabase
           .from('venues')
-          .insert(currentVenue);
+          .insert({
+            name: currentVenue.name,
+            location: currentVenue.location,
+            description: currentVenue.description,
+            capacity: currentVenue.capacity,
+            contact_number: currentVenue.contact_number,
+            opening_hours: currentVenue.opening_hours,
+            image_url: currentVenue.image_url,
+            is_active: currentVenue.is_active,
+            latitude: currentVenue.latitude,
+            longitude: currentVenue.longitude
+          });
         if (error) throw error;
       }
       closeModal();
@@ -111,7 +145,7 @@ const VenueManagement_Mobile: React.FC = () => {
       setVenues(venuesData || []);
       setLoading(false);
     } catch (error) {
-      // handle error
+      console.error('Error saving venue:', error);
     }
   };
 
@@ -237,4 +271,4 @@ const VenueManagement_Mobile: React.FC = () => {
   );
 };
 
-export default VenueManagement_Mobile; 
+export default VenueManagement_Mobile;
