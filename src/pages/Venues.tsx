@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { MapPin, Star, Filter, Search, Navigation, Clock, ArrowUpDown } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Header from '../components/Header';
-import { BookSlotModal } from '../components/BookSlotModal';
+import BookSlotModal from '../components/BookSlotModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useGeolocation, calculateDistance } from '@/hooks/use-geolocation';
 import { toast } from '@/components/ui/use-toast';
