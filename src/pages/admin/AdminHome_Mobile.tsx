@@ -96,17 +96,17 @@ const AdminHome_Mobile: React.FC = () => {
         const { data: { user: currentUser } } = await supabase.auth.getUser();
         if (!currentUser) return;
 
-        const { data: userData } = await supabase
-          .from('profiles')
+        const { data: userRoles } = await supabase
+          .from('user_roles')
           .select('role')
-          .eq('id', currentUser.id)
+          .eq('user_id', currentUser.id)
           .single();
           
-        if (userData?.role === 'admin') {
+        if (userRoles && userRoles.role === 'admin') {
           // If admin, get their venues
           const { data: venues } = await supabase.rpc('get_admin_venues');
           setAdminVenues(venues || []);
-        } else if (userData?.role === 'super_admin') {
+        } else if (userRoles && userRoles.role === 'super_admin') {
           // Super admin has access to all venues, so we leave adminVenues empty
           setAdminVenues([]);
         }
@@ -135,7 +135,7 @@ const AdminHome_Mobile: React.FC = () => {
         }
 
         // 1. Fetch today's bookings count
-        const { data: todayBookings, error: bookingsError } = await supabase
+        const { data: todayBookings, error: bookingsError, count: bookingsCount } = await supabase
           .from('bookings')
           .select('id', { count: 'exact' })
           .eq('booking_date', today)
@@ -162,7 +162,7 @@ const AdminHome_Mobile: React.FC = () => {
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
         const sevenDaysAgoStr = format(sevenDaysAgo, 'yyyy-MM-dd');
         
-        const { data: recentBookingsCount, error: recentBookingsError } = await supabase
+        const { data: recentBookings, error: recentBookingsError, count: recentBookingsCount } = await supabase
           .from('bookings')
           .select('id', { count: 'exact' })
           .gte('booking_date', sevenDaysAgoStr)
@@ -190,12 +190,12 @@ const AdminHome_Mobile: React.FC = () => {
         // Simplified occupancy calculation (adjust as needed for your business logic)
         const targetBookings = venueCount * 10 * 7; // 10 bookings per day per venue for 7 days
         const occupancyRate = targetBookings > 0 
-          ? Math.min(100, Math.round((recentBookingsCount?.count || 0) * 100 / targetBookings)) 
+          ? Math.min(100, Math.round((recentBookingsCount || 0) * 100 / targetBookings)) 
           : 0;
         
         // Update state with real data
         setStats({
-          todayBookings: todayBookings?.count || 0,
+          todayBookings: bookingsCount || 0,
           averageRating: parseFloat(averageRating.toFixed(1)),
           occupancyRate,
           isLoading: false

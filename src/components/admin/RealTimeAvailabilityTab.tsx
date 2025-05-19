@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon } from 'lucide-react';
+import { Calendar as CalendarIcon, RefreshCw } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -39,6 +39,7 @@ const RealTimeAvailabilityTab: React.FC<RealTimeAvailabilityTabProps> = ({
   const [courtDetails, setCourtDetails] = useState<Court | null>(null);
   const [allowCashPayments, setAllowCashPayments] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   
   // Use useCallback to prevent recreation of these functions on each render
   const fetchCourtDetails = useCallback(async (courtId: string) => {
@@ -143,9 +144,26 @@ const RealTimeAvailabilityTab: React.FC<RealTimeAvailabilityTabProps> = ({
       )
       .subscribe();
 
+    // Bookings channel subscription for real-time updates
+    const bookingsChannel = supabase.channel('bookings_channel')
+      .on('postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bookings'
+        },
+        () => {
+          // Force refresh of the availability widget when bookings change
+          setIsRefreshing(true);
+          setTimeout(() => setIsRefreshing(false), 100);
+        }
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(courtsChannel);
       supabase.removeChannel(venuesChannel);
+      supabase.removeChannel(bookingsChannel);
     };
   }, [selectedCourtId, venueId, fetchCourtDetails, fetchVenueDetails]);
 
@@ -162,6 +180,12 @@ const RealTimeAvailabilityTab: React.FC<RealTimeAvailabilityTabProps> = ({
   // Handle slot selection
   const handleSlotSelect = (slot: { start_time: string; end_time: string; is_available: boolean }) => {
     setSelectedSlot(slot);
+  };
+
+  // Manual refresh function
+  const handleManualRefresh = () => {
+    setIsRefreshing(true);
+    setTimeout(() => setIsRefreshing(false), 100);
   };
 
   if (!courts || courts.length === 0) {
@@ -217,11 +241,24 @@ const RealTimeAvailabilityTab: React.FC<RealTimeAvailabilityTabProps> = ({
             ))}
           </div>
         </div>
+
+        {/* Manual refresh button */}
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={handleManualRefresh}
+          disabled={isLoading || isRefreshing}
+          className="flex items-center gap-1"
+        >
+          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          <span>Refresh</span>
+        </Button>
       </div>
 
       {/* Availability Widget */}
-      {selectedCourtId ? (
+      {!isRefreshing && selectedCourtId ? (
         <AdminAvailabilityWidget 
+          key={`${selectedCourtId}-${format(selectedDate, 'yyyy-MM-dd')}`}
           courtId={selectedCourtId}
           date={format(selectedDate, 'yyyy-MM-dd')}
           venueName={venueName}
@@ -229,7 +266,7 @@ const RealTimeAvailabilityTab: React.FC<RealTimeAvailabilityTabProps> = ({
         />
       ) : (
         <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <p className="text-gray-600">Please select a court to view availability</p>
+          <p className="text-gray-600">{isRefreshing ? 'Refreshing availability data...' : 'Please select a court to view availability'}</p>
         </div>
       )}
     </div>

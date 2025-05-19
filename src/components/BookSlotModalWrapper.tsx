@@ -30,7 +30,7 @@ const BookSlotModalWrapper: React.FC<BookSlotModalWrapperProps> = ({
   // This wrapper converts 'open' to 'isOpen' for BookSlotModal
   return (
     <BookSlotModal
-      open={open}
+      isOpen={open} // Changed from 'open' to 'isOpen'
       onOpenChange={onOpenChange}
       selectedDate={selectedDate}
       selectedCourt={selectedCourt}
