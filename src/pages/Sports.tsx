@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Star, Filter, Search, ArrowUpDown } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
-import BookSlotModal from '../components/BookSlotModal';
+// Import BookSlotModal as a named export
+import { BookSlotModal } from '../components/BookSlotModal';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 
