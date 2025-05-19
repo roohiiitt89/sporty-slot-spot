@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { BookSlotModal } from './BookSlotModal';
+import BookSlotModal from './BookSlotModal';
 
 interface BookSlotModalWrapperProps {
   open: boolean;

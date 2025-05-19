@@ -42,19 +42,58 @@ const RealTimeAvailabilityTab: React.FC<RealTimeAvailabilityTabProps> = ({
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [availableCourts, setAvailableCourts] = useState<Array<{ id: string; name: string }>>(courts);
   const [lastRefresh, setLastRefresh] = useState<number>(Date.now());
+  const [selectedVenueId, setSelectedVenueId] = useState<string>(venueId || '');
+  const [adminVenuesList, setAdminVenuesList] = useState<Array<{ venue_id: string; venue_name: string }>>([]);
   
-  // Fetch courts if none are provided
+  // Fetch admin venues if not provided
   useEffect(() => {
-    const fetchCourts = async () => {
-      if (!venueId || courts.length > 0) return;
+    const fetchAdminVenuesList = async () => {
+      if (userRole !== 'admin' && userRole !== 'super_admin') return;
       
       try {
         setIsLoading(true);
-        console.log("Fetching courts for venue:", venueId);
+        const { data, error } = await supabase.rpc('get_admin_venues');
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          setAdminVenuesList(data);
+          
+          // If venue not specified, use the first venue from the admin list
+          if (!venueId && !selectedVenueId && data.length > 0) {
+            setSelectedVenueId(data[0].venue_id);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching admin venues:', err);
+        toast({
+          title: "Error",
+          description: "Failed to load venues. Please try again.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    if ((userRole === 'admin' || userRole === 'super_admin') && adminVenuesList.length === 0) {
+      fetchAdminVenuesList();
+    }
+  }, [userRole, venueId, selectedVenueId, adminVenuesList.length]);
+  
+  // Fetch courts based on selected venue or provided venue ID
+  useEffect(() => {
+    const fetchCourts = async () => {
+      const venueToUse = selectedVenueId || venueId;
+      if (!venueToUse || courts.length > 0) return;
+      
+      try {
+        setIsLoading(true);
+        console.log("Fetching courts for venue:", venueToUse);
         const { data, error } = await supabase
           .from('courts')
-          .select('id, name')
-          .eq('venue_id', venueId)
+          .select('id, name, hourly_rate')
+          .eq('venue_id', venueToUse)
           .eq('is_active', true);
           
         if (error) throw error;
@@ -62,8 +101,12 @@ const RealTimeAvailabilityTab: React.FC<RealTimeAvailabilityTabProps> = ({
         if (data && data.length > 0) {
           console.log("Courts fetched:", data);
           setAvailableCourts(data);
-          setSelectedCourtId(data[0].id);
-          setSelectedCourtName(data[0].name);
+          
+          // Select first court by default
+          if (!selectedCourtId) {
+            setSelectedCourtId(data[0].id);
+            setSelectedCourtName(data[0].name);
+          }
         }
       } catch (err) {
         console.error('Error fetching courts:', err);
@@ -78,7 +121,7 @@ const RealTimeAvailabilityTab: React.FC<RealTimeAvailabilityTabProps> = ({
     };
     
     fetchCourts();
-  }, [venueId, courts]);
+  }, [selectedVenueId, venueId, courts.length, selectedCourtId]);
   
   // Use useCallback to prevent recreation of these functions on each render
   const fetchCourtDetails = useCallback(async (courtId: string) => {
@@ -146,12 +189,16 @@ const RealTimeAvailabilityTab: React.FC<RealTimeAvailabilityTabProps> = ({
   useEffect(() => {
     if (venueId) {
       fetchVenueDetails(venueId);
+    } else if (selectedVenueId) {
+      fetchVenueDetails(selectedVenueId);
+    } else if (courtDetails?.venue_id) {
+      fetchVenueDetails(courtDetails.venue_id);
     }
-  }, [venueId, fetchVenueDetails]);
+  }, [venueId, selectedVenueId, courtDetails?.venue_id, fetchVenueDetails]);
 
   // Set up real-time subscription for courts and venues changes
   useEffect(() => {
-    if (!selectedCourtId && !venueId) return;
+    if (!selectedCourtId && !venueId && !selectedVenueId) return;
 
     // Courts channel subscription
     const courtsChannel = supabase.channel('courts_channel')
@@ -177,10 +224,12 @@ const RealTimeAvailabilityTab: React.FC<RealTimeAvailabilityTabProps> = ({
           event: '*', 
           schema: 'public', 
           table: 'venues',
-          filter: venueId ? `id=eq.${venueId}` : undefined
+          filter: selectedVenueId ? `id=eq.${selectedVenueId}` : (venueId ? `id=eq.${venueId}` : undefined)
         }, 
         () => {
-          if (venueId) {
+          if (selectedVenueId) {
+            fetchVenueDetails(selectedVenueId);
+          } else if (venueId) {
             fetchVenueDetails(venueId);
           }
         }
@@ -223,7 +272,7 @@ const RealTimeAvailabilityTab: React.FC<RealTimeAvailabilityTabProps> = ({
       supabase.removeChannel(bookingsChannel);
       supabase.removeChannel(blockedSlotsChannel);
     };
-  }, [selectedCourtId, venueId, fetchCourtDetails, fetchVenueDetails]);
+  }, [selectedCourtId, venueId, selectedVenueId, fetchCourtDetails, fetchVenueDetails]);
 
   // Handle court selection
   const handleCourtSelect = (courtId: string) => {
@@ -234,6 +283,14 @@ const RealTimeAvailabilityTab: React.FC<RealTimeAvailabilityTabProps> = ({
       setSelectedCourtName(court.name);
       setSelectedSlot(null); // Reset selected slot when changing courts
     }
+  };
+
+  // Handle venue selection
+  const handleVenueSelect = (venueId: string) => {
+    setSelectedVenueId(venueId);
+    setSelectedCourtId('');
+    setSelectedCourtName('');
+    setAvailableCourts([]);
   };
 
   // Handle slot selection
@@ -257,17 +314,29 @@ const RealTimeAvailabilityTab: React.FC<RealTimeAvailabilityTabProps> = ({
     );
   }
 
-  if (courtsToDisplay.length === 0) {
-    return (
-      <div className="text-center py-12 bg-gray-50 rounded-lg">
-        <p className="text-gray-600">No courts available for this venue</p>
-      </div>
-    );
-  }
-
   return (
     <div>
       <h2 className="text-xl font-semibold mb-6">Real-Time Availability</h2>
+      
+      {/* Show venue selector only if multiple venues available and not explicitly provided */}
+      {!venueId && adminVenuesList.length > 0 && (
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Select Venue
+          </label>
+          <select 
+            value={selectedVenueId} 
+            onChange={(e) => handleVenueSelect(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm mb-4"
+          >
+            {adminVenuesList.map(venue => (
+              <option key={venue.venue_id} value={venue.venue_id}>
+                {venue.venue_name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         {/* Date Picker */}

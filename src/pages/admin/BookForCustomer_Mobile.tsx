@@ -115,6 +115,44 @@ const BookForCustomer_Mobile: React.FC = () => {
     fetchCourts();
   }, [selectedVenueId]);
 
+  // Set up real-time subscription for bookings and blocked slots
+  useEffect(() => {
+    // Bookings channel subscription for real-time updates
+    const bookingsChannel = supabase.channel('bookings_mobile_channel')
+      .on('postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bookings'
+        },
+        () => {
+          // Force refresh of the availability widget when bookings change
+          setLastRefresh(Date.now());
+        }
+      )
+      .subscribe();
+
+    // Blocked slots channel subscription for real-time updates
+    const blockedSlotsChannel = supabase.channel('blocked_slots_mobile_channel')
+      .on('postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'blocked_slots'
+        },
+        () => {
+          // Force refresh of the availability widget when blocked slots change
+          setLastRefresh(Date.now());
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(bookingsChannel);
+      supabase.removeChannel(blockedSlotsChannel);
+    };
+  }, []);
+
   // Handle court selection
   const handleCourtSelect = (courtId: string) => {
     const court = courts.find(c => c.id === courtId);
