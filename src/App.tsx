@@ -1,9 +1,8 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { RouteGuard } from "./components/RouteGuard";
 import Index from "./pages/Index";
@@ -26,7 +25,6 @@ import Help from "./pages/Help";
 import Contact from "./pages/Contact";
 import Privacy from "./pages/Privacy";
 import BottomNav from "./components/ui/BottomNav";
-import AdminBottomNav from "./components/ui/AdminBottomNav";
 import { useState, useEffect } from 'react';
 import { TournamentDashboard } from "./pages/tournament/TournamentDashboard";
 import { TournamentDetailsPage } from "./pages/tournament/TournamentDetailsPage";
@@ -36,6 +34,21 @@ import ScrollToTopOnMobile from "@/components/ScrollToTopOnMobile";
 import NotificationBell from './components/NotificationBell';
 import { HelmetProvider } from 'react-helmet-async';
 import AdminRedirector from './components/AdminRedirector';
+import AnalyticsDashboard_Mobile from '@/pages/admin/AnalyticsDashboard_Mobile';
+import BookingTrends_Mobile from '@/pages/admin/BookingTrends_Mobile';
+import PopularSports_Mobile from '@/pages/admin/PopularSports_Mobile';
+import PeakHours_Mobile from '@/pages/admin/PeakHours_Mobile';
+import RecentBookings_Mobile from '@/pages/admin/RecentBookings_Mobile';
+import Bookings_Mobile from '@/pages/admin/Bookings_Mobile';
+import BookForCustomer_Mobile from '@/pages/admin/BookForCustomer_Mobile';
+import BlockTimeSlots_Mobile from '@/pages/admin/BlockTimeSlots_Mobile';
+import AdminHome_Mobile from '@/pages/admin/AdminHome_Mobile';
+import AdminBottomNav from './components/ui/AdminBottomNav';
+import VenueManagement_Mobile from '@/pages/admin/VenueManagement_Mobile';
+import SportManagement_Mobile from '@/pages/admin/SportManagement_Mobile';
+import ReviewManagement_Mobile from '@/pages/admin/ReviewManagement_Mobile';
+import MessageManagement_Mobile from '@/pages/admin/MessageManagement_Mobile';
+import HelpRequestsManagement_Mobile from '@/pages/admin/HelpRequestsManagement_Mobile';
 
 const queryClient = new QueryClient();
 
@@ -45,92 +58,99 @@ const App = () => {
 
   const handleChatClick = () => setChatActive((prev) => !prev);
 
-  // Check if current route is admin
-  const AppContent = () => {
-    const { userRole } = useAuth();
-    const isAdminUser = userRole === 'admin' || userRole === 'super_admin';
-    
-    return (
-      <>
-        <ScrollToTopOnMobile />
-        {isMobile && <NotificationBell />}
-        <AdminRedirector />
-        <Routes>
-          {/* Public routes */}
-          <Route element={<RouteGuard requireAuth={false} />}>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/verify-email" element={<VerifyEmail />} />
-          </Route>
-
-          {/* Protected routes - only for normal users */}
-          <Route element={<RouteGuard requireAuth={true} adminOnly={false} />}>
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/bookings" element={<Bookings />} />
-            <Route path="/challenge" element={<ChallengeDashboard />} />
-            <Route path="/team/:slug" element={<TeamDetails />} />
-            <Route path="/more" element={<MorePage />} />
-          </Route>
-          
-          {/* Admin routes - accessible to both admin and super_admin */}
-          <Route element={<RouteGuard requireAuth={true} requiredRole="admin" adminOnly={true} />}>
-            <Route path="/admin" element={<AdminHome />} />
-            <Route path="/admin/*" element={<AdminDashboard />} />
-          </Route>
-
-          {/* Tournament routes */}
-          {/* Public: View tournaments and details */}
-          <Route path="/tournaments" element={<TournamentDashboard />} />
-          <Route path="/tournaments/:slug" element={<TournamentDetailsPage />} />
-          {/* Protected: Only logged-in users can host */}
-          <Route element={<RouteGuard requireAuth={true} adminOnly={false} />}>
-            <Route path="/tournaments/host" element={<HostTournamentPage />} />
-          </Route>
-
-          {/* Root path and content routes - also protected from admin access via RouteGuard logic */}
-          <Route path="/" element={<Index />} />
-          <Route path="/venues" element={<Venues />} />
-          <Route path="/venues/:id" element={<VenueDetails />} />
-          <Route path="/sports" element={<Sports />} />
-          <Route path="/faq" element={<Faq3Demo />} />
-          <Route path="/help" element={<Help />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/privacy" element={<Privacy />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-        
-        {/* Always mount the chat widget on mobile, but control visibility with isOpen */}
-        {isMobile ? (
-          <NewAIChatWidget isOpen={chatActive} setIsOpen={setChatActive} />
-        ) : (
-          <NewAIChatWidget />
-        )}
-
-        {/* Show appropriate bottom nav based on user role and if chat is not active */}
-        {(!chatActive || !isMobile) && (
-          isMobile && isAdminUser && window.location.pathname.includes('/admin') ? (
-            <AdminBottomNav />
-          ) : (
-            <BottomNav onChatClick={handleChatClick} chatActive={chatActive} setChatActive={setChatActive} />
-          )
-        )}
-      </>
-    );
-  };
-
   return (
     <HelmetProvider>
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <AuthProvider>
-              <AppContent />
-            </AuthProvider>
-          </BrowserRouter>
-        </TooltipProvider>
-      </QueryClientProvider>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+              <ScrollToTopOnMobile />
+              {isMobile && <NotificationBell />}
+              <AdminRedirector />
+            <Routes>
+              {/* Public routes */}
+              <Route element={<RouteGuard requireAuth={false} />}>
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/verify-email" element={<VerifyEmail />} />
+              </Route>
+
+              {/* Protected routes - only for normal users */}
+              <Route element={<RouteGuard requireAuth={true} adminOnly={false} />}>
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/bookings" element={<Bookings />} />
+                <Route path="/challenge" element={<ChallengeDashboard />} />
+                <Route path="/team/:slug" element={<TeamDetails />} />
+                  <Route path="/more" element={<MorePage />} />
+              </Route>
+              
+              {/* Admin routes - accessible to both admin and super_admin */}
+              <Route element={<RouteGuard requireAuth={true} requiredRole="admin" adminOnly={true} />}>
+                <Route path="/admin" element={<AdminHome />} />
+                <Route path="/admin/*" element={<AdminDashboard />} />
+              </Route>
+
+              {/* Mobile analytics test routes */}
+              <Route path="/admin/analytics-mobile" element={<AnalyticsDashboard_Mobile />} />
+              <Route path="/admin/booking-trends-mobile" element={<BookingTrends_Mobile />} />
+              <Route path="/admin/popular-sports-mobile" element={<PopularSports_Mobile />} />
+              <Route path="/admin/peak-hours-mobile" element={<PeakHours_Mobile />} />
+              <Route path="/admin/recent-bookings-mobile" element={<RecentBookings_Mobile />} />
+
+              {/* Mobile bookings test routes */}
+              <Route path="/admin/bookings-mobile" element={<Bookings_Mobile />} />
+              <Route path="/admin/book-for-customer-mobile" element={<BookForCustomer_Mobile />} />
+              <Route path="/admin/block-time-slots-mobile" element={<BlockTimeSlots_Mobile />} />
+
+              {/* Mobile admin home test route */}
+              <Route path="/admin/mobile-home" element={<AdminHome_Mobile />} />
+
+              {/* Mobile admin section test routes */}
+              <Route path="/admin/venues-mobile" element={<VenueManagement_Mobile />} />
+              <Route path="/admin/sports-mobile" element={<SportManagement_Mobile />} />
+              <Route path="/admin/reviews-mobile" element={<ReviewManagement_Mobile />} />
+              <Route path="/admin/messages-mobile" element={<MessageManagement_Mobile />} />
+              <Route path="/admin/help-mobile" element={<HelpRequestsManagement_Mobile />} />
+
+              {/* Tournament routes */}
+              {/* Public: View tournaments and details */}
+              <Route path="/tournaments" element={<TournamentDashboard />} />
+              <Route path="/tournaments/:slug" element={<TournamentDetailsPage />} />
+              {/* Protected: Only logged-in users can host */}
+              <Route element={<RouteGuard requireAuth={true} adminOnly={false} />}>
+                <Route path="/tournaments/host" element={<HostTournamentPage />} />
+              </Route>
+
+              {/* Root path and content routes - also protected from admin access via RouteGuard logic */}
+              <Route path="/" element={<Index />} />
+              <Route path="/venues" element={<Venues />} />
+              <Route path="/venues/:id" element={<VenueDetails />} />
+              <Route path="/sports" element={<Sports />} />
+              <Route path="/faq" element={<Faq3Demo />} />
+              <Route path="/help" element={<Help />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+            
+            {/* Always mount the chat widget on mobile, but control visibility with isOpen */}
+            {isMobile ? (
+              <NewAIChatWidget isOpen={chatActive} setIsOpen={setChatActive} />
+            ) : (
+              <NewAIChatWidget />
+            )}
+              {(!chatActive || !isMobile) && (
+                <>
+                  <AdminBottomNav />
+                  <BottomNav onChatClick={handleChatClick} chatActive={chatActive} setChatActive={setChatActive} />
+                </>
+              )}
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
     </HelmetProvider>
   );
 };
