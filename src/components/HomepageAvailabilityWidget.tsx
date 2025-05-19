@@ -21,6 +21,15 @@ interface Court {
   venue_id: string;
 }
 
+const formatTime = (timeString: string) => {
+  if (!timeString) return '';
+  const [hours, minutes] = timeString.split(':');
+  const hour = parseInt(hours, 10);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const hour12 = hour % 12 || 12;
+  return `${hour12}:${minutes} ${ampm}`;
+};
+
 const HomepageAvailabilityWidget: React.FC = () => {
   const [venues, setVenues] = useState<Venue[]>([]);
   const [courts, setCourts] = useState<Court[]>([]);
@@ -268,7 +277,7 @@ const HomepageAvailabilityWidget: React.FC = () => {
                             `}
                           >
                             <p className="text-sm font-medium text-white">
-                              {slot.start_time?.slice(0,5)} - {slot.end_time?.slice(0,5)}
+                              {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
                             </p>
                             <Badge
                               className={`mt-1 ${slot.is_available
