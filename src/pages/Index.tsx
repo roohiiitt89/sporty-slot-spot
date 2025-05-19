@@ -1,9 +1,8 @@
-
 import React, { useState } from 'react';
 import Header from '../components/Header';
 import HeroSection from '../components/HeroSection';
 import Footer from '../components/Footer';
-import { BookSlotModal } from '../components/BookSlotModal';
+import BookSlotModal from '../components/BookSlotModal';
 
 const Index: React.FC = () => {
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
