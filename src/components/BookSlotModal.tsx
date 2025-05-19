@@ -1,9 +1,8 @@
-
 // This is a re-export file that provides a consistent interface for BookSlotModal
 // The original component is read-only, so we're creating this adapter component
 
 import React from 'react';
-import { BookSlotModalWrapper } from './BookSlotModalWrapper';
+import BookSlotModalWrapper from './BookSlotModalWrapper';
 
 // Define the props interface based on how we're using the component
 interface BookSlotModalProps {
@@ -15,9 +14,13 @@ interface BookSlotModalProps {
   onBookingComplete: () => void;
   allowCashPayments?: boolean;
   onClose: () => void;
+  venueId?: string;
+  sportId?: string;
 }
 
-export const BookSlotModal: React.FC<BookSlotModalProps> = (props) => {
+const BookSlotModal: React.FC<BookSlotModalProps> = (props) => {
   // Forward all props to the original component through the wrapper
   return <BookSlotModalWrapper {...props} />;
 };
+
+export default BookSlotModal;
