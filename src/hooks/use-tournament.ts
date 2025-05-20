@@ -1,3 +1,4 @@
+
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
@@ -10,6 +11,11 @@ type VenueRow = Database['public']['Tables']['venues']['Row'];
 export interface Tournament extends TournamentRow {
   sport_name?: string;
   venue_name?: string;
+  registration_count?: number;
+  created_by?: string;
+  organizer_name?: string;
+  contact_info?: string;
+  is_approved?: boolean;
 }
 
 // Fetch all tournaments
@@ -48,6 +54,11 @@ export function useTournamentDetails(slug?: string) {
         ...data,
         sport_name: data?.sports?.name,
         venue_name: data?.venues?.name,
+        registration_count: 0, // Default value for registration count
+        created_by: data?.organizer_id, // Using organizer_id as a fallback for created_by
+        organizer_name: '', // Default empty value
+        contact_info: '', // Default empty value
+        is_approved: true, // Default to true
       } as Tournament;
     },
     enabled: !!slug,
