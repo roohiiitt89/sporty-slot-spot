@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
@@ -102,7 +103,6 @@ const AdminHome_Mobile: React.FC = () => {
   const [userRoleState, setUserRoleState] = useState<string | null>(null);
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [activityLoading, setActivityLoading] = useState<boolean>(true);
-  const [popularCourts, setPopularCourts] = useState<Array<{ name: string; bookingRate: number }>>([]);
   
   // If not on mobile, redirect to desktop admin
   useEffect(() => {
@@ -219,6 +219,7 @@ const AdminHome_Mobile: React.FC = () => {
   useEffect(() => {
     const fetchDashboardMetrics = async () => {
       try {
+        // Set loading state
         setStats(prev => ({ ...prev, isLoading: true }));
 
         // Get today's date
@@ -317,38 +318,7 @@ const AdminHome_Mobile: React.FC = () => {
           ? Math.min(100, Math.round((recentBookingsCount || 0) * 100 / targetBookings)) 
           : 0;
         
-        // --- NEW: Fetch most popular courts for Performance Highlights ---
-        // Get bookings for the last 30 days for admin's venues
-        let courtBookingsQuery = supabase
-          .from('bookings')
-          .select('court_id, court:court_id(name), booking_date')
-          .gte('booking_date', thirtyDaysAgo)
-          .lte('booking_date', today)
-          .in('status', ['confirmed', 'completed']);
-        if (adminVenues.length > 0) {
-          const venueIds = adminVenues.map(v => v.venue_id);
-          courtBookingsQuery = courtBookingsQuery.in('court.venue_id', venueIds);
-        }
-        const { data: courtBookings, error: courtBookingsError } = await courtBookingsQuery;
-        if (courtBookingsError) throw courtBookingsError;
-        // Count bookings per court
-        const courtCounts: Record<string, { name: string; count: number }> = {};
-        courtBookings?.forEach(b => {
-          if (!b.court_id || !b.court?.name) return;
-          if (!courtCounts[b.court_id]) {
-            courtCounts[b.court_id] = { name: b.court.name, count: 0 };
-          }
-          courtCounts[b.court_id].count++;
-        });
-        // Estimate max slots per court (10 per day for 30 days)
-        const maxSlots = 10 * 30;
-        // Prepare array and sort by booking count
-        const sortedCourts = Object.values(courtCounts)
-          .map(c => ({ name: c.name, bookingRate: Math.min(100, Math.round((c.count / maxSlots) * 100)) }))
-          .sort((a, b) => b.bookingRate - a.bookingRate)
-          .slice(0, 3);
-        setPopularCourts(sortedCourts);
-        // --- END NEW ---
+        // Update state with real data
         setStats({
           todayBookings: bookingsCount || 0,
           averageRating: parseFloat(averageRating.toFixed(1)),
@@ -362,7 +332,6 @@ const AdminHome_Mobile: React.FC = () => {
       } catch (error) {
         console.error('Error fetching dashboard metrics:', error);
         setStats(prev => ({ ...prev, isLoading: false }));
-        setPopularCourts([]); // fallback
       }
     };
 
@@ -445,7 +414,7 @@ const AdminHome_Mobile: React.FC = () => {
       {/* Enhanced Stats Overview with Tabs */}
       <section className="px-4 mb-4">
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 bg-navy-800/90 rounded-xl">
+          <TabsList className="grid w-full grid-cols-3 bg-navy-800/90 rounded-xl">
             <TabsTrigger value="overview" className="text-xs py-2 data-[state=active]:bg-indigo-500/20">Overview</TabsTrigger>
             <TabsTrigger value="bookings" className="text-xs py-2 data-[state=active]:bg-indigo-500/20">Bookings</TabsTrigger>
             <TabsTrigger value="performance" className="text-xs py-2 data-[state=active]:bg-indigo-500/20">Business</TabsTrigger>
@@ -630,20 +599,25 @@ const AdminHome_Mobile: React.FC = () => {
             </div>
             <Link to="/admin/analytics-mobile" className="text-xs text-indigo-400">View All</Link>
           </div>
+          
           {stats.isLoading ? (
             <div className="flex justify-center items-center py-4">
               <Loader2 className="h-6 w-6 animate-spin text-indigo-400" />
             </div>
-          ) : popularCourts.length === 0 ? (
-            <div className="text-center text-gray-400 py-4">No court data available</div>
           ) : (
             <div className="space-y-2">
-              {popularCourts.map((court, idx) => (
-                <div key={court.name} className="flex justify-between bg-navy-700/40 p-2 rounded">
-                  <span className="text-sm text-gray-300">{court.name}</span>
-                  <span className={`text-sm font-medium ${idx === 0 ? 'text-emerald-400' : idx === 1 ? 'text-emerald-400' : 'text-amber-400'}`}>{court.bookingRate}% booked</span>
-                </div>
-              ))}
+              <div className="flex justify-between bg-navy-700/40 p-2 rounded">
+                <span className="text-sm text-gray-300">Badminton Court 1</span>
+                <span className="text-sm font-medium text-emerald-400">89% booked</span>
+              </div>
+              <div className="flex justify-between bg-navy-700/40 p-2 rounded">
+                <span className="text-sm text-gray-300">Cricket Pitch 3</span>
+                <span className="text-sm font-medium text-emerald-400">78% booked</span>
+              </div>
+              <div className="flex justify-between bg-navy-700/40 p-2 rounded">
+                <span className="text-sm text-gray-300">Tennis Court A</span>
+                <span className="text-sm font-medium text-amber-400">65% booked</span>
+              </div>
             </div>
           )}
         </div>
