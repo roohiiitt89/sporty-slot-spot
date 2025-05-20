@@ -16,6 +16,13 @@ declare global {
 }
 
 interface BookSlotModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  selectedDate: Date;
+  selectedCourt: any;
+  hourlyRate: number | null;
+  onBookingComplete: () => void;
+  allowCashPayments: boolean;
   onClose: () => void;
   venueId?: string;
   sportId?: string;
@@ -50,7 +57,18 @@ interface TimeSlot {
   price: string;
 }
 
-const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId }) => {
+const BookSlotModal: React.FC<BookSlotModalProps> = ({
+  open,
+  onOpenChange,
+  selectedDate,
+  selectedCourt,
+  hourlyRate,
+  onBookingComplete,
+  allowCashPayments,
+  onClose,
+  venueId,
+  sportId
+}) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [venues, setVenues] = useState<Venue[]>([]);
@@ -59,8 +77,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
   const [courts, setCourts] = useState<Court[]>([]);
   const [selectedVenue, setSelectedVenue] = useState(venueId || '');
   const [selectedSport, setSelectedSport] = useState(sportId || '');
-  const [selectedCourt, setSelectedCourt] = useState('');
-  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedCourtGroupId, setSelectedCourtGroupId] = useState<string | null>(null);
   const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
   const [selectedSlotPrices, setSelectedSlotPrices] = useState<Record<string, number>>({});
   const [availableTimeSlots, setAvailableTimeSlots] = useState<TimeSlot[]>([]);
@@ -83,7 +100,10 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
   const [venueDetails, setVenueDetails] = useState<Venue | null>(null);
   const [sportDetails, setSportDetails] = useState<Sport | null>(null);
   const [courtDetails, setCourtDetails] = useState<Court | null>(null);
-  const [selectedCourtGroupId, setSelectedCourtGroupId] = useState<string | null>(null);
+  const [localSelectedDate, setLocalSelectedDate] = useState(
+    selectedDate ? (typeof selectedDate === 'string' ? selectedDate : selectedDate.toISOString().split('T')[0]) : new Date().toISOString().split('T')[0]
+  );
+  const [localSelectedCourt, setLocalSelectedCourt] = useState(selectedCourt || '');
 
   // Animation variants
   const fadeIn = {
@@ -129,7 +149,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     fetchSports();
     
     const today = new Date();
-    setSelectedDate(today.toISOString().split('T')[0]);
+    setLocalSelectedDate(today.toISOString().split('T')[0]);
 
     if (venueId) {
       setSelectedVenue(venueId);
@@ -138,11 +158,11 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
   }, []);
 
   useEffect(() => {
-    if (selectedCourt && selectedDate) {
+    if (localSelectedCourt && localSelectedDate) {
       fetchAvailability();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCourt, selectedDate, refreshKey]);
+  }, [localSelectedCourt, localSelectedDate, refreshKey]);
 
   useEffect(() => {
     const loadRazorpayScript = () => {
@@ -179,17 +199,17 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       fetchSportDetails(selectedSport);
     } else {
       setCourts([]);
-      setSelectedCourt('');
+      setSelectedSport('');
       setSportDetails(null);
     }
   }, [selectedVenue, selectedSport]);
 
   useEffect(() => {
-    if (selectedCourt) {
+    if (localSelectedCourt) {
       fetchAvailability();
-      fetchCourtDetails(selectedCourt);
+      fetchCourtDetails(localSelectedCourt);
     }
-  }, [selectedCourt, refreshKey]);
+  }, [localSelectedCourt, refreshKey]);
 
   useEffect(() => {
     if (user) {
@@ -217,36 +237,37 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
   }, [user]);
 
   useEffect(() => {
-    // Only set selectedDate to today on mount
-    const today = new Date();
-    setSelectedDate(today.toISOString().split('T')[0]);
-  }, []);
-
-  useEffect(() => {
     if (courtDetails && 'court_group_id' in courtDetails) {
       setSelectedCourtGroupId(courtDetails.court_group_id || null);
     } else {
       setSelectedCourtGroupId(null);
     }
-  }, [courtDetails, selectedCourt]);
+  }, [courtDetails, localSelectedCourt]);
 
   useEffect(() => {
     // Clear selected slots and prices when date, court, venue, or court group changes
     setSelectedSlots([]);
     setSelectedSlotPrices({});
-  }, [selectedDate, selectedCourt, selectedVenue, selectedCourtGroupId]);
+  }, [localSelectedDate, localSelectedCourt, selectedVenue, selectedCourtGroupId]);
 
   useEffect(() => {
     // When user changes (login/logout), reset slot state and fetch fresh availability
     setSelectedSlots([]);
     setSelectedSlotPrices({});
     setAvailableTimeSlots([]);
-    if (user && selectedCourt && selectedDate) {
+    if (user && localSelectedCourt && localSelectedDate) {
       fetchAvailability();
     }
     // Optionally, reset other state if needed
     // setCurrentStep(1);
   }, [user]);
+
+  useEffect(() => {
+    if (open && localSelectedCourt && localSelectedDate) {
+      fetchAvailability();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, localSelectedCourt, localSelectedDate]);
 
   const fetchVenueDetails = async (venueId: string) => {
     try {
@@ -400,10 +421,10 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       
       setCourts(data || []);
       if (data && data.length > 0) {
-        setSelectedCourt(data[0].id);
+        setLocalSelectedCourt(data[0].id);
         setCourtRate(data[0].hourly_rate);
       } else {
-        setSelectedCourt('');
+        setLocalSelectedCourt('');
         setCourtRate(0);
         toast({
           title: "No Courts Available",
@@ -424,11 +445,11 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
   };
 
   const fetchAvailability = useCallback(async () => {
-    if (!selectedCourt || !selectedDate) return;
+    if (!localSelectedCourt || !localSelectedDate) return;
     
     setLoading(prev => ({ ...prev, availability: true }));
     try {
-      let courtIdsToCheck = [selectedCourt];
+      let courtIdsToCheck = [localSelectedCourt];
       // If shared court group, get all court IDs in the group
       if (selectedCourtGroupId) {
         const { data: groupCourts, error: groupCourtsError } = await supabase
@@ -443,8 +464,8 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       // Fetch slots for the selected court (for template/pricing)
       const { data, error } = await supabase
         .rpc('get_available_slots', {
-          p_court_id: selectedCourt,
-          p_date: selectedDate
+          p_court_id: localSelectedCourt,
+          p_date: localSelectedDate
         });
       if (error) throw error;
 
@@ -452,7 +473,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       const { data: templateSlots, error: templateError } = await supabase
         .from('template_slots')
         .select('start_time, end_time, price')
-        .eq('court_id', selectedCourt);
+        .eq('court_id', localSelectedCourt);
       if (templateError) throw templateError;
       const priceMap: Record<string, string> = {};
       templateSlots?.forEach(slot => {
@@ -465,10 +486,10 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
         .from('bookings')
         .select('court_id, start_time, end_time, booking_date')
         .in('court_id', courtIdsToCheck)
-        .eq('booking_date', selectedDate)
+        .eq('booking_date', localSelectedDate)
         .in('status', ['confirmed', 'pending']);
       if (bookingsError) throw bookingsError;
-      console.log('Fetched bookings for courts', courtIdsToCheck, 'on', selectedDate, bookings);
+      console.log('Fetched bookings for courts', courtIdsToCheck, 'on', localSelectedDate, bookings);
 
       // Mark slots as unavailable if booked in any court in the group
       const slotsWithPrice = data?.map(slot => {
@@ -521,7 +542,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     } finally {
       setLoading(prev => ({ ...prev, availability: false }));
     }
-  }, [selectedCourt, selectedDate, courtRate, selectedSlots, selectedSlotPrices, selectedCourtGroupId]);
+  }, [localSelectedCourt, localSelectedDate, courtRate, selectedSlots, selectedSlotPrices, selectedCourtGroupId]);
 
   const formatTime = (time: string) => {
     const [hour, minute] = time.split(':').map(n => parseInt(n));
@@ -580,7 +601,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
 
   const handleNextStep = () => {
     if (currentStep === 1) {
-      if (!selectedVenue || !selectedSport || !selectedCourt || !selectedDate) {
+      if (!selectedVenue || !selectedSport || !localSelectedCourt || !localSelectedDate) {
         toast({
           title: "Missing information",
           description: "Please select all required fields",
@@ -604,7 +625,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
 
   const handlePreviousStep = () => {
     setCurrentStep(currentStep - 1);
-    if (currentStep === 3 && selectedCourt && selectedDate) {
+    if (currentStep === 3 && localSelectedCourt && localSelectedDate) {
       fetchAvailability();
     }
   };
@@ -621,8 +642,8 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
           amount: totalAmountInPaise, // Send amount already in paise
           receipt: receipt,
           notes: {
-            court_id: selectedCourt,
-            date: selectedDate,
+            court_id: localSelectedCourt,
+            date: localSelectedDate,
             slots: selectedSlots.join(', '),
           }
         }
@@ -645,7 +666,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
   };
 
   const handlePayment = async () => {
-    if (!user || !selectedCourt || !selectedDate || selectedSlots.length === 0) {
+    if (!user || !localSelectedCourt || !localSelectedDate || selectedSlots.length === 0) {
       toast({
         title: "Missing information",
         description: "Please complete all booking details",
@@ -665,7 +686,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
         amount: order.amount,
         currency: order.currency,
         name: venues.find(v => v.id === selectedVenue)?.name || "Sports Venue",
-        description: `Court Booking for ${selectedDate}`,
+        description: `Court Booking for ${localSelectedDate}`,
         order_id: order.id,
         prefill: {
           name: name,
@@ -706,7 +727,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
   };
 
   const handleBooking = async (paymentId: string, orderId: string) => {
-    if (!selectedCourt || !selectedDate || selectedSlots.length === 0) {
+    if (!localSelectedCourt || !localSelectedDate || selectedSlots.length === 0) {
       toast({
         title: "Missing information",
         description: "Please complete all booking details",
@@ -737,6 +758,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
     setBookingInProgress(true);
     setLoading(prev => ({ ...prev, booking: true }));
     
+    const bookingResults = [];
     try {
       await fetchAvailability();
       
@@ -776,8 +798,6 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       
       bookingBlocks.push(currentBlock);
       
-      const bookingResults = [];
-      
       for (const block of bookingBlocks) {
         const startTime = padTime(block[0].split(' - ')[0]);
         const endTime = padTime(block[block.length - 1].split(' - ')[1]);
@@ -788,9 +808,9 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
         
         try {
           const { data, error } = await supabase.rpc('create_booking_with_lock', {
-            p_court_id: selectedCourt,
+            p_court_id: localSelectedCourt,
             p_user_id: user.id,
-            p_booking_date: selectedDate,
+            p_booking_date: localSelectedDate,
             p_start_time: startTime,
             p_end_time: endTime,
             p_total_price: blockPrice,
@@ -859,7 +879,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
   useEffect(() => {
     if (!user) return;
     let bookingChannel;
-    let courtIdsToCheck = [selectedCourt];
+    let courtIdsToCheck = [localSelectedCourt];
     const subscribe = async () => {
       if (selectedCourtGroupId) {
         const { data: groupCourts } = await supabase
@@ -876,8 +896,8 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
           schema: 'public',
           table: 'bookings',
           filter: courtIdsToCheck.length > 1
-            ? `court_id=in.(${courtIdsToCheck.join(',')}),booking_date=eq.${selectedDate}`
-            : `court_id=eq.${selectedCourt},booking_date=eq.${selectedDate}`
+            ? `court_id=in.(${courtIdsToCheck.join(',')}),booking_date=eq.${localSelectedDate}`
+            : `court_id=eq.${localSelectedCourt},booking_date=eq.${localSelectedDate}`
         }, (payload) => {
           // Always refresh on any relevant booking change
           fetchAvailability();
@@ -889,7 +909,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
       if (bookingChannel) supabase.removeChannel(bookingChannel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, selectedCourt, selectedDate, selectedCourtGroupId]);
+  }, [user, localSelectedCourt, localSelectedDate, selectedCourtGroupId]);
 
   if (!user) {
     return null;
@@ -1167,9 +1187,9 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
                         id={`court-${court.id}`}
                         name="court"
                         value={court.id}
-                        checked={selectedCourt === court.id}
+                        checked={localSelectedCourt === court.id}
                         onChange={() => {
-                          setSelectedCourt(court.id);
+                          setLocalSelectedCourt(court.id);
                           setCourtRate(court.hourly_rate);
                           fetchCourtDetails(court.id);
                         }}
@@ -1178,17 +1198,17 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
                       <label
                         htmlFor={`court-${court.id}`}
                         className={`flex items-center justify-center gap-1 w-full p-2 rounded-lg border text-sm transition-all cursor-pointer ${
-                          selectedCourt === court.id
+                          localSelectedCourt === court.id
                             ? 'bg-emerald-600 text-white border-emerald-700 shadow-md shadow-emerald-800/20'
                             : 'bg-gray-800 border-gray-600 hover:border-emerald-500 hover:bg-gray-750 text-gray-200'
                         }`}
                       >
                         <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-                          selectedCourt === court.id 
+                          localSelectedCourt === court.id 
                             ? 'border-white bg-white' 
                             : 'border-gray-400'
                         }`}>
-                          {selectedCourt === court.id && (
+                          {localSelectedCourt === court.id && (
                             <div className="w-1.5 h-1.5 rounded-full bg-emerald-600"></div>
                           )}
                         </div>
@@ -1204,7 +1224,7 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
                 </div>
               )}
               
-              {selectedCourt && courtDetails && (
+              {localSelectedCourt && courtDetails && (
                 <motion.div 
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
@@ -1242,8 +1262,8 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
               </label>
               <input
                 type="date"
-                value={selectedDate}
-                onChange={e => setSelectedDate(e.target.value)}
+                value={localSelectedDate}
+                onChange={e => setLocalSelectedDate(e.target.value)}
                 min={new Date().toISOString().split('T')[0]}
                 className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-white placeholder-gray-400 transition-all"
               />
@@ -1265,13 +1285,13 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
                 Select Time Slots
               </h3>
               <p className="text-sm text-gray-400 mt-1">
-                Available slots for {selectedDate} at {courts.find(c => c.id === selectedCourt)?.name}
+                Available slots for {localSelectedDate} at {courts.find(c => c.id === localSelectedCourt)?.name}
               </p>
             </motion.div>
             
             <motion.div variants={fadeIn} className="mb-4 flex justify-between items-center">
               <p className="text-sm font-medium text-gray-300">
-                Showing availability for: <span className="text-emerald-400">{format(new Date(selectedDate), 'PPP')}</span>
+                Showing availability for: <span className="text-emerald-400">{format(new Date(localSelectedDate), 'PPP')}</span>
               </p>
               <motion.button 
                 whileHover={{ scale: 1.05 }}
@@ -1440,14 +1460,14 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({ onClose, venueId, sportId
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-400">Court:</span>
                     <span className="text-sm font-medium text-white">
-                      {courts.find(c => c.id === selectedCourt)?.name}
+                      {courts.find(c => c.id === localSelectedCourt)?.name}
                     </span>
                   </div>
                   
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-400">Date:</span>
                     <span className="text-sm font-medium text-white">
-                      {format(new Date(selectedDate), 'PPP')}
+                      {format(new Date(localSelectedDate), 'PPP')}
                     </span>
                   </div>
                   
