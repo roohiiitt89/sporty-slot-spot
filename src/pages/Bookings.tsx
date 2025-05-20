@@ -140,11 +140,11 @@ const Bookings: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-black via-navy-dark to-indigo/30">
       <Header />
 
-      <main className="pt-24 pb-16">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto">
+      <main className="pt-12 pb-8 sm:pt-24 sm:pb-16 w-full flex-1 flex flex-col justify-center items-center sm:block">
+        <div className="container mx-auto px-2 sm:px-4 mt-8 sm:mt-0">
+          <div className="w-full mx-0 sm:max-w-4xl sm:mx-auto">
             {/* Back Button and Header */}
-            <div className="mb-8">
+            <div className="mb-6 sm:mb-8">
               <button 
                 onClick={() => navigate('/')} 
                 className="flex items-center text-gray-300 hover:text-white transition-colors mb-6"
@@ -153,11 +153,11 @@ const Bookings: React.FC = () => {
                 Back to Home
               </button>
 
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <h1 className="text-3xl font-bold text-white">My Bookings</h1>
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
+                <h1 className="text-xl sm:text-3xl font-bold text-white">My Bookings</h1>
                 <button 
                   onClick={() => navigate('/venues')} 
-                  className="px-4 py-2 bg-gradient-to-r from-indigo to-indigo-dark text-white rounded-md hover:from-indigo-dark hover:to-indigo transition-all font-medium flex items-center transform hover:scale-[1.02] shadow-lg"
+                  className="px-3 py-2 sm:px-4 sm:py-2 bg-gradient-to-r from-indigo to-indigo-dark text-white rounded-md hover:from-indigo-dark hover:to-indigo transition-all font-medium flex items-center transform hover:scale-[1.02] shadow-md sm:shadow-lg text-sm sm:text-base"
                 >
                   <Calendar className="w-4 h-4 mr-2" />
                   Book New Slot
@@ -173,12 +173,12 @@ const Bookings: React.FC = () => {
               <div className="space-y-8">
                 {/* Upcoming Bookings */}
                 <section>
-                  <h2 className="text-xl font-semibold text-white mb-6 pb-2 border-b border-white/20">
+                  <h2 className="text-lg sm:text-xl font-semibold text-white mb-4 sm:mb-6 pb-2 border-b border-white/20">
                     Upcoming Bookings
                   </h2>
                   
                   {upcomingBookings.length === 0 ? (
-                    <div className="backdrop-blur-sm bg-white/10 rounded-xl p-6 text-center border border-white/20">
+                    <div className="backdrop-blur-sm bg-white/10 rounded-xl p-4 sm:p-6 text-center border border-white/20">
                       <p className="text-gray-300">No upcoming bookings found</p>
                       <button 
                         onClick={() => navigate('/venues')} 
@@ -188,44 +188,44 @@ const Bookings: React.FC = () => {
                       </button>
                     </div>
                   ) : (
-                    <div className="space-y-4">
+                    <div className="space-y-3 sm:space-y-4">
                       {upcomingBookings.map(booking => (
                         <div 
                           key={booking.id} 
                           className="backdrop-blur-sm bg-white/10 rounded-xl overflow-hidden border border-white/20 hover:shadow-lg transition-all"
                         >
-                          <div className="p-6">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <div className="p-4 sm:p-6">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
                               <div>
-                                <h3 className="text-lg font-medium text-white">
+                                <h3 className="text-base sm:text-lg font-medium text-white">
                                   {booking.court.venue.name} - {booking.court.name}
                                 </h3>
-                                <p className="text-sm text-gray-300 flex items-center mt-1">
+                                <p className="text-xs sm:text-sm text-gray-300 flex items-center mt-1">
                                   <span className="capitalize">{booking.court.sport.name.toLowerCase()}</span>
                                 </p>
                               </div>
-                              <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>
                                 {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                               </span>
                             </div>
 
-                            <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-                              <div className="flex items-center text-gray-200">
+                            <div className="mt-3 sm:mt-4 grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-4">
+                              <div className="flex items-center text-xs sm:text-base text-gray-200">
                                 <Calendar className="w-4 h-4 mr-2 text-gray-400" />
                                 <span>{formatDate(booking.booking_date)}</span>
                               </div>
-                              <div className="flex items-center text-gray-200">
+                              <div className="flex items-center text-xs sm:text-base text-gray-200">
                                 <Clock className="w-4 h-4 mr-2 text-gray-400" />
                                 <span>
                                   {formatTime(booking.start_time)} - {formatTime(booking.end_time)}
                                 </span>
                               </div>
-                              <div className="flex items-center text-gray-200">
+                              <div className="flex items-center text-xs sm:text-base text-gray-200">
                                 <span className="font-medium">₹{booking.total_price.toFixed(2)}</span>
                               </div>
                             </div>
 
-                            <div className="mt-4 flex items-center text-sm text-gray-300">
+                            <div className="mt-3 sm:mt-4 flex items-center text-xs sm:text-sm text-gray-300">
                               <MapPin className="w-4 h-4 mr-2 text-gray-400" />
                               <span>{booking.court.venue.location}</span>
                             </div>
@@ -238,44 +238,44 @@ const Bookings: React.FC = () => {
 
                 {/* Past Bookings */}
                 <section>
-                  <h2 className="text-xl font-semibold text-white mb-6 pb-2 border-b border-white/20">
+                  <h2 className="text-lg sm:text-xl font-semibold text-white mb-4 sm:mb-6 pb-2 border-b border-white/20">
                     Past Bookings
                   </h2>
                   
                   {pastBookings.length === 0 ? (
-                    <div className="backdrop-blur-sm bg-white/10 rounded-xl p-6 text-center border border-white/20">
+                    <div className="backdrop-blur-sm bg-white/10 rounded-xl p-4 sm:p-6 text-center border border-white/20">
                       <p className="text-gray-300">No past bookings found</p>
                     </div>
                   ) : (
                     <div className="backdrop-blur-sm bg-white/10 rounded-xl overflow-hidden border border-white/20">
                       <div className="overflow-x-auto">
-                        <table className="w-full">
+                        <table className="w-full text-xs sm:text-base">
                           <thead className="bg-white/10">
                             <tr>
-                              <th className="text-left py-3 px-4 font-medium text-gray-300">Date</th>
-                              <th className="text-left py-3 px-4 font-medium text-gray-300">Venue & Court</th>
-                              <th className="text-left py-3 px-4 font-medium text-gray-300">Time</th>
-                              <th className="text-left py-3 px-4 font-medium text-gray-300">Price</th>
-                              <th className="text-left py-3 px-4 font-medium text-gray-300">Status</th>
+                              <th className="text-left py-2 px-2 sm:py-3 sm:px-4 font-medium text-gray-300">Date</th>
+                              <th className="text-left py-2 px-2 sm:py-3 sm:px-4 font-medium text-gray-300">Venue & Court</th>
+                              <th className="text-left py-2 px-2 sm:py-3 sm:px-4 font-medium text-gray-300">Time</th>
+                              <th className="text-left py-2 px-2 sm:py-3 sm:px-4 font-medium text-gray-300">Price</th>
+                              <th className="text-left py-2 px-2 sm:py-3 sm:px-4 font-medium text-gray-300">Status</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-white/20">
                             {pastBookings.map(booking => (
                               <tr key={booking.id} className="hover:bg-white/5 transition-colors">
-                                <td className="py-3 px-4 text-gray-200">
+                                <td className="py-2 px-2 sm:py-3 sm:px-4 text-gray-200">
                                   {formatDate(booking.booking_date)}
                                 </td>
-                                <td className="py-3 px-4 text-gray-200">
+                                <td className="py-2 px-2 sm:py-3 sm:px-4 text-gray-200">
                                   <p className="font-medium">{booking.court.venue.name}</p>
-                                  <p className="text-sm text-gray-300">{booking.court.name}</p>
+                                  <p className="text-xs sm:text-sm text-gray-300">{booking.court.name}</p>
                                 </td>
-                                <td className="py-3 px-4 text-gray-200">
+                                <td className="py-2 px-2 sm:py-3 sm:px-4 text-gray-200">
                                   {formatTime(booking.start_time)} - {formatTime(booking.end_time)}
                                 </td>
-                                <td className="py-3 px-4 text-gray-200">
+                                <td className="py-2 px-2 sm:py-3 sm:px-4 text-gray-200">
                                   ₹{booking.total_price.toFixed(2)}
                                 </td>
-                                <td className="py-3 px-4">
+                                <td className="py-2 px-2 sm:py-3 sm:px-4">
                                   <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(booking.status)}`}>
                                     {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                                   </span>
