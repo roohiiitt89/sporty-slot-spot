@@ -70,6 +70,9 @@ const Index: React.FC = () => {
     sports: true
   });
   const [locationPermissionHandled, setLocationPermissionHandled] = useState(false);
+  const [greeting, setGreeting] = useState('');
+  const [mostPlayedSport, setMostPlayedSport] = useState<string | null>(null);
+  const [motivationalLine, setMotivationalLine] = useState('');
   
   const venuesRef = useRef<HTMLDivElement>(null);
   const sportsRef = useRef<HTMLDivElement>(null);
@@ -172,6 +175,48 @@ const Index: React.FC = () => {
     </div>
   );
   
+  useEffect(() => {
+    // Time-based greeting
+    const now = new Date();
+    const hour = now.getHours();
+    let timeGreeting = 'Welcome back';
+    if (hour < 12) timeGreeting = 'Good morning';
+    else if (hour < 18) timeGreeting = 'Good afternoon';
+    else timeGreeting = 'Good evening';
+    const name = user?.user_metadata?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || '';
+    setGreeting(`${timeGreeting}, ${name}!`);
+  }, [user]);
+
+  useEffect(() => {
+    // Fetch user's most played sport
+    const fetchMostPlayedSport = async () => {
+      if (!user) return;
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('court:courts(sport:sports(name, id))')
+        .eq('user_id', user.id)
+        .in('status', ['confirmed', 'completed']);
+      if (error || !data) return;
+      const sportCount: Record<string, { name: string; count: number }> = {};
+      data.forEach((b: any) => {
+        const sport = b.court?.sport;
+        if (sport && sport.id) {
+          if (!sportCount[sport.id]) sportCount[sport.id] = { name: sport.name, count: 0 };
+          sportCount[sport.id].count++;
+        }
+      });
+      const sorted = Object.values(sportCount).sort((a, b) => b.count - a.count);
+      if (sorted.length > 0) {
+        setMostPlayedSport(sorted[0].name);
+        setMotivationalLine(`Keep dominating the field, ${user.user_metadata?.full_name?.split(' ')[0] || user.email?.split('@')[0] || ''}! You're a true ${sorted[0].name} star.`);
+      } else {
+        setMostPlayedSport(null);
+        setMotivationalLine('Ready to play? Book your favorite sport and get started!');
+      }
+    };
+    fetchMostPlayedSport();
+  }, [user]);
+  
   return (
     <div className="min-h-screen bg-navy-dark text-card-foreground">
       <Header />
@@ -180,12 +225,13 @@ const Index: React.FC = () => {
   <AuroraBackgroundDemo />
 </section>
 
-      {/* Add Location Permission Request here */}
+      {/* Personalized Greeting Section (replaces Discover venues near you) */}
       {!locationPermissionHandled && (
-        <div className="container mx-auto px-4 -mt-6 relative z-10">
-          <LocationPermissionRequest
-            onPermissionGranted={handleLocationPermissionGranted}
-          />
+        <div className="container mx-auto px-4 -mt-6 sm:mt-16 relative z-10">
+          <div className="bg-gradient-to-r from-indigo-500/10 to-green-500/10 rounded-xl p-4 mb-4 border border-indigo-500/20 flex flex-col items-center text-center">
+            <h2 className="text-xl font-semibold text-white mb-1">{greeting}</h2>
+            <p className="text-green-300 text-sm mb-2">{motivationalLine}</p>
+          </div>
         </div>
       )}
 
