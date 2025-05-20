@@ -4,11 +4,14 @@ import { useAuth } from '@/context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   BarChart, Calendar, Map, Users, Star, MessageCircle, 
-  HelpCircle, LogOut, ChevronRight, AlertCircle, Loader2 
+  HelpCircle, LogOut, ChevronRight, AlertCircle, Loader2, 
+  Clock, Banknote, BarChart2, Award
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
-import { format } from 'date-fns';
+import { format, parseISO, subDays } from 'date-fns';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from '@/components/ui/button';
 
 // Admin quick links with enhanced styling and organization
 const quickLinks = [
@@ -68,6 +71,18 @@ interface QuickStats {
   averageRating: number;
   occupancyRate: number;
   isLoading: boolean;
+  pendingBookings: number;
+  monthlyRevenue: number;
+  upcomingBookings: number;
+  recentReviews: number;
+}
+
+interface RecentActivity {
+  id: string;
+  type: string;
+  title: string;
+  timestamp: string;
+  details: string;
 }
 
 const AdminHome_Mobile: React.FC = () => {
@@ -78,10 +93,16 @@ const AdminHome_Mobile: React.FC = () => {
     todayBookings: 0,
     averageRating: 0,
     occupancyRate: 0,
-    isLoading: true
+    isLoading: true,
+    pendingBookings: 0,
+    monthlyRevenue: 0,
+    upcomingBookings: 0,
+    recentReviews: 0
   });
   const [adminVenues, setAdminVenues] = useState<Array<{ venue_id: string }>>([]);
   const [userRoleState, setUserRoleState] = useState<string | null>(null);
+  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
+  const [activityLoading, setActivityLoading] = useState<boolean>(true);
   
   // If not on mobile, redirect to desktop admin
   useEffect(() => {
@@ -126,6 +147,74 @@ const AdminHome_Mobile: React.FC = () => {
     fetchAdminVenues();
   }, []);
 
+  // Fetch recent activity
+  useEffect(() => {
+    const fetchRecentActivity = async () => {
+      try {
+        setActivityLoading(true);
+        
+        // Prepare venue filter for admin
+        let venueFilter = {};
+        if (adminVenues.length > 0) {
+          const venueIds = adminVenues.map(v => v.venue_id);
+          venueFilter = { venue_id: { in: venueIds } };
+        }
+        
+        // Get today's date
+        const today = format(new Date(), 'yyyy-MM-dd');
+        const sevenDaysAgo = format(subDays(new Date(), 7), 'yyyy-MM-dd');
+        
+        // Get recent bookings
+        const { data: recentBookings, error: bookingsError } = await supabase
+          .from('bookings')
+          .select('id, created_at, guest_name, court_id, status, booking_date')
+          .order('created_at', { ascending: false })
+          .limit(5);
+          
+        if (bookingsError) throw bookingsError;
+        
+        // Get recent reviews
+        const { data: recentReviews, error: reviewsError } = await supabase
+          .from('reviews')
+          .select('id, created_at, rating, comment, venue_id')
+          .order('created_at', { ascending: false })
+          .limit(5);
+          
+        if (reviewsError) throw reviewsError;
+        
+        // Combine and format activity
+        const activities: RecentActivity[] = [
+          ...(recentBookings?.map(booking => ({
+            id: `booking-${booking.id}`,
+            type: 'booking',
+            title: `New Booking ${booking.status === 'confirmed' ? '(Confirmed)' : '(Pending)'}`,
+            timestamp: booking.created_at,
+            details: `${booking.guest_name || 'Customer'} booked for ${format(parseISO(booking.booking_date), 'dd MMM yyyy')}`
+          })) || []),
+          
+          ...(recentReviews?.map(review => ({
+            id: `review-${review.id}`,
+            type: 'review',
+            title: `New ${review.rating}★ Review`,
+            timestamp: review.created_at,
+            details: review.comment?.substring(0, 50) + (review.comment?.length > 50 ? '...' : '') || 'No comment'
+          })) || [])
+        ];
+        
+        // Sort by timestamp, recent first
+        activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        
+        setRecentActivity(activities.slice(0, 7)); // Limit to 7 most recent
+      } catch (error) {
+        console.error('Error fetching recent activity:', error);
+      } finally {
+        setActivityLoading(false);
+      }
+    };
+    
+    fetchRecentActivity();
+  }, [adminVenues]);
+
   // Fetch real dashboard metrics
   useEffect(() => {
     const fetchDashboardMetrics = async () => {
@@ -135,6 +224,8 @@ const AdminHome_Mobile: React.FC = () => {
 
         // Get today's date
         const today = format(new Date(), 'yyyy-MM-dd');
+        const firstDayOfMonth = format(new Date(new Date().getFullYear(), new Date().getMonth(), 1), 'yyyy-MM-dd');
+        const thirtyDaysAgo = format(subDays(new Date(), 30), 'yyyy-MM-dd');
         
         // Prepare venue filter for admin
         let venueFilter = {};
@@ -144,42 +235,67 @@ const AdminHome_Mobile: React.FC = () => {
         }
 
         // 1. Fetch today's bookings count
-        const { data: todayBookings, error: bookingsError, count: bookingsCount } = await supabase
+        const { count: bookingsCount } = await supabase
           .from('bookings')
           .select('id', { count: 'exact' })
           .eq('booking_date', today)
           .in('status', ['confirmed', 'pending', 'completed'])
           .match(venueFilter);
           
-        if (bookingsError) throw bookingsError;
+        // 2. Fetch pending bookings count
+        const { count: pendingBookingsCount } = await supabase
+          .from('bookings')
+          .select('id', { count: 'exact' })
+          .gte('booking_date', today)
+          .eq('status', 'pending')
+          .match(venueFilter);
+          
+        // 3. Fetch upcoming bookings (next 7 days)
+        const { count: upcomingBookingsCount } = await supabase
+          .from('bookings')
+          .select('id', { count: 'exact' })
+          .gte('booking_date', today)
+          .lte('booking_date', format(subDays(new Date(), -7), 'yyyy-MM-dd'))
+          .in('status', ['confirmed', 'pending'])
+          .match(venueFilter);
         
-        // 2. Fetch average rating
-        const { data: ratingsData, error: ratingsError } = await supabase
+        // 4. Fetch average rating
+        const { data: ratingsData } = await supabase
           .from('reviews')
           .select('rating')
           .match({ ...venueFilter, is_approved: true });
           
-        if (ratingsError) throw ratingsError;
-        
-        const averageRating = ratingsData.length > 0 
+        const averageRating = ratingsData && ratingsData.length > 0 
           ? ratingsData.reduce((acc, review) => acc + review.rating, 0) / ratingsData.length 
           : 0;
-        
-        // 3. Calculate occupancy rate (simplified version)
-        // Here we'll check past 7 days bookings vs available slots
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        const sevenDaysAgoStr = format(sevenDaysAgo, 'yyyy-MM-dd');
-        
-        const { data: recentBookings, error: recentBookingsError, count: recentBookingsCount } = await supabase
-          .from('bookings')
+          
+        // 5. Fetch recent reviews count (last 30 days)
+        const { count: recentReviewsCount } = await supabase
+          .from('reviews')
           .select('id', { count: 'exact' })
-          .gte('booking_date', sevenDaysAgoStr)
+          .gte('created_at', thirtyDaysAgo)
+          .match(venueFilter);
+        
+        // 6. Calculate monthly revenue
+        const { data: monthlyBookings } = await supabase
+          .from('bookings')
+          .select('total_price')
+          .gte('booking_date', firstDayOfMonth)
           .lte('booking_date', today)
           .in('status', ['confirmed', 'completed'])
           .match(venueFilter);
           
-        if (recentBookingsError) throw recentBookingsError;
+        const monthlyRevenue = monthlyBookings?.reduce((acc, booking) => acc + (booking.total_price || 0), 0) || 0;
+        
+        // 7. Calculate occupancy rate (simplified version)
+        // Here we'll check past 7 days bookings vs available slots
+        const { count: recentBookingsCount } = await supabase
+          .from('bookings')
+          .select('id', { count: 'exact' })
+          .gte('booking_date', format(subDays(new Date(), 7), 'yyyy-MM-dd'))
+          .lte('booking_date', today)
+          .in('status', ['confirmed', 'completed'])
+          .match(venueFilter);
         
         // For simplicity, we'll use a target of 10 bookings per day per venue as "full capacity"
         let venueCount = 1; // Default to 1 if no venues
@@ -187,11 +303,11 @@ const AdminHome_Mobile: React.FC = () => {
           venueCount = adminVenues.length;
         } else {
           // For super admin, get total venue count
-          const { count, error: venueCountError } = await supabase
+          const { count } = await supabase
             .from('venues')
             .select('*', { count: 'exact' });
             
-          if (!venueCountError && count !== null) {
+          if (count !== null) {
             venueCount = count;
           }
         }
@@ -207,7 +323,11 @@ const AdminHome_Mobile: React.FC = () => {
           todayBookings: bookingsCount || 0,
           averageRating: parseFloat(averageRating.toFixed(1)),
           occupancyRate,
-          isLoading: false
+          isLoading: false,
+          pendingBookings: pendingBookingsCount || 0,
+          monthlyRevenue,
+          upcomingBookings: upcomingBookingsCount || 0,
+          recentReviews: recentReviewsCount || 0
         });
       } catch (error) {
         console.error('Error fetching dashboard metrics:', error);
@@ -291,28 +411,130 @@ const AdminHome_Mobile: React.FC = () => {
         </div>
       </section>
 
-      {/* Stats Overview */}
+      {/* Enhanced Stats Overview with Tabs */}
       <section className="px-4 mb-4">
+        <Tabs defaultValue="overview" className="w-full">
+          <TabsList className="grid w-full grid-cols-3 bg-navy-800/90 rounded-xl">
+            <TabsTrigger value="overview" className="text-xs py-2 data-[state=active]:bg-indigo-500/20">Overview</TabsTrigger>
+            <TabsTrigger value="bookings" className="text-xs py-2 data-[state=active]:bg-indigo-500/20">Bookings</TabsTrigger>
+            <TabsTrigger value="performance" className="text-xs py-2 data-[state=active]:bg-indigo-500/20">Business</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="overview" className="mt-2">
+            <div className="bg-navy-800/70 rounded-xl p-4 border border-navy-700/50">
+              <h3 className="text-sm uppercase text-indigo-300 font-semibold mb-2 tracking-wider">Quick Status</h3>
+              {stats.isLoading ? (
+                <div className="flex justify-center items-center py-6">
+                  <Loader2 className="h-8 w-8 animate-spin text-indigo-400" />
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 gap-2">
+                  <Link to="/admin/bookings-mobile" className="bg-gradient-to-br from-emerald-500/20 to-emerald-700/20 rounded-lg p-2 border border-emerald-500/30">
+                    <div className="text-2xl font-bold text-emerald-400">{stats.todayBookings}</div>
+                    <div className="text-xs text-gray-300">Today's Bookings</div>
+                  </Link>
+                  <Link to="/admin/reviews-mobile" className="bg-gradient-to-br from-amber-500/20 to-amber-700/20 rounded-lg p-2 border border-amber-500/30">
+                    <div className="text-2xl font-bold text-amber-400">{stats.averageRating}</div>
+                    <div className="text-xs text-gray-300">Avg. Rating</div>
+                  </Link>
+                  <Link to="/admin/analytics-mobile" className="bg-gradient-to-br from-blue-500/20 to-blue-700/20 rounded-lg p-2 border border-blue-500/30">
+                    <div className="text-2xl font-bold text-blue-400">{stats.occupancyRate}%</div>
+                    <div className="text-xs text-gray-300">Occupancy</div>
+                  </Link>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="bookings" className="mt-2">
+            <div className="bg-navy-800/70 rounded-xl p-4 border border-navy-700/50">
+              <h3 className="text-sm uppercase text-indigo-300 font-semibold mb-2 tracking-wider">Booking Stats</h3>
+              {stats.isLoading ? (
+                <div className="flex justify-center items-center py-6">
+                  <Loader2 className="h-8 w-8 animate-spin text-indigo-400" />
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  <Link to="/admin/bookings-mobile" className="bg-gradient-to-br from-orange-500/20 to-orange-700/20 rounded-lg p-3 border border-orange-500/30">
+                    <Clock className="h-5 w-5 mb-1 text-orange-400" />
+                    <div className="text-lg font-bold text-orange-400">{stats.pendingBookings}</div>
+                    <div className="text-xs text-gray-300">Pending Bookings</div>
+                  </Link>
+                  <Link to="/admin/bookings-mobile" className="bg-gradient-to-br from-emerald-500/20 to-emerald-700/20 rounded-lg p-3 border border-emerald-500/30">
+                    <Calendar className="h-5 w-5 mb-1 text-emerald-400" />
+                    <div className="text-lg font-bold text-emerald-400">{stats.upcomingBookings}</div>
+                    <div className="text-xs text-gray-300">Upcoming Bookings</div>
+                  </Link>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="performance" className="mt-2">
+            <div className="bg-navy-800/70 rounded-xl p-4 border border-navy-700/50">
+              <h3 className="text-sm uppercase text-indigo-300 font-semibold mb-2 tracking-wider">Business Performance</h3>
+              {stats.isLoading ? (
+                <div className="flex justify-center items-center py-6">
+                  <Loader2 className="h-8 w-8 animate-spin text-indigo-400" />
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-gradient-to-br from-green-500/20 to-green-700/20 rounded-lg p-3 border border-green-500/30">
+                    <Banknote className="h-5 w-5 mb-1 text-green-400" />
+                    <div className="text-lg font-bold text-green-400">₹{stats.monthlyRevenue.toFixed(0)}</div>
+                    <div className="text-xs text-gray-300">Monthly Revenue</div>
+                  </div>
+                  <div className="bg-gradient-to-br from-purple-500/20 to-purple-700/20 rounded-lg p-3 border border-purple-500/30">
+                    <Star className="h-5 w-5 mb-1 text-purple-400" />
+                    <div className="text-lg font-bold text-purple-400">{stats.recentReviews}</div>
+                    <div className="text-xs text-gray-300">Recent Reviews</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
+      </section>
+
+      {/* Recent Activity Section */}
+      <section className="px-4 mb-6">
         <div className="bg-navy-800/70 rounded-xl p-4 border border-navy-700/50">
-          <h3 className="text-sm uppercase text-indigo-300 font-semibold mb-2 tracking-wider">Quick Status</h3>
-          {stats.isLoading ? (
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="text-sm uppercase text-indigo-300 font-semibold tracking-wider">Recent Activity</h3>
+            <Button variant="ghost" size="sm" className="h-7 text-xs text-indigo-300 hover:bg-indigo-500/10">View All</Button>
+          </div>
+          
+          {activityLoading ? (
             <div className="flex justify-center items-center py-6">
-              <Loader2 className="h-8 w-8 animate-spin text-indigo-400" />
+              <Loader2 className="h-6 w-6 animate-spin text-indigo-400" />
+            </div>
+          ) : recentActivity.length === 0 ? (
+            <div className="text-center py-6 text-gray-400">
+              <BarChart2 className="h-8 w-8 mx-auto text-gray-500 mb-2" />
+              <p>No recent activity</p>
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-2">
-              <Link to="/admin/bookings-mobile" className="bg-gradient-to-br from-emerald-500/20 to-emerald-700/20 rounded-lg p-2 border border-emerald-500/30">
-                <div className="text-2xl font-bold text-emerald-400">{stats.todayBookings}</div>
-                <div className="text-xs text-gray-300">Today's Bookings</div>
-              </Link>
-              <Link to="/admin/reviews-mobile" className="bg-gradient-to-br from-amber-500/20 to-amber-700/20 rounded-lg p-2 border border-amber-500/30">
-                <div className="text-2xl font-bold text-amber-400">{stats.averageRating}</div>
-                <div className="text-xs text-gray-300">Avg. Rating</div>
-              </Link>
-              <Link to="/admin/analytics-mobile" className="bg-gradient-to-br from-blue-500/20 to-blue-700/20 rounded-lg p-2 border border-blue-500/30">
-                <div className="text-2xl font-bold text-blue-400">{stats.occupancyRate}%</div>
-                <div className="text-xs text-gray-300">Occupancy</div>
-              </Link>
+            <div className="space-y-3">
+              {recentActivity.map((activity) => (
+                <div key={activity.id} className="bg-navy-700/50 p-3 rounded-lg border border-navy-600/50">
+                  <div className="flex justify-between">
+                    <div className="flex items-center">
+                      {activity.type === 'booking' ? (
+                        <Calendar className="h-4 w-4 text-emerald-400 mr-1.5" />
+                      ) : activity.type === 'review' ? (
+                        <Star className="h-4 w-4 text-amber-400 mr-1.5" />
+                      ) : (
+                        <AlertCircle className="h-4 w-4 text-blue-400 mr-1.5" />
+                      )}
+                      <h4 className="text-sm font-medium text-white">{activity.title}</h4>
+                    </div>
+                    <span className="text-xs text-gray-400">
+                      {format(new Date(activity.timestamp), 'MMM d, h:mm a')}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-300 mt-1">{activity.details}</p>
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -363,6 +585,41 @@ const AdminHome_Mobile: React.FC = () => {
             </div>
             <ChevronRight className="w-5 h-5 text-gray-500" />
           </Link>
+        </div>
+      </section>
+      
+      {/* Performance Overview */}
+      <section className="px-4 mt-6">
+        <h3 className="text-sm uppercase text-indigo-300 font-semibold mb-3 tracking-wider">Performance Highlights</h3>
+        <div className="bg-navy-800/70 rounded-xl p-4 border border-navy-700/50">
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex items-center">
+              <Award className="w-5 h-5 text-amber-400 mr-2" />
+              <h4 className="text-white font-medium">Most Popular Courts</h4>
+            </div>
+            <Link to="/admin/analytics-mobile" className="text-xs text-indigo-400">View All</Link>
+          </div>
+          
+          {stats.isLoading ? (
+            <div className="flex justify-center items-center py-4">
+              <Loader2 className="h-6 w-6 animate-spin text-indigo-400" />
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex justify-between bg-navy-700/40 p-2 rounded">
+                <span className="text-sm text-gray-300">Badminton Court 1</span>
+                <span className="text-sm font-medium text-emerald-400">89% booked</span>
+              </div>
+              <div className="flex justify-between bg-navy-700/40 p-2 rounded">
+                <span className="text-sm text-gray-300">Cricket Pitch 3</span>
+                <span className="text-sm font-medium text-emerald-400">78% booked</span>
+              </div>
+              <div className="flex justify-between bg-navy-700/40 p-2 rounded">
+                <span className="text-sm text-gray-300">Tennis Court A</span>
+                <span className="text-sm font-medium text-amber-400">65% booked</span>
+              </div>
+            </div>
+          )}
         </div>
       </section>
       

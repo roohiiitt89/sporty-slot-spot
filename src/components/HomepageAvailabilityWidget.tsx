@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, Calendar, Clock, ChevronDown } from 'lucide-react';
@@ -5,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
-import AvailabilityWidget from './AvailabilityWidget';
 import { toast } from '@/components/ui/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Badge } from '@/components/ui/badge';
@@ -33,6 +33,7 @@ const HomepageAvailabilityWidget: React.FC = () => {
   const [slots, setSlots] = useState<any[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [slotsError, setSlotsError] = useState<string | null>(null);
+  const [lastRefresh, setLastRefresh] = useState<number>(Date.now());
 
   const padTime = (t: string) => t.length === 5 ? t + ':00' : t;
 
@@ -40,15 +41,18 @@ const HomepageAvailabilityWidget: React.FC = () => {
     try {
       setSlotsLoading(true);
       setSlotsError(null);
-      // Fetch court details to check for court_group_id
+      
+      // 1. Fetch court details to check for court_group_id
       const { data: courtDetails, error: courtDetailsError } = await supabase
         .from('courts')
         .select('court_group_id')
         .eq('id', courtId)
         .single();
       if (courtDetailsError) throw courtDetailsError;
+      
       let courtIdsToCheck = [courtId];
       if (courtDetails && courtDetails.court_group_id) {
+        // 2. If in a group, fetch all court IDs in the group
         const { data: groupCourts, error: groupCourtsError } = await supabase
           .from('courts')
           .select('id')
@@ -57,13 +61,15 @@ const HomepageAvailabilityWidget: React.FC = () => {
         if (groupCourtsError) throw groupCourtsError;
         courtIdsToCheck = groupCourts.map((c: { id: string }) => c.id);
       }
-      // Fetch available slots for the selected court (for template/pricing)
+
+      // 3. Fetch available slots for the selected court (for template/pricing)
       const { data, error } = await supabase.rpc('get_available_slots', {
         p_court_id: courtId,
         p_date: date
       });
       if (error) throw error;
-      // Fetch bookings for all courts in the group (or just the selected court)
+
+      // 4. Fetch bookings for all courts in the group (or just the selected court)
       const { data: bookings, error: bookingsError } = await supabase
         .from('bookings')
         .select('court_id, start_time, end_time, booking_date')
@@ -71,33 +77,98 @@ const HomepageAvailabilityWidget: React.FC = () => {
         .eq('booking_date', date)
         .in('status', ['confirmed', 'pending']);
       if (bookingsError) throw bookingsError;
-      // Mark slots as unavailable if booked in any court in the group
-      const slotsWithBooking = data?.map(slot => {
+      
+      // 5. Fetch blocked slots for all courts in the group
+      const { data: blockedSlots, error: blockedSlotsError } = await supabase
+        .from('blocked_slots')
+        .select('court_id, start_time, end_time, date')
+        .in('court_id', courtIdsToCheck)
+        .eq('date', date);
+      if (blockedSlotsError) throw blockedSlotsError;
+
+      // 6. Mark slots as unavailable if booked or blocked in any court in the group
+      const slotsWithStatus = data?.map(slot => {
         const slotStart = padTime(slot.start_time);
         const slotEnd = padTime(slot.end_time);
+        
+        // Check if slot is booked in any court in the group
         const isBooked = bookings?.some(b =>
           padTime(b.start_time) === slotStart &&
           padTime(b.end_time) === slotEnd
         );
+        
+        // Check if slot is blocked in any court in the group
+        const isBlocked = blockedSlots?.some(bs =>
+          padTime(bs.start_time) === slotStart &&
+          padTime(bs.end_time) === slotEnd
+        );
+        
         return {
           ...slot,
-          is_available: slot.is_available && !isBooked
+          is_available: slot.is_available && !isBooked && !isBlocked
         };
       }) || [];
-      setSlots(slotsWithBooking);
+      
+      setSlots(slotsWithStatus);
     } catch (error: any) {
       setSlotsError(error.message || 'Failed to load availability');
       setSlots([]);
+      console.error('Error fetching availability:', error);
     } finally {
       setSlotsLoading(false);
     }
   };
 
+  // Set up real-time subscription for bookings and blocked slots
+  useEffect(() => {
+    if (!selectedCourtId || !isExpanded) return;
+    
+    // Set up realtime subscription for bookings changes
+    const bookingsChannel = supabase.channel('homepage_bookings_changes')
+      .on('postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bookings',
+        },
+        () => {
+          console.log('Booking change detected on homepage');
+          if (selectedCourtId && today) {
+            fetchAvailability(selectedCourtId, today);
+          }
+        }
+      )
+      .subscribe();
+      
+    // Set up realtime subscription for blocked slots changes
+    const blockedSlotsChannel = supabase.channel('homepage_blocked_slots_changes')
+      .on('postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'blocked_slots',
+        },
+        () => {
+          console.log('Blocked slot change detected on homepage');
+          if (selectedCourtId && today) {
+            fetchAvailability(selectedCourtId, today);
+          }
+        }
+      )
+      .subscribe();
+      
+    // Clean up subscriptions when component unmounts
+    return () => {
+      supabase.removeChannel(bookingsChannel);
+      supabase.removeChannel(blockedSlotsChannel);
+    };
+  }, [selectedCourtId, today, isExpanded]);
+
   useEffect(() => {
     if (selectedCourtId && today && isExpanded) {
       fetchAvailability(selectedCourtId, today);
     }
-  }, [selectedCourtId, today, isExpanded]);
+  }, [selectedCourtId, today, isExpanded, lastRefresh]);
 
   useEffect(() => {
     const fetchVenues = async () => {
@@ -181,6 +252,14 @@ const HomepageAvailabilityWidget: React.FC = () => {
 
   const toggleExpanded = () => {
     setIsExpanded(!isExpanded);
+    if (!isExpanded && selectedCourtId) {
+      // Refresh availability when expanding
+      setLastRefresh(Date.now());
+    }
+  };
+
+  const handleRefresh = () => {
+    setLastRefresh(Date.now());
   };
 
   return (
@@ -234,14 +313,25 @@ const HomepageAvailabilityWidget: React.FC = () => {
             
             {selectedCourtId && (
               <div className="mt-4">
-                <Button 
-                  onClick={toggleExpanded} 
-                  variant="outline" 
-                  className="w-full border-indigo-light text-indigo-light hover:bg-indigo/20 mb-4 flex justify-between items-center"
-                >
-                  <span>{isExpanded ? 'Hide Availability' : 'View Availability'}</span>
-                  <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                </Button>
+                <div className="flex gap-2 mb-4">
+                  <Button 
+                    onClick={toggleExpanded} 
+                    variant="outline" 
+                    className="flex-1 border-indigo-light text-indigo-light hover:bg-indigo/20 flex justify-between items-center"
+                  >
+                    <span>{isExpanded ? 'Hide Availability' : 'View Availability'}</span>
+                    <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                  </Button>
+                  
+                  <Button 
+                    onClick={handleRefresh} 
+                    variant="outline"
+                    className="border-indigo-light text-indigo-light hover:bg-indigo/20"
+                    size="icon"
+                  >
+                    <Clock className="h-4 w-4" />
+                  </Button>
+                </div>
                 
                 {isExpanded && (
                   <div className="animate-fade-in">

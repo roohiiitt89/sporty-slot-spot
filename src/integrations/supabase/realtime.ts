@@ -43,6 +43,18 @@ export const setupRealtimeSubscriptions = async () => {
         }
       )
       .subscribe();
+
+    // For blocked_slots table - application-wide subscription
+    const blockedSlotsChannel = supabase
+      .channel('blocked_slots_global_channel')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'blocked_slots' },
+        (payload) => {
+          console.log('Blocked slot updated globally:', payload);
+        }
+      )
+      .subscribe();
       
     console.log('Realtime subscriptions set up successfully');
   } catch (error) {
@@ -74,9 +86,9 @@ export const enableRealtimeForBookingSystem = async () => {
       )
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'team_join_requests' },
+        { event: '*', schema: 'public', table: 'notifications' },
         (payload) => {
-          console.log('Team join request update (system):', payload);
+          console.log('Notification update (system):', payload);
         }
       )
       .subscribe();

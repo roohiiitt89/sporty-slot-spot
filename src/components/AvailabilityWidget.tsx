@@ -1,7 +1,8 @@
+
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getAvailableSlots } from '@/integrations/supabase/custom-types';
-import { Loader2, Clock, AlertCircle } from 'lucide-react';
+import { Loader2, Clock, AlertCircle, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -46,6 +47,7 @@ const AvailabilityWidget: React.FC<AvailabilityWidgetProps> = ({
         .eq('id', courtId)
         .single();
       if (courtDetailsError) throw courtDetailsError;
+      
       let courtIdsToCheck = [courtId];
       if (courtDetails && courtDetails.court_group_id) {
         // 2. If in a group, fetch all court IDs in the group
@@ -79,24 +81,30 @@ const AvailabilityWidget: React.FC<AvailabilityWidgetProps> = ({
         .eq('date', date);
       if (blockedSlotsError) throw blockedSlotsError;
 
+      console.log('Fetched blocked slots:', blockedSlots);
+
       // 6. Mark slots as unavailable if booked or blocked in any court in the group
       const padTime = (t: string) => t.length === 5 ? t + ':00' : t;
       const slotsWithStatus = data?.map(slot => {
         const slotStart = padTime(slot.start_time);
         const slotEnd = padTime(slot.end_time);
+        
         const isBooked = bookings?.some(b =>
           padTime(b.start_time) === slotStart &&
           padTime(b.end_time) === slotEnd
         );
+        
         const isBlocked = blockedSlots?.some(bs =>
           padTime(bs.start_time) === slotStart &&
           padTime(bs.end_time) === slotEnd
         );
+        
         return {
           ...slot,
           is_available: slot.is_available && !isBooked && !isBlocked
         };
       }) || [];
+      
       setSlots(slotsWithStatus);
     } catch (error: any) {
       console.error('Error fetching availability:', error);
@@ -131,47 +139,83 @@ const AvailabilityWidget: React.FC<AvailabilityWidgetProps> = ({
       return;
     }
 
-    const bookingsChannel = supabase.channel('bookings_changes')
-      .on('postgres_changes', {
-        event: '*',  // Listen for all events (INSERT, UPDATE, DELETE)
-        schema: 'public',
-        table: 'bookings',
-        filter: `court_id=eq.${courtId}`
-      }, (payload) => {
-        console.log('Booking change detected:', payload);
-        // Trigger a refetch when booking changes
-        setLastRefetch(Date.now());
-      })
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          console.log('Successfully subscribed to bookings changes');
-        } else {
-          console.log('Subscription status for bookings:', status);
+    // Fetch court group ID to set up subscriptions for all related courts
+    const fetchCourtDetails = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('courts')
+          .select('court_group_id')
+          .eq('id', courtId)
+          .single();
+          
+        if (error) throw error;
+        
+        let courtIdsToWatch = [courtId];
+        
+        if (data && data.court_group_id) {
+          const { data: groupCourts, error: groupError } = await supabase
+            .from('courts')
+            .select('id')
+            .eq('court_group_id', data.court_group_id)
+            .eq('is_active', true);
+            
+          if (groupError) throw groupError;
+          
+          courtIdsToWatch = groupCourts.map((c: { id: string }) => c.id);
         }
-      });
+        
+        // Create a unique channel name based on court IDs to avoid conflicts
+        const channelId = `availability_${courtId}_${Date.now()}`;
+        
+        // Set up subscription for bookings changes
+        const bookingsChannel = supabase.channel(`bookings_${channelId}`)
+          .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'bookings',
+            filter: `booking_date=eq.${date}`
+          }, (payload) => {
+            console.log('Booking change detected:', payload);
+            // Trigger a refetch when booking changes
+            setLastRefetch(Date.now());
+          })
+          .subscribe();
+        
+        // Set up subscription for blocked slots changes
+        const blockedSlotsChannel = supabase.channel(`blocked_slots_${channelId}`)
+          .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'blocked_slots',
+            filter: `date=eq.${date}`
+          }, (payload) => {
+            console.log('Blocked slot change detected:', payload);
+            // Trigger a refetch when blocked slots change
+            setLastRefetch(Date.now());
+          })
+          .subscribe();
+          
+        return {
+          bookingsChannel,
+          blockedSlotsChannel
+        };
+      } catch (error) {
+        console.error('Error setting up realtime subscriptions:', error);
+        return null;
+      }
+    };
     
-    // Set up real-time subscription for blocked slots changes
-    const blockedSlotsChannel = supabase.channel('blocked_slots_changes')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'blocked_slots',
-        filter: `court_id=eq.${courtId}`
-      }, (payload) => {
-        console.log('Blocked slot change detected:', payload);
-        // Trigger a refetch when blocked slots change
-        setLastRefetch(Date.now());
-      })
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          console.log('Successfully subscribed to blocked slots changes');
-        }
-      });
+    let channels: any = null;
+    
+    fetchCourtDetails().then((result) => {
+      channels = result;
+    });
     
     return () => {
-      console.log('Removing realtime channels for court', courtId);
-      supabase.removeChannel(bookingsChannel);
-      supabase.removeChannel(blockedSlotsChannel);
+      if (channels) {
+        if (channels.bookingsChannel) supabase.removeChannel(channels.bookingsChannel);
+        if (channels.blockedSlotsChannel) supabase.removeChannel(channels.blockedSlotsChannel);
+      }
     };
   }, [courtId, date]);
 
@@ -212,6 +256,7 @@ const AvailabilityWidget: React.FC<AvailabilityWidgetProps> = ({
             onClick={handleManualRefresh}
             className="text-indigo-light hover:text-white hover:bg-indigo/20"
           >
+            <RefreshCw className="h-4 w-4 mr-1" />
             Refresh
           </Button>
         </div>

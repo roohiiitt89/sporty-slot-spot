@@ -1,14 +1,17 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon } from 'lucide-react';
+import { Calendar as CalendarIcon, ArrowLeft } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { toast } from '@/components/ui/use-toast';
 import AdminBookingForm from '@/components/AdminBookingForm';
 import AvailabilityWidget from '@/components/AvailabilityWidget';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useNavigate } from 'react-router-dom';
 
 const BookForCustomer_Mobile: React.FC = () => {
   const { userRole } = useAuth();
@@ -23,6 +26,7 @@ const BookForCustomer_Mobile: React.FC = () => {
   const [selectedSlot, setSelectedSlot] = useState<{ start_time: string; end_time: string; is_available: boolean } | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [lastRefresh, setLastRefresh] = useState<number>(Date.now());
+  const navigate = useNavigate();
 
   // Fetch admin venues on component mount
   useEffect(() => {
@@ -207,130 +211,149 @@ const BookForCustomer_Mobile: React.FC = () => {
   }
 
   return (
-    <div className="p-4">
-      <h2 className="text-xl font-semibold mb-6">Book for Customer</h2>
-      
-      {/* Venue Selection */}
-      {adminVenues.length > 0 && (
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Select Venue
-          </label>
-          <select 
-            value={selectedVenueId} 
-            onChange={(e) => handleVenueChange(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+    <div className="min-h-screen bg-gradient-to-br from-navy-900 to-navy-800 pb-20">
+      {/* Header */}
+      <header className="sticky top-0 z-10 bg-gradient-to-r from-black/90 to-navy-900/90 backdrop-blur-md shadow-md">
+        <div className="flex items-center px-4 py-4">
+          <button 
+            onClick={() => navigate('/admin/mobile-home')}
+            className="mr-3 p-1.5 rounded-full bg-navy-800 hover:bg-navy-700 transition-colors"
           >
-            {adminVenues.map(venue => (
-              <option key={venue.venue_id} value={venue.venue_id}>
-                {venue.venue_name}
-              </option>
-            ))}
-          </select>
+            <ArrowLeft className="w-5 h-5 text-gray-400" />
+          </button>
+          <h1 className="text-xl font-bold text-white">Book for Customer</h1>
         </div>
-      )}
-      
-      {/* Date Selection */}
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Select Date
-        </label>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" className="w-full justify-start">
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {format(selectedDate, 'PPP')}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0">
-            <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={(date) => {
-                if (date) {
-                  setSelectedDate(date);
-                  setSelectedSlot(null);
-                }
-              }}
-              initialFocus
-              disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-            />
-          </PopoverContent>
-        </Popover>
-      </div>
-      
-      {/* Court Selection */}
-      {courts.length > 0 && (
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Select Court
-          </label>
-          <div className="grid grid-cols-2 gap-2">
-            {courts.map(court => (
-              <Button
-                key={court.id}
-                variant={selectedCourtId === court.id ? 'default' : 'outline'}
-                onClick={() => handleCourtSelect(court.id)}
-                className="text-xs h-9 justify-start overflow-hidden text-ellipsis"
+      </header>
+    
+      <div className="p-4">
+        <div className="bg-navy-800/70 rounded-xl p-4 border border-navy-700/50 mb-4">      
+          {/* Venue Selection */}
+          {adminVenues.length > 0 && (
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-white mb-1">
+                Select Venue
+              </label>
+              <Select 
+                value={selectedVenueId} 
+                onValueChange={(e) => handleVenueChange(e)}
               >
-                {court.name}
-              </Button>
-            ))}
+                <SelectTrigger className="w-full bg-navy-900 border-navy-700 text-white">
+                  <SelectValue placeholder="Select venue" />
+                </SelectTrigger>
+                <SelectContent className="bg-navy-900 border-navy-700 text-white">
+                  {adminVenues.map(venue => (
+                    <SelectItem key={venue.venue_id} value={venue.venue_id}>
+                      {venue.venue_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          
+          {/* Date Selection */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-white mb-1">
+              Select Date
+            </label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-full justify-start bg-navy-900 border-navy-700 text-white">
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {format(selectedDate, 'PPP')}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(date) => {
+                    if (date) {
+                      setSelectedDate(date);
+                      setSelectedSlot(null);
+                    }
+                  }}
+                  initialFocus
+                  disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                />
+              </PopoverContent>
+            </Popover>
           </div>
+          
+          {/* Court Selection */}
+          {courts.length > 0 && (
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-white mb-1">
+                Select Court
+              </label>
+              <Select value={selectedCourtId} onValueChange={handleCourtSelect}>
+                <SelectTrigger className="w-full bg-navy-900 border-navy-700 text-white">
+                  <SelectValue placeholder="Select court" />
+                </SelectTrigger>
+                <SelectContent className="bg-navy-900 border-navy-700 text-white">
+                  {courts.map(court => (
+                    <SelectItem key={court.id} value={court.id}>
+                      {court.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          
+          {/* Manual refresh button */}
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleManualRefresh}
+            className="mb-4 w-full bg-navy-700 hover:bg-navy-600 text-white"
+          >
+            Refresh Availability
+          </Button>
         </div>
-      )}
-      
-      {/* Manual refresh button */}
-      <Button 
-        variant="outline" 
-        size="sm" 
-        onClick={handleManualRefresh}
-        className="mb-4 w-full"
-      >
-        Refresh Availability
-      </Button>
-      
-      {/* Availability Widget */}
-      {selectedCourtId ? (
-        <div className="bg-white rounded-lg shadow p-4 mb-6">
-          <h3 className="text-md font-medium mb-3">Available Time Slots</h3>
-          <AvailabilityWidget
-            courtId={selectedCourtId}
-            date={format(selectedDate, 'yyyy-MM-dd')}
-            onSelectSlot={handleSlotSelect}
-            isAdmin={true}
-            key={`availability-${selectedCourtId}-${format(selectedDate, 'yyyy-MM-dd')}-${lastRefresh}`}
-          />
-        </div>
-      ) : (
-        <div className="bg-white rounded-lg shadow p-4 mb-6">
-          <p className="text-gray-500 text-center py-4">Select a court to view availability</p>
-        </div>
-      )}
-      
-      {/* Booking Form */}
-      {selectedCourtId && selectedSlot ? (
-        <div className="bg-white rounded-lg shadow p-4">
-          <h3 className="text-md font-medium mb-3">Create Booking</h3>
-          <AdminBookingForm
-            courtId={selectedCourtId}
-            courtName={selectedCourtName}
-            venueName={selectedVenueName}
-            venueId={selectedVenueId}
-            date={format(selectedDate, 'yyyy-MM-dd')}
-            selectedSlot={selectedSlot}
-            hourlyRate={courts.find(c => c.id === selectedCourtId)?.hourly_rate || 0}
-            onBookingComplete={handleBookingComplete}
-            allowCashPayments={allowCashPayments}
-          />
-        </div>
-      ) : (
-        <div className="bg-white rounded-lg shadow p-4">
-          <p className="text-gray-500 text-center py-4">
-            Select a time slot to create a booking
-          </p>
-        </div>
-      )}
+        
+        {/* Availability Widget */}
+        {selectedCourtId ? (
+          <div className="bg-navy-800/70 rounded-xl p-4 border border-navy-700/50 mb-4">
+            <h3 className="text-md font-medium mb-3 text-white">Available Time Slots</h3>
+            <AvailabilityWidget
+              courtId={selectedCourtId}
+              date={format(selectedDate, 'yyyy-MM-dd')}
+              onSelectSlot={handleSlotSelect}
+              isAdmin={true}
+              key={`availability-${selectedCourtId}-${format(selectedDate, 'yyyy-MM-dd')}-${lastRefresh}`}
+            />
+          </div>
+        ) : (
+          <div className="bg-navy-800/70 rounded-xl p-4 border border-navy-700/50 mb-4">
+            <p className="text-gray-400 text-center py-4">Select a court to view availability</p>
+          </div>
+        )}
+        
+        {/* Booking Form */}
+        {selectedCourtId && selectedSlot ? (
+          <div className="bg-navy-800/70 rounded-xl p-4 border border-navy-700/50">
+            <h3 className="text-md font-medium mb-3 text-white">Create Booking</h3>
+            <AdminBookingForm
+              courtId={selectedCourtId}
+              courtName={selectedCourtName}
+              venueName={selectedVenueName}
+              venueId={selectedVenueId}
+              date={format(selectedDate, 'yyyy-MM-dd')}
+              selectedSlot={selectedSlot}
+              hourlyRate={courts.find(c => c.id === selectedCourtId)?.hourly_rate || 0}
+              onBookingComplete={handleBookingComplete}
+              allowCashPayments={allowCashPayments}
+            />
+          </div>
+        ) : (
+          <div className="bg-navy-800/70 rounded-xl p-4 border border-navy-700/50">
+            <p className="text-gray-400 text-center py-4">
+              Select a time slot to create a booking
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

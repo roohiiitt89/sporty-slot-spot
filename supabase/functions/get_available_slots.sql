@@ -75,6 +75,32 @@ DROP INDEX IF EXISTS idx_blocked_slots_court_date_time;
 CREATE INDEX IF NOT EXISTS idx_blocked_slots_court_date_time 
 ON public.blocked_slots (court_id, date, start_time, end_time);
 
+-- Create or replace the notification trigger to use SECURITY DEFINER
+CREATE OR REPLACE FUNCTION public.notify_booking_created()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $function$
+begin
+  insert into notifications (
+    user_id,
+    title,
+    message,
+    type,
+    read_status,
+    metadata
+  ) values (
+    NEW.user_id,
+    'Booking Confirmed!',
+    'Your booking has been confirmed. Get ready to play!',
+    'booking',
+    false,
+    jsonb_build_object('booking_id', NEW.id)
+  );
+  return NEW;
+end;
+$function$;
+
 -- Enable realtime for bookings and blocked_slots tables
 ALTER PUBLICATION supabase_realtime ADD TABLE public.bookings;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.blocked_slots;
