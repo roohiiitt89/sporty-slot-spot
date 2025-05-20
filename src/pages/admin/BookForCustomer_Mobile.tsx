@@ -20,6 +20,7 @@ const BookForCustomer_Mobile: React.FC = () => {
   const [allowCashPayments, setAllowCashPayments] = useState<boolean>(true);
   const [courts, setCourts] = useState<{ id: string; name: string; hourly_rate: number }[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(false);
   const [selectedCourtId, setSelectedCourtId] = useState<string>('');
   const [selectedCourtName, setSelectedCourtName] = useState<string>('');
   const [selectedSlot, setSelectedSlot] = useState<{ start_time: string; end_time: string; is_available: boolean } | null>(null);
@@ -266,7 +267,10 @@ const BookForCustomer_Mobile: React.FC = () => {
               <Calendar className="mr-2 h-4 w-4 text-indigo-400" />
               Select Date
             </label>
-            <Popover>
+            <Popover 
+              open={isCalendarOpen}
+              onOpenChange={setIsCalendarOpen}
+            >
               <PopoverTrigger asChild>
                 <Button 
                   variant="outline" 
@@ -284,6 +288,7 @@ const BookForCustomer_Mobile: React.FC = () => {
                     if (date) {
                       setSelectedDate(date);
                       setSelectedSlot(null);
+                      setIsCalendarOpen(false);
                     }
                   }}
                   initialFocus

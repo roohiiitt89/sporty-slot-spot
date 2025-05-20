@@ -7,6 +7,14 @@ interface HeroSectionProps {
 }
 
 const HeroSection: React.FC<HeroSectionProps> = ({ onBookNowClick }) => {
+  const handleBookNowClick = () => {
+    if (onBookNowClick) {
+      onBookNowClick();
+    } else {
+      // Default behavior if no prop is provided
+    }
+  };
+  
   return (
     <div className="bg-gradient-to-br from-indigo-900 via-blue-900 to-navy-900 text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
@@ -52,7 +60,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onBookNowClick }) => {
           
           {onBookNowClick && (
             <button
-              onClick={onBookNowClick}
+              onClick={handleBookNowClick}
               className="mt-4 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-medium py-3 px-8 rounded-md transition duration-150 ease-in-out shadow-md hover:shadow-lg text-lg"
             >
               Book Now

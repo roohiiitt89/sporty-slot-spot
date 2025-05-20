@@ -1,5 +1,5 @@
+
 import React from 'react';
-// Import BookSlotModal as a named export
 import BookSlotModal from './BookSlotModal';
 
 interface BookSlotModalWrapperProps {
@@ -27,7 +27,6 @@ const BookSlotModalWrapper: React.FC<BookSlotModalWrapperProps> = ({
   venueId,
   sportId
 }) => {
-  // Since BookSlotModal expects 'open', we pass it through directly
   return (
     <BookSlotModal
       open={open}

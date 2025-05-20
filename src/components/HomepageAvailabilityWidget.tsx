@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, Calendar, Clock, ChevronDown } from 'lucide-react';
@@ -42,6 +43,7 @@ const HomepageAvailabilityWidget: React.FC = () => {
   const [slots, setSlots] = useState<any[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [slotsError, setSlotsError] = useState<string | null>(null);
+  const [lastRefresh, setLastRefresh] = useState<number>(Date.now());
 
   const padTime = (t: string) => t.length === 5 ? t + ':00' : t;
 
@@ -106,7 +108,7 @@ const HomepageAvailabilityWidget: React.FC = () => {
     if (selectedCourtId && today && isExpanded) {
       fetchAvailability(selectedCourtId, today);
     }
-  }, [selectedCourtId, today, isExpanded]);
+  }, [selectedCourtId, today, isExpanded, lastRefresh]);
 
   useEffect(() => {
     const fetchVenues = async () => {
@@ -140,6 +142,46 @@ const HomepageAvailabilityWidget: React.FC = () => {
 
     fetchVenues();
   }, []);
+
+  // Set up real-time subscriptions
+  useEffect(() => {
+    // Bookings channel subscription for real-time updates
+    const bookingsChannel = supabase.channel('home_bookings_channel')
+      .on('postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bookings'
+        },
+        () => {
+          if (isExpanded && selectedCourtId) {
+            setLastRefresh(Date.now());
+          }
+        }
+      )
+      .subscribe();
+
+    // Blocked slots channel subscription for real-time updates
+    const blockedSlotsChannel = supabase.channel('home_blocked_slots_channel')
+      .on('postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'blocked_slots'
+        },
+        () => {
+          if (isExpanded && selectedCourtId) {
+            setLastRefresh(Date.now());
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(bookingsChannel);
+      supabase.removeChannel(blockedSlotsChannel);
+    };
+  }, [isExpanded, selectedCourtId]);
 
   // When venue is selected, fetch its courts
   useEffect(() => {
@@ -190,6 +232,10 @@ const HomepageAvailabilityWidget: React.FC = () => {
 
   const toggleExpanded = () => {
     setIsExpanded(!isExpanded);
+    if (!isExpanded && selectedCourtId) {
+      // Refresh data when expanding
+      setLastRefresh(Date.now());
+    }
   };
 
   return (
