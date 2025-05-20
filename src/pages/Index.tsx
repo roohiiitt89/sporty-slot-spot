@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Calendar, MapPin, Clock, User, ChevronRight, Activity, Star } from 'lucide-react';
 import Header from '../components/Header';
-import { BookSlotModal } from '../components/BookSlotModal';
+import BookSlotModal from '../components/BookSlotModal';
 import { EnterChallengeButton } from '@/components/challenge/EnterChallengeButton';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
