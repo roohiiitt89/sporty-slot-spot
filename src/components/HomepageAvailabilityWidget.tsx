@@ -86,6 +86,9 @@ const HomepageAvailabilityWidget: React.FC = () => {
         .eq('date', date);
       if (blockedSlotsError) throw blockedSlotsError;
 
+      console.log('HomepageAvailabilityWidget - Fetched blocked slots:', blockedSlots);
+      console.log('HomepageAvailabilityWidget - Fetched bookings:', bookings);
+
       // 6. Mark slots as unavailable if booked or blocked in any court in the group
       const slotsWithStatus = data?.map(slot => {
         const slotStart = padTime(slot.start_time);
@@ -113,7 +116,7 @@ const HomepageAvailabilityWidget: React.FC = () => {
     } catch (error: any) {
       setSlotsError(error.message || 'Failed to load availability');
       setSlots([]);
-      console.error('Error fetching availability:', error);
+      console.error('Error fetching availability in HomepageAvailabilityWidget:', error);
     } finally {
       setSlotsLoading(false);
     }
@@ -123,16 +126,22 @@ const HomepageAvailabilityWidget: React.FC = () => {
   useEffect(() => {
     if (!selectedCourtId || !isExpanded) return;
     
+    console.log('Setting up realtime subscription for HomepageAvailabilityWidget');
+    
+    // Create a unique channel name based on the component
+    const channelId = `homepage_availability_${Date.now()}`;
+    
     // Set up realtime subscription for bookings changes
-    const bookingsChannel = supabase.channel('homepage_bookings_changes')
+    const bookingsChannel = supabase.channel(`homepage_bookings_${channelId}`)
       .on('postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'bookings',
+          filter: `booking_date=eq.${today}`
         },
-        () => {
-          console.log('Booking change detected on homepage');
+        (payload) => {
+          console.log('Booking change detected on homepage:', payload);
           if (selectedCourtId && today) {
             fetchAvailability(selectedCourtId, today);
           }
@@ -141,15 +150,16 @@ const HomepageAvailabilityWidget: React.FC = () => {
       .subscribe();
       
     // Set up realtime subscription for blocked slots changes
-    const blockedSlotsChannel = supabase.channel('homepage_blocked_slots_changes')
+    const blockedSlotsChannel = supabase.channel(`homepage_blocked_slots_${channelId}`)
       .on('postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'blocked_slots',
+          filter: `date=eq.${today}`
         },
-        () => {
-          console.log('Blocked slot change detected on homepage');
+        (payload) => {
+          console.log('Blocked slot change detected on homepage:', payload);
           if (selectedCourtId && today) {
             fetchAvailability(selectedCourtId, today);
           }
@@ -159,17 +169,20 @@ const HomepageAvailabilityWidget: React.FC = () => {
       
     // Clean up subscriptions when component unmounts
     return () => {
+      console.log('Cleaning up realtime subscriptions for HomepageAvailabilityWidget');
       supabase.removeChannel(bookingsChannel);
       supabase.removeChannel(blockedSlotsChannel);
     };
   }, [selectedCourtId, today, isExpanded]);
 
+  // Fetch availability when component mounts or when refresh is triggered
   useEffect(() => {
     if (selectedCourtId && today && isExpanded) {
       fetchAvailability(selectedCourtId, today);
     }
   }, [selectedCourtId, today, isExpanded, lastRefresh]);
 
+  // Fetch venues when component mounts
   useEffect(() => {
     const fetchVenues = async () => {
       try {

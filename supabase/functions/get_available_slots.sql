@@ -6,11 +6,26 @@ CREATE OR REPLACE FUNCTION public.get_available_slots(p_court_id uuid, p_date da
 AS $function$
 DECLARE
   court_exists boolean;
+  court_group_id uuid;
+  related_courts uuid[];
 BEGIN
   -- First, check if the court exists
   SELECT EXISTS(SELECT 1 FROM courts WHERE id = p_court_id) INTO court_exists;
   IF NOT court_exists THEN
     RAISE EXCEPTION 'Court with ID % does not exist', p_court_id;
+  END IF;
+
+  -- Get the court group ID if it exists
+  SELECT c.court_group_id INTO court_group_id 
+  FROM courts c WHERE c.id = p_court_id;
+  
+  -- Get all related courts (in the same group)
+  IF court_group_id IS NOT NULL THEN
+    SELECT ARRAY_AGG(id) INTO related_courts
+    FROM courts
+    WHERE court_group_id = court_group_id;
+  ELSE
+    related_courts := ARRAY[p_court_id];
   END IF;
 
   RETURN QUERY
@@ -26,24 +41,24 @@ BEGIN
       AND ts.is_available = true
   ),
   booked_slots AS (
-    -- Get all bookings for the specific date and court
+    -- Get all bookings for the specific date and related courts
     SELECT 
       b.start_time,
       b.end_time
     FROM bookings b
     WHERE 
-      b.court_id = p_court_id
+      b.court_id = ANY(related_courts)
       AND b.booking_date = p_date
       AND b.status IN ('confirmed', 'pending')
   ),
   blocked_slots AS (
-    -- Get all blocked slots for the specific date and court
+    -- Get all blocked slots for the specific date and related courts
     SELECT 
       bs.start_time,
       bs.end_time
     FROM blocked_slots bs
     WHERE 
-      bs.court_id = p_court_id
+      bs.court_id = ANY(related_courts)
       AND bs.date = p_date
   )
   SELECT 
@@ -90,7 +105,7 @@ begin
     read_status,
     metadata
   ) values (
-    NEW.user_id,
+    COALESCE(NEW.user_id, NEW.booked_by_admin_id),
     'Booking Confirmed!',
     'Your booking has been confirmed. Get ready to play!',
     'booking',
@@ -101,6 +116,13 @@ begin
 end;
 $function$;
 
+-- Create the trigger if it doesn't exist
+DROP TRIGGER IF EXISTS trg_notify_booking_created ON public.bookings;
+CREATE TRIGGER trg_notify_booking_created
+AFTER INSERT ON public.bookings
+FOR EACH ROW
+EXECUTE FUNCTION public.notify_booking_created();
+
 -- Enable realtime for bookings and blocked_slots tables
 ALTER PUBLICATION supabase_realtime ADD TABLE public.bookings;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.blocked_slots;
@@ -108,3 +130,40 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.blocked_slots;
 -- Set replica identity to FULL for both tables to ensure we get full row data in realtime events
 ALTER TABLE public.bookings REPLICA IDENTITY FULL;
 ALTER TABLE public.blocked_slots REPLICA IDENTITY FULL;
+
+-- Function to fix the Tournament type error
+CREATE OR REPLACE FUNCTION public.get_tournament_details(p_tournament_id uuid)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $function$
+DECLARE
+    result json;
+BEGIN
+    SELECT json_build_object(
+        'id', t.id,
+        'name', t.name,
+        'description', t.description,
+        'slug', t.slug,
+        'start_date', t.start_date,
+        'end_date', t.end_date,
+        'registration_deadline', t.registration_deadline,
+        'venue_id', t.venue_id,
+        'sport_id', t.sport_id,
+        'status', t.status,
+        'max_participants', t.max_participants,
+        'entry_fee', t.entry_fee,
+        'rules', t.rules,
+        'registration_count', (SELECT COUNT(*) FROM tournament_registrations tr WHERE tr.tournament_id = t.id),
+        'created_by', t.organizer_id,
+        'organizer_name', p.full_name,
+        'contact_info', p.email,
+        'is_approved', true
+    ) INTO result
+    FROM tournaments t
+    JOIN profiles p ON t.organizer_id = p.id
+    WHERE t.id = p_tournament_id;
+    
+    RETURN result;
+END;
+$function$;

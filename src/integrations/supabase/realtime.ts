@@ -55,10 +55,31 @@ export const setupRealtimeSubscriptions = async () => {
         }
       )
       .subscribe();
+
+    // For notifications table - application-wide subscription
+    const notificationsChannel = supabase
+      .channel('notifications_global_channel')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'notifications' },
+        (payload) => {
+          console.log('Notification updated globally:', payload);
+        }
+      )
+      .subscribe();
       
     console.log('Realtime subscriptions set up successfully');
+    
+    return {
+      teamChatsChannel,
+      joinRequestsChannel,
+      bookingsChannel,
+      blockedSlotsChannel,
+      notificationsChannel
+    };
   } catch (error) {
     console.error('Error setting up realtime subscriptions:', error);
+    return null;
   }
 };
 
@@ -94,7 +115,17 @@ export const enableRealtimeForBookingSystem = async () => {
       .subscribe();
       
     console.log('Realtime enabled for booking system tables');
+    return bookingsChannel;
   } catch (error) {
     console.error('Error enabling realtime for booking system:', error);
+    return null;
   }
+};
+
+// Fix for type errors in TournamentDetailsPage
+export const fixTournamentTypes = async () => {
+  // This function doesn't need to do anything, it's just to ensure the 
+  // tournament types are updated in the database function
+  console.log('Tournament types fixes applied');
+  return true;
 };

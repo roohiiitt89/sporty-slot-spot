@@ -51,7 +51,8 @@ CREATE OR REPLACE FUNCTION public.create_booking_with_lock(
     p_end_time TIME,
     p_total_price NUMERIC,
     p_guest_name TEXT DEFAULT NULL,
-    p_guest_phone TEXT DEFAULT NULL
+    p_guest_phone TEXT DEFAULT NULL,
+    p_booked_by_admin_id UUID DEFAULT NULL
 ) 
 RETURNS UUID
 LANGUAGE plpgsql
@@ -95,7 +96,8 @@ BEGIN
         total_price, 
         guest_name, 
         guest_phone,
-        status
+        status,
+        booked_by_admin_id
     ) VALUES (
         p_court_id,
         p_user_id,
@@ -105,7 +107,8 @@ BEGIN
         p_total_price,
         p_guest_name,
         p_guest_phone,
-        'confirmed'
+        'confirmed',
+        p_booked_by_admin_id
     ) RETURNING id INTO new_booking_id;
     
     RETURN new_booking_id;
@@ -116,3 +119,61 @@ EXCEPTION
         RAISE;
 END;
 $$;
+
+-- Modify the notification trigger to handle admin bookings properly
+CREATE OR REPLACE FUNCTION public.notify_booking_created()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $function$
+DECLARE
+    notification_user_id UUID;
+BEGIN
+    -- Determine which user ID to use for the notification
+    -- If booked by admin for a user, use the user_id
+    -- If booked by admin without user_id, use the admin's ID
+    -- If booked by a regular user, use their ID
+    IF NEW.user_id IS NOT NULL THEN
+        notification_user_id := NEW.user_id;
+    ELSE 
+        notification_user_id := NEW.booked_by_admin_id;
+    END IF;
+    
+    -- Only create a notification if we have a user to notify
+    IF notification_user_id IS NOT NULL THEN
+        INSERT INTO notifications (
+            user_id,
+            title,
+            message,
+            type,
+            read_status,
+            metadata
+        ) VALUES (
+            notification_user_id,
+            'Booking Confirmed!',
+            'Your booking has been confirmed. Get ready to play!',
+            'booking',
+            false,
+            jsonb_build_object('booking_id', NEW.id)
+        );
+    END IF;
+    
+    RETURN NEW;
+EXCEPTION
+    WHEN OTHERS THEN
+        -- Log the error but don't fail the booking transaction
+        RAISE NOTICE 'Error creating booking notification: %', SQLERRM;
+        RETURN NEW;
+END;
+$function$;
+
+-- Make sure the trigger exists
+DROP TRIGGER IF EXISTS trg_notify_booking_created ON public.bookings;
+CREATE TRIGGER trg_notify_booking_created
+AFTER INSERT ON public.bookings
+FOR EACH ROW
+EXECUTE FUNCTION public.notify_booking_created();
+
+-- Enable realtime for notifications table too
+ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
+ALTER TABLE public.notifications REPLICA IDENTITY FULL;
