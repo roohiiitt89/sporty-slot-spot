@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useCallback } from 'react';
 import { Calendar, momentLocalizer, Views, Resource, Event as RBCEvent } from 'react-big-calendar';
 import moment from 'moment';
@@ -125,6 +126,28 @@ const AdminCalendarView: React.FC<AdminCalendarViewProps> = ({ adminVenues }) =>
       setLoading(false);
     }
   }, [dateRange, adminVenues]);
+
+  // Setup real-time subscription
+  useEffect(() => {
+    const channel = supabase.channel('admin-calendar-changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'bookings' },
+        () => {
+          fetchEvents();
+        }
+      )
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'blocked_slots' },
+        () => {
+          fetchEvents();
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchEvents]);
 
   useEffect(() => {
     fetchResources();
