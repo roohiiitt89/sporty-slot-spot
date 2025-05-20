@@ -11,11 +11,11 @@ type VenueRow = Database['public']['Tables']['venues']['Row'];
 export interface Tournament extends TournamentRow {
   sport_name?: string;
   venue_name?: string;
-  registration_count?: number;
-  created_by?: string;
-  organizer_name?: string;
-  contact_info?: string;
-  is_approved?: boolean;
+  registration_count: number; // Changed from optional to required
+  created_by: string; // Changed from optional to required
+  organizer_name: string; // Changed from optional to required
+  contact_info: string; // Changed from optional to required
+  is_approved: boolean; // Changed from optional to required
 }
 
 // Fetch all tournaments
@@ -32,6 +32,11 @@ export function useTournament() {
         ...t,
         sport_name: t.sports?.name,
         venue_name: t.venues?.name,
+        registration_count: 0, // Default value
+        created_by: t.organizer_id || '', // Default value
+        organizer_name: '', // Default value
+        contact_info: '', // Default value
+        is_approved: true, // Default value
       }));
     }
   });
@@ -55,7 +60,7 @@ export function useTournamentDetails(slug?: string) {
         sport_name: data?.sports?.name,
         venue_name: data?.venues?.name,
         registration_count: 0, // Default value for registration count
-        created_by: data?.organizer_id, // Using organizer_id as a fallback for created_by
+        created_by: data?.organizer_id || '', // Using organizer_id as a fallback for created_by
         organizer_name: '', // Default empty value
         contact_info: '', // Default empty value
         is_approved: true, // Default to true
@@ -63,4 +68,4 @@ export function useTournamentDetails(slug?: string) {
     },
     enabled: !!slug,
   });
-} 
+}
