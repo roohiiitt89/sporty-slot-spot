@@ -80,37 +80,37 @@ const Login: React.FC = () => {
       </div>
       <Header />
 
-      <div className="pt-16 pb-8 sm:pt-24 sm:pb-16 relative z-10">
+      <div className="pt-8 pb-4 sm:pt-24 sm:pb-16 relative z-10 w-full flex-1 flex flex-col justify-center items-center sm:block" style={{ minHeight: 'calc(100vh - 64px)' }}>
         <div className="container mx-auto px-2 sm:px-4">
-          <div className="w-full max-w-md mx-auto bg-black/80 border-2 border-[#1E3B2C]/60 shadow-2xl rounded-2xl overflow-hidden animate-fade-in backdrop-blur-lg">
-            <div className="p-5 sm:p-8">
-              <div className="text-center mb-8">
-                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[#1E3B2C]/30 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 sm:h-10 sm:w-10 text-[#2E7D32]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <div className="w-full mx-0 sm:max-w-md sm:mx-auto bg-black/80 border-2 border-[#1E3B2C]/60 shadow-xl sm:shadow-2xl rounded-xl sm:rounded-2xl overflow-hidden animate-fade-in backdrop-blur-lg">
+            <div className="p-4 sm:p-8">
+              <div className="text-center mb-6 sm:mb-8">
+                <div className="w-12 h-12 sm:w-20 sm:h-20 bg-[#1E3B2C]/30 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-lg">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 sm:h-10 sm:w-10 text-[#2E7D32]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M12 2a10 10 0 1 0 0 20 10 10 0 1 0 0-20z"></path>
                     <path d="M12 8v8"></path>
                     <path d="M8 12h8"></path>
                   </svg>
                 </div>
-                <h1 className="text-2xl sm:text-3xl font-extrabold text-[#2E7D32] drop-shadow">Welcome Back</h1>
-                <p className="text-gray-300 mt-2">Sign in to continue with Grid2Play</p>
+                <h1 className="text-xl sm:text-3xl font-extrabold text-[#2E7D32] drop-shadow">Welcome Back</h1>
+                <p className="text-gray-300 mt-1 sm:mt-2 text-sm sm:text-base">Sign in to continue with Grid2Play</p>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-6">
+              <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
                 <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-[#2E7D32] mb-1">
+                  <label htmlFor="email" className="block text-xs sm:text-sm font-medium text-[#2E7D32] mb-1">
                     Email Address
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Mail className="h-5 w-5 text-[#2E7D32]" />
+                      <Mail className="h-4 w-4 sm:h-5 sm:w-5 text-[#2E7D32]" />
                     </div>
                     <input
                       id="email"
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="pl-10 w-full p-3 border border-[#1E3B2C]/60 bg-black/70 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-[#2E7D32] focus:border-[#2E7D32] transition-all text-base sm:text-base"
+                      className="pl-10 w-full p-2 sm:p-3 border border-[#1E3B2C]/60 bg-black/70 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-[#2E7D32] focus:border-[#2E7D32] transition-all text-sm sm:text-base"
                       placeholder="Enter your email"
                       required
                     />
@@ -118,19 +118,19 @@ const Login: React.FC = () => {
                 </div>
 
                 <div>
-                  <label htmlFor="password" className="block text-sm font-medium text-[#2E7D32] mb-1">
+                  <label htmlFor="password" className="block text-xs sm:text-sm font-medium text-[#2E7D32] mb-1">
                     Password
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Lock className="h-5 w-5 text-[#2E7D32]" />
+                      <Lock className="h-4 w-4 sm:h-5 sm:w-5 text-[#2E7D32]" />
                     </div>
                     <input
                       id="password"
                       type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="pl-10 w-full p-3 border border-[#1E3B2C]/60 bg-black/70 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-[#2E7D32] focus:border-[#2E7D32] transition-all text-base sm:text-base"
+                      className="pl-10 w-full p-2 sm:p-3 border border-[#1E3B2C]/60 bg-black/70 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-[#2E7D32] focus:border-[#2E7D32] transition-all text-sm sm:text-base"
                       placeholder="Enter your password"
                       required
                     />
@@ -140,7 +140,7 @@ const Login: React.FC = () => {
                         onClick={() => setShowPassword(!showPassword)}
                         className="text-[#2E7D32] hover:text-white focus:outline-none"
                       >
-                        {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                        {showPassword ? <EyeOff className="h-4 w-4 sm:h-5 sm:w-5" /> : <Eye className="h-4 w-4 sm:h-5 sm:w-5" />}
                       </button>
                     </div>
                   </div>
@@ -154,12 +154,12 @@ const Login: React.FC = () => {
                       type="checkbox"
                       className="h-4 w-4 text-[#2E7D32] focus:ring-[#2E7D32] border-[#1E3B2C]/60 rounded bg-black/70"
                     />
-                    <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-200">
+                    <label htmlFor="remember-me" className="ml-2 block text-xs sm:text-sm text-gray-200">
                       Remember me
                     </label>
                   </div>
 
-                  <div className="text-sm">
+                  <div className="text-xs sm:text-sm">
                     <a href="#" className="font-medium text-[#2E7D32] hover:text-white transition-colors">
                       Forgot password?
                     </a>
@@ -169,7 +169,7 @@ const Login: React.FC = () => {
                 <div>
                   <button
                     type="submit"
-                    className="w-full py-3 px-4 bg-gradient-to-r from-[#1E3B2C] via-[#2E7D32] to-[#1E3B2C] text-white rounded-md font-bold shadow-lg hover:from-[#2E7D32] hover:to-[#1E3B2C] hover:shadow-[#2E7D32]/40 transition-all flex justify-center items-center transform hover:scale-[1.03] focus:outline-none focus:ring-2 focus:ring-[#2E7D32] text-base sm:text-lg"
+                    className="w-full py-2 sm:py-3 px-4 bg-gradient-to-r from-[#1E3B2C] via-[#2E7D32] to-[#1E3B2C] text-white rounded-md font-bold shadow-md sm:shadow-lg hover:from-[#2E7D32] hover:to-[#1E3B2C] hover:shadow-[#2E7D32]/40 transition-all flex justify-center items-center transform hover:scale-[1.03] focus:outline-none focus:ring-2 focus:ring-[#2E7D32] text-sm sm:text-lg"
                     disabled={isLoading}
                   >
                     {isLoading ? (
@@ -187,19 +187,19 @@ const Login: React.FC = () => {
                 </div>
               </form>
 
-              <div className="my-6 text-center">
-                <p className="text-gray-400 mb-2">or</p>
+              <div className="my-4 sm:my-6 text-center">
+                <p className="text-gray-400 mb-2 text-xs sm:text-base">or</p>
                 <button
                   onClick={handleGoogleSignIn}
-                  className="w-full py-3 px-4 bg-white/90 text-black font-medium rounded-md hover:bg-[#1E3B2C]/90 hover:text-white transition-all flex items-center justify-center gap-2 transform hover:scale-[1.03] shadow-lg text-base sm:text-base"
+                  className="w-full py-2 sm:py-3 px-4 bg-white/90 text-black font-medium rounded-md hover:bg-[#1E3B2C]/90 hover:text-white transition-all flex items-center justify-center gap-2 transform hover:scale-[1.03] shadow-md sm:shadow-lg text-sm sm:text-base"
                 >
                   <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-5 h-5" />
                   Continue with Google
                 </button>
               </div>
 
-              <div className="mt-6 text-center">
-                <p className="text-gray-300">
+              <div className="mt-4 sm:mt-6 text-center">
+                <p className="text-gray-300 text-xs sm:text-base">
                   Don't have an account?{' '}
                   <Link to="/register" className="text-[#2E7D32] hover:text-white font-medium transition-colors">
                     Sign up
