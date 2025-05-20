@@ -1,20 +1,9 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Search, MapPin } from 'lucide-react';
 
-interface HeroSectionProps {
-  onBookNowClick?: () => void;
-}
-
-const HeroSection: React.FC<HeroSectionProps> = ({ onBookNowClick }) => {
-  const handleBookNowClick = () => {
-    if (onBookNowClick) {
-      onBookNowClick();
-    } else {
-      // Default behavior if no prop is provided
-    }
-  };
-  
+const HeroSection: React.FC = () => {
   return (
     <div className="bg-gradient-to-br from-indigo-900 via-blue-900 to-navy-900 text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
@@ -57,15 +46,6 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onBookNowClick }) => {
               </Link>
             </div>
           </div>
-          
-          {onBookNowClick && (
-            <button
-              onClick={handleBookNowClick}
-              className="mt-4 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-medium py-3 px-8 rounded-md transition duration-150 ease-in-out shadow-md hover:shadow-lg text-lg"
-            >
-              Book Now
-            </button>
-          )}
           
           <div className="flex flex-wrap justify-center gap-4 text-sm">
             <div className="flex items-center bg-white/10 px-4 py-2 rounded-full">

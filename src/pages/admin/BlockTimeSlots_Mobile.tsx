@@ -38,7 +38,6 @@ const BlockTimeSlots_Mobile: React.FC = () => {
   const [selectedCourtId, setSelectedCourtId] = useState<string>('');
   const [selectedCourtName, setSelectedCourtName] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(false);
   const [selectedSlot, setSelectedSlot] = useState<{
     start_time: string;
     end_time: string;
@@ -424,10 +423,7 @@ const BlockTimeSlots_Mobile: React.FC = () => {
               <Calendar className="mr-2 h-4 w-4 text-indigo-400" />
               Select Date
             </label>
-            <Popover 
-              open={isCalendarOpen} 
-              onOpenChange={setIsCalendarOpen}
-            >
+            <Popover>
               <PopoverTrigger asChild>
                 <Button 
                   variant="outline" 
@@ -445,7 +441,6 @@ const BlockTimeSlots_Mobile: React.FC = () => {
                     if (date) {
                       setSelectedDate(date);
                       setSelectedSlot(null);
-                      setIsCalendarOpen(false);
                     }
                   }}
                   initialFocus
