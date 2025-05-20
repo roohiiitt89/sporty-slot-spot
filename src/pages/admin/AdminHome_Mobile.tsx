@@ -4,13 +4,11 @@ import { useAuth } from '@/context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   BarChart, Calendar, Map, Users, Star, MessageCircle, 
-  HelpCircle, LogOut, ChevronRight, AlertCircle, Loader2, 
-  Clock, BookCheck, BookX, DollarSign, TrendingUp, UserCheck
+  HelpCircle, LogOut, ChevronRight, AlertCircle, Loader2 
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
-import { format, subDays } from 'date-fns';
-import { toast } from '@/components/ui/use-toast';
+import { format } from 'date-fns';
 
 // Admin quick links with enhanced styling and organization
 const quickLinks = [
@@ -69,20 +67,7 @@ interface QuickStats {
   todayBookings: number;
   averageRating: number;
   occupancyRate: number;
-  recentRevenue: number;
-  pendingBookings: number;
-  userCount: number;
   isLoading: boolean;
-}
-
-interface RecentActivity {
-  id: string;
-  type: 'booking' | 'review' | 'message' | 'help';
-  title: string;
-  description: string;
-  time: string;
-  status?: string;
-  url?: string;
 }
 
 const AdminHome_Mobile: React.FC = () => {
@@ -93,12 +78,8 @@ const AdminHome_Mobile: React.FC = () => {
     todayBookings: 0,
     averageRating: 0,
     occupancyRate: 0,
-    recentRevenue: 0,
-    pendingBookings: 0,
-    userCount: 0,
     isLoading: true
   });
-  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [adminVenues, setAdminVenues] = useState<Array<{ venue_id: string }>>([]);
   const [userRoleState, setUserRoleState] = useState<string | null>(null);
   
@@ -154,7 +135,6 @@ const AdminHome_Mobile: React.FC = () => {
 
         // Get today's date
         const today = format(new Date(), 'yyyy-MM-dd');
-        const sevenDaysAgo = format(subDays(new Date(), 7), 'yyyy-MM-dd');
         
         // Prepare venue filter for admin
         let venueFilter = {};
@@ -164,22 +144,16 @@ const AdminHome_Mobile: React.FC = () => {
         }
 
         // 1. Fetch today's bookings count
-        const { count: bookingsCount } = await supabase
+        const { data: todayBookings, error: bookingsError, count: bookingsCount } = await supabase
           .from('bookings')
           .select('id', { count: 'exact' })
           .eq('booking_date', today)
           .in('status', ['confirmed', 'pending', 'completed'])
           .match(venueFilter);
           
-        // 2. Fetch pending bookings count
-        const { count: pendingBookingsCount } = await supabase
-          .from('bookings')
-          .select('id', { count: 'exact' })
-          .gte('booking_date', today)
-          .eq('status', 'pending')
-          .match(venueFilter);
+        if (bookingsError) throw bookingsError;
         
-        // 3. Fetch average rating
+        // 2. Fetch average rating
         const { data: ratingsData, error: ratingsError } = await supabase
           .from('reviews')
           .select('rating')
@@ -191,43 +165,33 @@ const AdminHome_Mobile: React.FC = () => {
           ? ratingsData.reduce((acc, review) => acc + review.rating, 0) / ratingsData.length 
           : 0;
         
-        // 4. Calculate occupancy rate (last 7 days)
-        const { count: recentBookingsCount } = await supabase
+        // 3. Calculate occupancy rate (simplified version)
+        // Here we'll check past 7 days bookings vs available slots
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const sevenDaysAgoStr = format(sevenDaysAgo, 'yyyy-MM-dd');
+        
+        const { data: recentBookings, error: recentBookingsError, count: recentBookingsCount } = await supabase
           .from('bookings')
           .select('id', { count: 'exact' })
-          .gte('booking_date', sevenDaysAgo)
+          .gte('booking_date', sevenDaysAgoStr)
           .lte('booking_date', today)
           .in('status', ['confirmed', 'completed'])
           .match(venueFilter);
           
-        // 5. Calculate recent revenue (last 7 days)
-        const { data: revenueData } = await supabase
-          .from('bookings')
-          .select('total_price')
-          .gte('booking_date', sevenDaysAgo)
-          .lte('booking_date', today)
-          .in('status', ['confirmed', 'completed'])
-          .in('payment_status', ['completed', null])
-          .match(venueFilter);
-          
-        const recentRevenue = revenueData?.reduce((acc, booking) => acc + Number(booking.total_price), 0) || 0;
+        if (recentBookingsError) throw recentBookingsError;
         
-        // 6. Get user count
-        const { count: userCount } = await supabase
-          .from('profiles')
-          .select('id', { count: 'exact' });
-        
-        // For occupancy calculation
+        // For simplicity, we'll use a target of 10 bookings per day per venue as "full capacity"
         let venueCount = 1; // Default to 1 if no venues
         if (adminVenues.length > 0) {
           venueCount = adminVenues.length;
         } else {
           // For super admin, get total venue count
-          const { count } = await supabase
+          const { count, error: venueCountError } = await supabase
             .from('venues')
             .select('*', { count: 'exact' });
             
-          if (count !== null) {
+          if (!venueCountError && count !== null) {
             venueCount = count;
           }
         }
@@ -243,129 +207,24 @@ const AdminHome_Mobile: React.FC = () => {
           todayBookings: bookingsCount || 0,
           averageRating: parseFloat(averageRating.toFixed(1)),
           occupancyRate,
-          recentRevenue,
-          pendingBookings: pendingBookingsCount || 0,
-          userCount: userCount || 0,
           isLoading: false
         });
-        
-        // Fetch recent activity
-        fetchRecentActivity();
       } catch (error) {
         console.error('Error fetching dashboard metrics:', error);
         setStats(prev => ({ ...prev, isLoading: false }));
       }
     };
-    
-    const fetchRecentActivity = async () => {
-      try {
-        // Get today's date and 3 days ago
-        const today = new Date();
-        const threeDaysAgo = format(subDays(today, 3), 'yyyy-MM-dd');
-        
-        // Prepare venue filter for admin
-        let venueFilter = {};
-        if (adminVenues.length > 0) {
-          const venueIds = adminVenues.map(v => v.venue_id);
-          venueFilter = { venue_id: { in: venueIds } };
-        }
-        
-        // 1. Fetch recent bookings
-        const { data: recentBookings } = await supabase
-          .from('bookings')
-          .select(`
-            id, 
-            booking_date, 
-            status, 
-            created_at,
-            court:courts(name, venue:venues(name)),
-            guest_name,
-            user_id,
-            admin_booking:admin_bookings(customer_name)
-          `)
-          .gte('created_at', threeDaysAgo)
-          .order('created_at', { ascending: false })
-          .limit(5)
-          .match(venueFilter);
-          
-        // 2. Fetch recent reviews
-        const { data: recentReviews } = await supabase
-          .from('reviews')
-          .select(`
-            id, 
-            rating, 
-            comment,
-            created_at,
-            venue:venues(name),
-            user_id
-          `)
-          .gte('created_at', threeDaysAgo)
-          .order('created_at', { ascending: false })
-          .limit(3)
-          .match(venueFilter);
-          
-        // 3. Fetch recent help requests
-        const { data: recentHelp } = await supabase
-          .from('help_requests')
-          .select(`
-            id,
-            subject,
-            status,
-            created_at,
-            user_id
-          `)
-          .gte('created_at', threeDaysAgo)
-          .order('created_at', { ascending: false })
-          .limit(2);
-          
-        // Process and combine all activities
-        const bookingActivities: RecentActivity[] = (recentBookings || []).map(booking => ({
-          id: `booking-${booking.id}`,
-          type: 'booking',
-          title: `New Booking ${booking.status === 'confirmed' ? '✓' : booking.status === 'pending' ? '⏱' : '✗'}`,
-          description: `${booking.admin_booking?.[0]?.customer_name || booking.guest_name || 'User'} booked ${booking.court?.name} at ${booking.court?.venue?.name}`,
-          time: new Date(booking.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          status: booking.status,
-          url: '/admin/bookings-mobile'
-        }));
-        
-        const reviewActivities: RecentActivity[] = (recentReviews || []).map(review => ({
-          id: `review-${review.id}`,
-          type: 'review',
-          title: `New Review ${review.rating}★`,
-          description: `Review for ${review.venue?.name}: "${review.comment?.slice(0, 30)}${review.comment?.length > 30 ? '...' : ''}"`,
-          time: new Date(review.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          url: '/admin/reviews-mobile'
-        }));
-        
-        const helpActivities: RecentActivity[] = (recentHelp || []).map(help => ({
-          id: `help-${help.id}`,
-          type: 'help',
-          title: `Help Request ${help.status === 'resolved' ? '✓' : '⏱'}`,
-          description: `Subject: ${help.subject}`,
-          time: new Date(help.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          status: help.status,
-          url: '/admin/help-mobile'
-        }));
-        
-        // Combine all activities and sort by creation time
-        const allActivities = [...bookingActivities, ...reviewActivities, ...helpActivities]
-          .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
-          .slice(0, 6); // Limit to 6 activities
-          
-        setRecentActivity(allActivities);
-      } catch (error) {
-        console.error('Error fetching recent activity:', error);
-      }
-    };
 
     fetchDashboardMetrics();
     
-    // Set up realtime subscription for bookings table
+    // Set up realtime subscription for bookings table to refresh data when changes occur
     const bookingsChannel = supabase.channel('public:bookings')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'bookings' }, 
-        () => fetchDashboardMetrics()
+        () => {
+          // Refresh metrics when bookings change
+          fetchDashboardMetrics();
+        }
       )
       .subscribe();
 
@@ -373,7 +232,10 @@ const AdminHome_Mobile: React.FC = () => {
     const reviewsChannel = supabase.channel('public:reviews')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'reviews' }, 
-        () => fetchDashboardMetrics()
+        () => {
+          // Refresh metrics when reviews change
+          fetchDashboardMetrics();
+        }
       )
       .subscribe();
       
@@ -432,96 +294,25 @@ const AdminHome_Mobile: React.FC = () => {
       {/* Stats Overview */}
       <section className="px-4 mb-4">
         <div className="bg-navy-800/70 rounded-xl p-4 border border-navy-700/50">
-          <div className="flex justify-between items-center mb-2">
-            <h3 className="text-sm uppercase text-indigo-300 font-semibold tracking-wider">Dashboard Summary</h3>
-            <Link to="/admin/analytics-mobile" className="text-xs text-indigo-400 flex items-center">
-              Full Analytics <ChevronRight className="w-3 h-3 ml-0.5" />
-            </Link>
-          </div>
-          
+          <h3 className="text-sm uppercase text-indigo-300 font-semibold mb-2 tracking-wider">Quick Status</h3>
           {stats.isLoading ? (
             <div className="flex justify-center items-center py-6">
               <Loader2 className="h-8 w-8 animate-spin text-indigo-400" />
             </div>
           ) : (
-            <>
-              {/* Main stats */}
-              <div className="grid grid-cols-3 gap-2 mb-3">
-                <Link to="/admin/bookings-mobile" className="bg-gradient-to-br from-emerald-500/20 to-emerald-700/20 rounded-lg p-2 border border-emerald-500/30">
-                  <div className="text-2xl font-bold text-emerald-400">{stats.todayBookings}</div>
-                  <div className="text-xs text-gray-300">Today's Bookings</div>
-                </Link>
-                <Link to="/admin/reviews-mobile" className="bg-gradient-to-br from-amber-500/20 to-amber-700/20 rounded-lg p-2 border border-amber-500/30">
-                  <div className="text-2xl font-bold text-amber-400">{stats.averageRating}</div>
-                  <div className="text-xs text-gray-300">Avg. Rating</div>
-                </Link>
-                <Link to="/admin/analytics-mobile" className="bg-gradient-to-br from-blue-500/20 to-blue-700/20 rounded-lg p-2 border border-blue-500/30">
-                  <div className="text-2xl font-bold text-blue-400">{stats.occupancyRate}%</div>
-                  <div className="text-xs text-gray-300">Occupancy</div>
-                </Link>
-              </div>
-              
-              {/* Secondary stats */}
-              <div className="grid grid-cols-3 gap-2">
-                <div className="bg-gradient-to-br from-purple-500/20 to-purple-700/20 rounded-lg p-2 border border-purple-500/30">
-                  <div className="text-2xl font-bold text-purple-400">₹{stats.recentRevenue}</div>
-                  <div className="text-xs text-gray-300">7-Day Revenue</div>
-                </div>
-                <div className="bg-gradient-to-br from-rose-500/20 to-rose-700/20 rounded-lg p-2 border border-rose-500/30">
-                  <div className="text-2xl font-bold text-rose-400">{stats.pendingBookings}</div>
-                  <div className="text-xs text-gray-300">Pending</div>
-                </div>
-                <div className="bg-gradient-to-br from-cyan-500/20 to-cyan-700/20 rounded-lg p-2 border border-cyan-500/30">
-                  <div className="text-2xl font-bold text-cyan-400">{stats.userCount}</div>
-                  <div className="text-xs text-gray-300">Users</div>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      </section>
-      
-      {/* Recent Activity */}
-      <section className="px-4 mb-6">
-        <div className="bg-navy-800/70 rounded-xl p-4 border border-navy-700/50">
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="text-sm uppercase text-indigo-300 font-semibold tracking-wider">Recent Activity</h3>
-            <Link to="/admin/bookings-mobile" className="text-xs text-indigo-400 flex items-center">
-              See All <ChevronRight className="w-3 h-3 ml-0.5" />
-            </Link>
-          </div>
-          
-          {recentActivity.length === 0 ? (
-            <div className="text-center py-4">
-              <p className="text-sm text-gray-400">No recent activity</p>
-            </div>
-          ) : (
-            <div className="space-y-2.5">
-              {recentActivity.map(activity => (
-                <Link 
-                  key={activity.id} 
-                  to={activity.url || "#"} 
-                  className="flex items-center p-2 rounded-lg bg-navy-700/50 hover:bg-navy-700 transition-colors border border-navy-600/40"
-                >
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-3
-                    ${activity.type === 'booking' ? 'bg-emerald-800/70' : 
-                      activity.type === 'review' ? 'bg-amber-800/70' : 
-                      'bg-purple-800/70'}`}
-                  >
-                    {activity.type === 'booking' ? 
-                      <Calendar className="w-4 h-4 text-emerald-300" /> : 
-                      activity.type === 'review' ? 
-                      <Star className="w-4 h-4 text-amber-300" /> : 
-                      <HelpCircle className="w-4 h-4 text-purple-300" />
-                    }
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-xs font-medium text-gray-200 mb-0.5">{activity.title}</h4>
-                    <p className="text-[10px] text-gray-400 truncate">{activity.description}</p>
-                  </div>
-                  <div className="text-[10px] text-gray-500">{activity.time}</div>
-                </Link>
-              ))}
+            <div className="grid grid-cols-3 gap-2">
+              <Link to="/admin/bookings-mobile" className="bg-gradient-to-br from-emerald-500/20 to-emerald-700/20 rounded-lg p-2 border border-emerald-500/30">
+                <div className="text-2xl font-bold text-emerald-400">{stats.todayBookings}</div>
+                <div className="text-xs text-gray-300">Today's Bookings</div>
+              </Link>
+              <Link to="/admin/reviews-mobile" className="bg-gradient-to-br from-amber-500/20 to-amber-700/20 rounded-lg p-2 border border-amber-500/30">
+                <div className="text-2xl font-bold text-amber-400">{stats.averageRating}</div>
+                <div className="text-xs text-gray-300">Avg. Rating</div>
+              </Link>
+              <Link to="/admin/analytics-mobile" className="bg-gradient-to-br from-blue-500/20 to-blue-700/20 rounded-lg p-2 border border-blue-500/30">
+                <div className="text-2xl font-bold text-blue-400">{stats.occupancyRate}%</div>
+                <div className="text-xs text-gray-300">Occupancy</div>
+              </Link>
             </div>
           )}
         </div>
@@ -547,13 +338,13 @@ const AdminHome_Mobile: React.FC = () => {
         </div>
       </section>
 
-      {/* Admin Tools with Quick Action Buttons */}
+      {/* Admin Tools */}
       <section className="px-4 mt-6">
-        <h3 className="text-sm uppercase text-indigo-300 font-semibold mb-3 tracking-wider">Quick Actions</h3>
+        <h3 className="text-sm uppercase text-indigo-300 font-semibold mb-3 tracking-wider">Admin Tools</h3>
         <div className="grid grid-cols-1 gap-3">
           <Link to="/admin/book-for-customer-mobile" className="flex items-center p-3 bg-navy-800/80 rounded-xl border border-navy-700/50">
             <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 mr-3">
-              <BookCheck className="w-5 h-5 text-white" />
+              <Calendar className="w-5 h-5 text-white" />
             </div>
             <div className="flex-1">
               <div className="text-white font-medium">Book for Customer</div>
@@ -564,7 +355,7 @@ const AdminHome_Mobile: React.FC = () => {
           
           <Link to="/admin/block-time-slots-mobile" className="flex items-center p-3 bg-navy-800/80 rounded-xl border border-navy-700/50">
             <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-gradient-to-br from-rose-500 to-pink-600 mr-3">
-              <BookX className="w-5 h-5 text-white" />
+              <Calendar className="w-5 h-5 text-white" />
             </div>
             <div className="flex-1">
               <div className="text-white font-medium">Block Time Slots</div>
@@ -572,21 +363,6 @@ const AdminHome_Mobile: React.FC = () => {
             </div>
             <ChevronRight className="w-5 h-5 text-gray-500" />
           </Link>
-          
-          <div className="flex gap-3">
-            <Link to="/admin/analytics-mobile" className="flex-1 flex flex-col items-center p-3 bg-navy-800/80 rounded-xl border border-navy-700/50">
-              <TrendingUp className="w-6 h-6 text-indigo-400 mb-1.5" />
-              <span className="text-xs text-center text-gray-300">View Analytics</span>
-            </Link>
-            <Link to="/admin/bookings-mobile" className="flex-1 flex flex-col items-center p-3 bg-navy-800/80 rounded-xl border border-navy-700/50">
-              <Clock className="w-6 h-6 text-emerald-400 mb-1.5" />
-              <span className="text-xs text-center text-gray-300">Recent Bookings</span>
-            </Link>
-            <Link to="/admin/venues-mobile" className="flex-1 flex flex-col items-center p-3 bg-navy-800/80 rounded-xl border border-navy-700/50">
-              <UserCheck className="w-6 h-6 text-purple-400 mb-1.5" />
-              <span className="text-xs text-center text-gray-300">Manage Users</span>
-            </Link>
-          </div>
         </div>
       </section>
       
