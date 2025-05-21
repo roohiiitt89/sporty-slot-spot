@@ -1,3 +1,4 @@
+
 export interface Player {
   id: string;
   full_name: string | null;
@@ -135,6 +136,9 @@ export interface Tournament {
   registration_deadline: string;
   created_at: string;
   updated_at: string;
+  registration_count?: TournamentRegistrationCount[];
+  sport_name?: string;
+  venue_name?: string;
 }
 
 export interface TournamentRegistration {
@@ -214,7 +218,6 @@ export interface TournamentRegistrationCount {
 }
 
 // Export interface for tournament with details including registration count
-// This replaces the old TournamentDetails which was a duplicate of Tournament
 export interface TournamentWithDetails extends Tournament {
   registration_count?: TournamentRegistrationCount[];
 }

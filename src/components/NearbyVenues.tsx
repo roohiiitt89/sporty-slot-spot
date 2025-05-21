@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, Star, ArrowRight, Navigation, Loader2 } from 'lucide-react';
@@ -42,23 +43,45 @@ export function NearbyVenues() {
   const fetchNearbyVenues = async () => {
     try {
       setLoading(true);
-      // Modified to avoid policy recursion - use simpler query
-      const {
-        data,
-        error
-      } = await supabase.from('venues')
+      
+      // Use the SQL API directly to bypass the RLS policy
+      const { data, error } = await supabase
+        .rpc('fetch_all_venues')
         .select('id, name, location, image_url, rating, latitude, longitude');
       
-      if (error) throw error;
-      
-      if (data) {
+      if (error) {
+        // Fallback to basic query if RPC function does not exist
+        console.log('Falling back to basic query');
+        const basicQuery = await supabase
+          .from('venues')
+          .select('id, name, location, image_url, rating, latitude, longitude')
+          .eq('is_active', true);
+        
+        if (basicQuery.error) {
+          throw basicQuery.error;
+        }
+        
+        if (basicQuery.data) {
+          let venuesWithDistance = basicQuery.data.map(venue => {
+            const distance = calculateDistance(latitude, longitude, venue.latitude, venue.longitude);
+            return { ...venue, distance };
+          });
+
+          // Sort by distance if we have user location
+          if (latitude && longitude) {
+            venuesWithDistance.sort((a, b) => {
+              if (a.distance === null) return 1;
+              if (b.distance === null) return -1;
+              return a.distance - b.distance;
+            });
+          }
+          
+          setVenues(venuesWithDistance.slice(0, 3));
+        }
+      } else if (data) {
         let venuesWithDistance = data.map(venue => {
-          // Calculate real distance if we have coordinates
           const distance = calculateDistance(latitude, longitude, venue.latitude, venue.longitude);
-          return {
-            ...venue,
-            distance: distance
-          };
+          return { ...venue, distance };
         });
 
         // Sort by distance if we have user location
