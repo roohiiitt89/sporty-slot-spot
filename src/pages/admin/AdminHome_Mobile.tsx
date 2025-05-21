@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
@@ -103,6 +102,10 @@ const AdminHome_Mobile: React.FC = () => {
   const [userRoleState, setUserRoleState] = useState<string | null>(null);
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [activityLoading, setActivityLoading] = useState<boolean>(true);
+  const [customStartDate, setCustomStartDate] = useState<Date | null>(null);
+  const [customEndDate, setCustomEndDate] = useState<Date | null>(null);
+  const [todaysNetRevenue, setTodaysNetRevenue] = useState(0);
+  const [customNetRevenue, setCustomNetRevenue] = useState(0);
   
   // If not on mobile, redirect to desktop admin
   useEffect(() => {
@@ -154,9 +157,9 @@ const AdminHome_Mobile: React.FC = () => {
         setActivityLoading(true);
         
         // Prepare venue filter for admin
+        const venueIds = adminVenues.map(v => v.venue_id);
         let venueFilter = {};
         if (adminVenues.length > 0) {
-          const venueIds = adminVenues.map(v => v.venue_id);
           venueFilter = { venue_id: { in: venueIds } };
         }
         
@@ -228,36 +231,39 @@ const AdminHome_Mobile: React.FC = () => {
         const thirtyDaysAgo = format(subDays(new Date(), 30), 'yyyy-MM-dd');
         
         // Prepare venue filter for admin
+        const venueIds = adminVenues.map(v => v.venue_id);
         let venueFilter = {};
         if (adminVenues.length > 0) {
-          const venueIds = adminVenues.map(v => v.venue_id);
           venueFilter = { venue_id: { in: venueIds } };
         }
 
-        // 1. Fetch today's bookings count
-        const { count: bookingsCount } = await supabase
+        // 1. Fetch today's bookings with court join
+        const { data: todayBookingsData } = await supabase
           .from('bookings')
-          .select('id', { count: 'exact' })
+          .select('id, court:court_id (venue_id), status, booking_date')
           .eq('booking_date', today)
-          .in('status', ['confirmed', 'pending', 'completed'])
-          .match(venueFilter);
-          
-        // 2. Fetch pending bookings count
-        const { count: pendingBookingsCount } = await supabase
+          .in('status', ['confirmed', 'pending', 'completed']);
+        const todayBookings = (todayBookingsData || []).filter(b => b.court && venueIds.includes(b.court.venue_id));
+        const bookingsCount = todayBookings.length;
+
+        // 2. Fetch pending bookings with court join
+        const { data: pendingBookingsData } = await supabase
           .from('bookings')
-          .select('id', { count: 'exact' })
+          .select('id, court:court_id (venue_id), status, booking_date')
           .gte('booking_date', today)
-          .eq('status', 'pending')
-          .match(venueFilter);
-          
-        // 3. Fetch upcoming bookings (next 7 days)
-        const { count: upcomingBookingsCount } = await supabase
+          .eq('status', 'pending');
+        const pendingBookings = (pendingBookingsData || []).filter(b => b.court && venueIds.includes(b.court.venue_id));
+        const pendingBookingsCount = pendingBookings.length;
+
+        // 3. Fetch upcoming bookings (next 7 days) with court join
+        const { data: upcomingBookingsData } = await supabase
           .from('bookings')
-          .select('id', { count: 'exact' })
+          .select('id, court:court_id (venue_id), status, booking_date')
           .gte('booking_date', today)
           .lte('booking_date', format(subDays(new Date(), -7), 'yyyy-MM-dd'))
-          .in('status', ['confirmed', 'pending'])
-          .match(venueFilter);
+          .in('status', ['confirmed', 'pending']);
+        const upcomingBookings = (upcomingBookingsData || []).filter(b => b.court && venueIds.includes(b.court.venue_id));
+        const upcomingBookingsCount = upcomingBookings.length;
         
         // 4. Fetch average rating
         const { data: ratingsData } = await supabase
@@ -279,23 +285,59 @@ const AdminHome_Mobile: React.FC = () => {
         // 6. Calculate monthly revenue
         const { data: monthlyBookings } = await supabase
           .from('bookings')
-          .select('total_price')
+          .select(`
+            total_price,
+            booking_date,
+            court:court_id (
+              id,
+              court_group_id,
+              venue_id
+            ),
+            venue:venue_id (
+              platform_fee_percent
+            )
+          `)
           .gte('booking_date', firstDayOfMonth)
           .lte('booking_date', today)
-          .in('status', ['confirmed', 'completed'])
-          .match(venueFilter);
-          
-        const monthlyRevenue = monthlyBookings?.reduce((acc, booking) => acc + (booking.total_price || 0), 0) || 0;
+          .in('status', ['confirmed', 'completed']);
         
-        // 7. Calculate occupancy rate (simplified version)
-        // Here we'll check past 7 days bookings vs available slots
-        const { count: recentBookingsCount } = await supabase
+        console.log('monthlyBookings', monthlyBookings);
+        console.log('venueIds', venueIds);
+        const filteredBookings = (monthlyBookings || []).filter(b => b.court && venueIds.includes(b.court.venue_id));
+        console.log('filteredBookings', filteredBookings);
+        const todayStr = format(new Date(), 'yyyy-MM-dd');
+        const todaysBookings = filteredBookings.filter(b => b.booking_date === todayStr);
+        const todaysNetRevenueCalc = todaysBookings.reduce((acc, booking) => {
+          const fee = 7;
+          const share = typeof booking.total_price === 'number' ? booking.total_price * ((100 - fee) / 100) : 0;
+          return acc + share;
+        }, 0);
+        setTodaysNetRevenue(todaysNetRevenueCalc);
+        
+        let customNetRevenueCalc = 0;
+        if (customStartDate && customEndDate) {
+          const start = format(customStartDate, 'yyyy-MM-dd');
+          const end = format(customEndDate, 'yyyy-MM-dd');
+          const customBookings = filteredBookings.filter(
+            b => b.booking_date >= start && b.booking_date <= end
+          );
+          customNetRevenueCalc = customBookings.reduce((acc, booking) => {
+            const fee = 7;
+            const share = typeof booking.total_price === 'number' ? booking.total_price * ((100 - fee) / 100) : 0;
+            return acc + share;
+          }, 0);
+        }
+        setCustomNetRevenue(customNetRevenueCalc);
+        
+        // 7. Calculate occupancy rate (past 7 days) with court join
+        const { data: recentBookingsData } = await supabase
           .from('bookings')
-          .select('id', { count: 'exact' })
+          .select('id, court:court_id (venue_id), status, booking_date')
           .gte('booking_date', format(subDays(new Date(), 7), 'yyyy-MM-dd'))
           .lte('booking_date', today)
-          .in('status', ['confirmed', 'completed'])
-          .match(venueFilter);
+          .in('status', ['confirmed', 'completed']);
+        const recentBookings = (recentBookingsData || []).filter(b => b.court && venueIds.includes(b.court.venue_id));
+        const recentBookingsCount = recentBookings.length;
         
         // For simplicity, we'll use a target of 10 bookings per day per venue as "full capacity"
         let venueCount = 1; // Default to 1 if no venues
@@ -320,13 +362,13 @@ const AdminHome_Mobile: React.FC = () => {
         
         // Update state with real data
         setStats({
-          todayBookings: bookingsCount || 0,
+          todayBookings: bookingsCount,
           averageRating: parseFloat(averageRating.toFixed(1)),
           occupancyRate,
           isLoading: false,
-          pendingBookings: pendingBookingsCount || 0,
-          monthlyRevenue,
-          upcomingBookings: upcomingBookingsCount || 0,
+          pendingBookings: pendingBookingsCount,
+          monthlyRevenue: todaysNetRevenueCalc,
+          upcomingBookings: upcomingBookingsCount,
           recentReviews: recentReviewsCount || 0
         });
       } catch (error) {
@@ -482,7 +524,7 @@ const AdminHome_Mobile: React.FC = () => {
                   <div className="bg-gradient-to-br from-green-500/20 to-green-700/20 rounded-lg p-3 border border-green-500/30">
                     <Banknote className="h-5 w-5 mb-1 text-green-400" />
                     <div className="text-lg font-bold text-green-400">₹{stats.monthlyRevenue.toFixed(0)}</div>
-                    <div className="text-xs text-gray-300">Monthly Revenue</div>
+                    <div className="text-xs text-gray-300">Net Revenue (after commission)</div>
                   </div>
                   <div className="bg-gradient-to-br from-purple-500/20 to-purple-700/20 rounded-lg p-3 border border-purple-500/30">
                     <Star className="h-5 w-5 mb-1 text-purple-400" />
@@ -618,6 +660,47 @@ const AdminHome_Mobile: React.FC = () => {
                 <span className="text-sm text-gray-300">Tennis Court A</span>
                 <span className="text-sm font-medium text-amber-400">65% booked</span>
               </div>
+            </div>
+          )}
+        </div>
+      </section>
+      
+      {/* Today's Net Revenue */}
+      <section className="px-4 mt-6">
+        <h3 className="text-sm uppercase text-indigo-300 font-semibold mb-3 tracking-wider">Today's Net Revenue</h3>
+        <div className="bg-navy-800/70 rounded-xl p-4 border border-navy-700/50">
+          {stats.isLoading ? (
+            <div className="flex justify-center items-center py-6">
+              <Loader2 className="h-8 w-8 animate-spin text-indigo-400" />
+            </div>
+          ) : (
+            <div className="bg-gradient-to-br from-blue-500/20 to-blue-700/20 rounded-lg p-3 border border-blue-500/30 mt-2">
+              <Banknote className="h-5 w-5 mb-1 text-blue-400" />
+              <div className="text-lg font-bold text-blue-400">₹{todaysNetRevenue.toFixed(0)}</div>
+              <div className="text-xs text-gray-300">Today's Net Revenue</div>
+            </div>
+          )}
+        </div>
+      </section>
+      
+      {/* Custom Date Range Net Revenue */}
+      <section className="px-4 mt-6">
+        <h3 className="text-sm uppercase text-indigo-300 font-semibold mb-3 tracking-wider">Custom Date Range Net Revenue</h3>
+        <div className="bg-navy-800/70 rounded-xl p-4 border border-navy-700/50">
+          {stats.isLoading ? (
+            <div className="flex justify-center items-center py-6">
+              <Loader2 className="h-8 w-8 animate-spin text-indigo-400" />
+            </div>
+          ) : (
+            <div className="bg-gradient-to-br from-pink-500/20 to-pink-700/20 rounded-lg p-3 border border-pink-500/30 mt-2">
+              <Banknote className="h-5 w-5 mb-1 text-pink-400" />
+              <div className="flex items-center gap-2 mb-1">
+                <input type="date" value={customStartDate ? format(customStartDate, 'yyyy-MM-dd') : ''} onChange={e => setCustomStartDate(e.target.value ? new Date(e.target.value) : null)} className="bg-navy-900 text-white rounded px-2 py-1 text-xs" />
+                <span className="text-gray-400">to</span>
+                <input type="date" value={customEndDate ? format(customEndDate, 'yyyy-MM-dd') : ''} onChange={e => setCustomEndDate(e.target.value ? new Date(e.target.value) : null)} className="bg-navy-900 text-white rounded px-2 py-1 text-xs" />
+              </div>
+              <div className="text-lg font-bold text-pink-400">₹{customNetRevenue.toFixed(0)}</div>
+              <div className="text-xs text-gray-300">Net Revenue (Custom Range)</div>
             </div>
           )}
         </div>
