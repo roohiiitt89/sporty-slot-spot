@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { MapPin, Star, Filter, Search, Navigation, Clock, ArrowUpDown } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -39,6 +38,9 @@ const Venues: React.FC = () => {
   const [sports, setSports] = useState<Sport[]>([]);
   const [loading, setLoading] = useState(true);
   const [sortOption, setSortOption] = useState<'distance' | 'rating'>('distance');
+  const [selectedVenue, setSelectedVenue] = useState<any>(null);
+  const [selectedCourt, setSelectedCourt] = useState<any>(null);
+  const [selectedDate, setSelectedDate] = useState(new Date());
 
   // Detect mobile
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
@@ -63,7 +65,8 @@ const Venues: React.FC = () => {
       const params = new URLSearchParams(location.search);
       const sportId = params.get('sport');
       
-      let query = supabase
+      // Modified query to avoid policy recursion - fetch all venues first
+      const { data: allVenues, error: venueError } = await supabase
         .from('venues')
         .select(`
           id, 
@@ -74,9 +77,13 @@ const Venues: React.FC = () => {
           rating,
           latitude,
           longitude
-        `)
-        .eq('is_active', true);
+        `);
       
+      if (venueError) throw venueError;
+
+      let filteredVenueData = allVenues || [];
+      
+      // Then apply sport filtering manually
       if (sportId) {
         const { data: courtData, error: courtError } = await supabase
           .from('courts')
@@ -88,7 +95,7 @@ const Venues: React.FC = () => {
         
         if (courtData && courtData.length > 0) {
           const venueIds = courtData.map(court => court.venue_id);
-          query = query.in('id', venueIds);
+          filteredVenueData = filteredVenueData.filter(venue => venueIds.includes(venue.id));
         } else {
           setVenues([]);
           setLoading(false);
@@ -96,12 +103,8 @@ const Venues: React.FC = () => {
         }
       }
         
-      const { data, error } = await query;
-      
-      if (error) throw error;
-      
-      if (data) {
-        const venuesWithDistance = data.map(venue => {
+      if (filteredVenueData) {
+        const venuesWithDistance = filteredVenueData.map(venue => {
           // Calculate real distance if we have coordinates
           const distance = calculateDistance(
             latitude,
@@ -236,6 +239,11 @@ const Venues: React.FC = () => {
         }
       );
     }
+  };
+
+  const handleBookVenue = (venue: any) => {
+    setSelectedVenue(venue);
+    setIsBookModalOpen(true);
   };
 
   const filteredVenues = venues.filter(venue => {
@@ -454,7 +462,7 @@ const Venues: React.FC = () => {
                       Details
                     </button>
                     <button
-                      onClick={() => setIsBookModalOpen(true)}
+                      onClick={() => handleBookVenue(venue)}
                       className="py-1.5 md:py-2 bg-[#1e3b2c] text-white rounded-md text-xs md:text-sm font-medium hover:bg-[#2a4d3a] transition-colors"
                     >
                       Book
@@ -477,12 +485,13 @@ const Venues: React.FC = () => {
         <BookSlotModal 
           open={isBookModalOpen}
           onOpenChange={setIsBookModalOpen}
-          selectedDate={new Date()}
-          selectedCourt={null}
+          selectedDate={selectedDate}
+          selectedCourt={selectedCourt}
           hourlyRate={null}
           onBookingComplete={() => {}}
           allowCashPayments={true}
           onClose={() => setIsBookModalOpen(false)}
+          venueId={selectedVenue?.id}
         />
       )}
     </div>

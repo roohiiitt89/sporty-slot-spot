@@ -5,6 +5,7 @@ import { useGeolocation, calculateDistance } from '@/hooks/use-geolocation';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { useIsMobile } from '@/hooks/use-mobile';
+
 interface Venue {
   id: string;
   name: string;
@@ -15,6 +16,7 @@ interface Venue {
   longitude: number | null;
   distance?: number | null;
 }
+
 export function NearbyVenues() {
   const navigate = useNavigate();
   const {
@@ -26,6 +28,7 @@ export function NearbyVenues() {
   const [venues, setVenues] = useState<Venue[]>([]);
   const [loading, setLoading] = useState(true);
   const isMobile = useIsMobile();
+
   useEffect(() => {
     // Only fetch venues if we have the user's location
     if (latitude && longitude) {
@@ -35,16 +38,19 @@ export function NearbyVenues() {
       fetchNearbyVenues();
     }
   }, [latitude, longitude, hasPermission]);
+
   const fetchNearbyVenues = async () => {
     try {
       setLoading(true);
+      // Modified to avoid policy recursion - use simpler query
       const {
         data,
         error
-      } = await supabase.from('venues').select('id, name, location, image_url, rating, latitude, longitude').eq('is_active', true).order('created_at', {
-        ascending: false
-      }).limit(5);
+      } = await supabase.from('venues')
+        .select('id, name, location, image_url, rating, latitude, longitude');
+      
       if (error) throw error;
+      
       if (data) {
         let venuesWithDistance = data.map(venue => {
           // Calculate real distance if we have coordinates
@@ -63,6 +69,7 @@ export function NearbyVenues() {
             return a.distance - b.distance;
           });
         }
+        
         setVenues(venuesWithDistance.slice(0, 3));
       }
     } catch (error) {
@@ -71,8 +78,10 @@ export function NearbyVenues() {
       setLoading(false);
     }
   };
+
   if (!hasPermission && !venues.length) return null;
-  return <div className="py-8 md:py-12">
+  return (
+    <div className="py-8 md:py-12">
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center mb-6 md:mb-8">
           <div>
@@ -123,5 +132,6 @@ export function NearbyVenues() {
             </button>
           </div>}
       </div>
-    </div>;
+    </div>
+  );
 }

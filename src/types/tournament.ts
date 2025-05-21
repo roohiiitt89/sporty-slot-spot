@@ -213,23 +213,8 @@ export interface TournamentRegistrationCount {
   count: number;
 }
 
-// Remove or rename the duplicate Tournament interface
-export interface TournamentDetails {
-  id: string;
-  name: string;
-  slug: string;
-  description: string | null;
-  rules: string | null;
-  entry_fee: number | null;
-  max_participants: number;
-  start_date: string;
-  end_date: string;
-  status: string;
-  venue_id: string;
-  sport_id: string;
-  organizer_id: string;
-  registration_deadline: string;
-  created_at: string;
-  updated_at: string;
+// Export interface for tournament with details including registration count
+// This replaces the old TournamentDetails which was a duplicate of Tournament
+export interface TournamentWithDetails extends Tournament {
   registration_count?: TournamentRegistrationCount[];
 }
