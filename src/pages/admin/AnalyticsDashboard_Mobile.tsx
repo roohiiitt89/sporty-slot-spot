@@ -22,7 +22,8 @@ interface BookingData {
       name: string;
     };
     venues: {
-      name: string;
+      name?: string;
+      platform_fee_percent?: number;
     };
   };
 }
@@ -38,15 +39,21 @@ const AnalyticsDashboard_Mobile: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
 
   useEffect(() => {
+    const fetchVenues = async () => {
+      if (userRole === 'admin') {
+        const { data: venueData, error: venueError } = await supabase
+          .rpc('get_admin_venues');
+        if (venueError) return;
+        setAdminVenues(venueData || []);
+      }
+    };
+    fetchVenues();
+  }, [userRole]);
+
+  useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        if (userRole === 'admin') {
-          const { data: venueData, error: venueError } = await supabase
-            .rpc('get_admin_venues');
-          if (venueError) throw venueError;
-          setAdminVenues(venueData || []);
-        }
         const { data: venuesData, error: venuesError } = await supabase
           .from('venues')
           .select('id, name')
@@ -56,27 +63,36 @@ const AnalyticsDashboard_Mobile: React.FC = () => {
         let query = supabase
           .from('bookings')
           .select(`
-            id, 
-            booking_date, 
-            start_time, 
-            end_time, 
-            total_price, 
+            id,
+            booking_date,
+            start_time,
+            end_time,
+            total_price,
             status,
             court:court_id (
-              name, 
-              venue_id, 
-              sport_id,
-              sports:sport_id (name),
-              venues:venue_id (name)
+              venue_id,
+              venues:venue_id (name, platform_fee_percent)
             )
           `);
-        if (userRole === 'admin' && adminVenues.length > 0) {
-          const venueIds = adminVenues.map(v => v.venue_id);
-          query = query.in('court.venue_id', venueIds);
-        }
+        const venueIds = adminVenues.map(v => v.venue_id);
         const { data, error } = await query;
         if (error) throw error;
-        setBookings(data || []);
+        const filtered = (data || []).filter(b => b.court && venueIds.includes(b.court.venue_id)).map(b => ({
+          ...b,
+          court: {
+            ...b.court,
+            name: '',
+            sport_id: '',
+            sports: { name: '' },
+            venues: b.court.venues || { name: '', platform_fee_percent: 7 }
+          }
+        }));
+        // Filter out bookings where court.venues is not a valid object (e.g., SelectQueryError)
+        const validBookings = filtered.filter(b => {
+          const venues = b.court?.venues;
+          return venues && typeof venues === 'object' && !('error' in venues);
+        });
+        setBookings(validBookings as BookingData[]);
       } catch (error) {
         console.error('Error fetching analytics data:', error);
         toast({
@@ -89,7 +105,7 @@ const AnalyticsDashboard_Mobile: React.FC = () => {
       }
     };
     fetchData();
-  }, [userRole]);
+  }, [adminVenues]);
 
   useEffect(() => {
     if (userRole === 'admin' && adminVenues.length > 0) {
@@ -122,7 +138,14 @@ const AnalyticsDashboard_Mobile: React.FC = () => {
     return isInDateRange && isMatchingVenue;
   });
 
-  const totalRevenue = filteredBookings.reduce((sum, booking) => sum + booking.total_price, 0);
+  const totalGrossRevenue = filteredBookings.reduce((sum, booking) => sum + booking.total_price, 0);
+  const totalNetRevenue = filteredBookings.reduce((sum, booking) => {
+    let fee = 7;
+    if (booking.court && booking.court.venues && typeof booking.court.venues.platform_fee_percent === 'number') {
+      fee = booking.court.venues.platform_fee_percent;
+    }
+    return sum + (booking.total_price * ((100 - fee) / 100));
+  }, 0);
 
   const handlePreviousPeriod = () => {
     switch(timeRange) {
@@ -279,8 +302,15 @@ const AnalyticsDashboard_Mobile: React.FC = () => {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Revenue</CardTitle>
-            <div className="flex items-baseline space-x-2">
-              <h3 className="text-3xl font-bold">₹{totalRevenue.toLocaleString()}</h3>
+            <div className="flex flex-col items-start space-y-1">
+              <div className="flex items-baseline space-x-2">
+                <h3 className="text-2xl font-bold">₹{totalNetRevenue.toLocaleString()}</h3>
+                <span className="text-xs text-green-600 font-semibold">Net</span>
+              </div>
+              <div className="flex items-baseline space-x-2">
+                <h3 className="text-lg font-medium text-gray-500 line-through">₹{totalGrossRevenue.toLocaleString()}</h3>
+                <span className="text-xs text-gray-400">Gross</span>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -296,7 +326,7 @@ const AnalyticsDashboard_Mobile: React.FC = () => {
             <div className="flex items-baseline space-x-2">
               <h3 className="text-3xl font-bold">
                 ₹{filteredBookings.length > 0 
-                  ? (totalRevenue / filteredBookings.length).toLocaleString(undefined, { 
+                  ? (totalNetRevenue / filteredBookings.length).toLocaleString(undefined, { 
                       maximumFractionDigits: 2 
                     }) 
                   : 0}
