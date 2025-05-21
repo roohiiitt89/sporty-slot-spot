@@ -680,7 +680,9 @@ const BookSlotModal: React.FC<BookSlotModalProps> = ({
             court_id: localSelectedCourt,
             date: localSelectedDate,
             slots: selectedSlots.join(', '),
-          }
+          },
+          venueId: selectedVenue,
+          sportId: selectedSport,
         }
       });
       
