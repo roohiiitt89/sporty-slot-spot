@@ -49,6 +49,45 @@ const athletesBenefits = [{
   description: "Access personalized training plans to develop your skills and reach your full potential",
   image: "https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?q=80&w=1000&auto=format&fit=crop"
 }];
+const motivationalLines = [
+  "Every champion was once a contender that refused to give up.",
+  "The only bad workout is the one you didn't do.",
+  "Push your limits, play your best.",
+  "Winners train, losers complain.",
+  "Greatness starts with a single step onto the court.",
+  "Sweat now, shine later.",
+  "Your only competition is yourself.",
+  "Dream big. Train hard. Play harder.",
+  "Hustle, hit, never quit.",
+  "The game isn't over until you win."
+];
+const athleteFeatures = [
+  {
+    title: "AI Chat Assistant",
+    description: "Get instant help, recommendations, and booking support with our smart AI assistant.",
+    image: "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//%20-2.jpg"
+  },
+  {
+    title: "Seamless Bookings",
+    description: "Book your favorite sports slots in seconds with real-time availability and secure payments.",
+    image: "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//%20-2.jpg"
+  },
+  {
+    title: "Challenge Mode (Coming Soon!)",
+    description: "Compete with friends and teams, climb the leaderboard, and win rewards in our upcoming Challenge Mode.",
+    image: "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//%20-2.jpg"
+  },
+  {
+    title: "Host & Join Tournaments",
+    description: "Browse, join, or host tournaments. Manage fixtures, results, and more—all in one place.",
+    image: "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//%20-2.jpg"
+  },
+  {
+    title: "Personalized Experience",
+    description: "Enjoy personalized greetings, motivational vibes, and recommendations tailored just for you.",
+    image: "https://lrtirloetmulgmdxnusl.supabase.co/storage/v1/object/public/venues//%20-2.jpg"
+  }
+];
 const Index: React.FC = () => {
   const navigate = useNavigate();
   const {
@@ -176,15 +215,21 @@ const Index: React.FC = () => {
   );
   
   useEffect(() => {
-    // Time-based greeting
     const now = new Date();
     const hour = now.getHours();
     let timeGreeting = 'Welcome back';
     if (hour < 12) timeGreeting = 'Good morning';
     else if (hour < 18) timeGreeting = 'Good afternoon';
     else timeGreeting = 'Good evening';
-    const name = user?.user_metadata?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || '';
-    setGreeting(`${timeGreeting}, ${name}!`);
+
+    if (user) {
+      const name = user?.user_metadata?.full_name || '';
+      setGreeting(`${timeGreeting}${name ? ', ' + name : ''}!`);
+      setMotivationalLine(motivationalLines[Math.floor(Math.random() * motivationalLines.length)]);
+    } else {
+      setGreeting("Welcome, Athlete!");
+      setMotivationalLine("Ready to play? Sign in and join the action!");
+    }
   }, [user]);
 
   useEffect(() => {
@@ -231,6 +276,14 @@ const Index: React.FC = () => {
           <div className="bg-gradient-to-r from-indigo-500/10 to-green-500/10 rounded-xl p-4 mb-4 border border-indigo-500/20 flex flex-col items-center text-center">
             <h2 className="text-xl font-semibold text-white mb-1">{greeting}</h2>
             <p className="text-green-300 text-sm mb-2">{motivationalLine}</p>
+            {!user && (
+              <button
+                className="mt-2 px-4 py-2 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 transition"
+                onClick={() => navigate('/login')}
+              >
+                Sign In
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -383,92 +436,47 @@ const Index: React.FC = () => {
 
       <section id="athletes" ref={athletesRef} className="py-16 bg-gradient-to-b from-black/90 to-navy-dark">
         <div className="container mx-auto px-4">
-          <div className={`mb-10 ${visibleSections.athletes ? 'animate-reveal' : 'opacity-0'}`}>
+          <div className={`mb-10 ${visibleSections.athletes ? 'animate-reveal' : 'opacity-0'}`}> 
             <h2 className="section-title text-white text-center relative">
               For Athletes
               <span className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-20 h-1 bg-indigo-light"></span>
             </h2>
             <p className="text-gray-300 text-center max-w-3xl mx-auto mt-4">
-              Enhance your athletic journey with our advanced features designed specifically for players and teams
+              Discover what makes our platform unique and perfect for your sports journey.
             </p>
           </div>
-          
           {/* Desktop Grid */}
-          <div className={`hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-6 ${visibleSections.athletes ? 'animate-reveal' : 'opacity-0'}`}>
-            {athletesBenefits.map((benefit, index) => (
-              <div key={index} className="group" style={{
-                animationDelay: `${0.15 * (index + 1)}s`
-              }}>
+          <div className={`hidden md:grid md:grid-cols-2 lg:grid-cols-5 gap-6 ${visibleSections.athletes ? 'animate-reveal' : 'opacity-0'}`}> 
+            {athleteFeatures.map((feature, index) => (
+              <div key={index} className="group" style={{ animationDelay: `${0.15 * (index + 1)}s` }}>
                 <div className="overflow-hidden rounded-lg bg-navy relative h-80">
-                  <img 
-                    src={benefit.image} 
-                    alt={benefit.title} 
-                    className="w-full h-full object-cover filter grayscale group-hover:grayscale-0 transition-all duration-500"
-                  />
+                  <img src={feature.image} alt={feature.title} className="w-full h-full object-cover filter grayscale group-hover:grayscale-0 transition-all duration-500" />
                   <div className="absolute inset-0 bg-gradient-to-t from-navy to-transparent opacity-70" />
-                  <div className="absolute inset-0">
-                    <svg className="w-full h-full opacity-0 group-hover:opacity-40 transition-opacity duration-700" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                      <circle cx="20" cy="20" r="2" fill="#4CAF50" className="animate-pulse-light" />
-                      <circle cx="80" cy="30" r="2" fill="#4CAF50" className="animate-pulse-light" style={{
-                        animationDelay: '0.5s'
-                      }} />
-                      <circle cx="65" cy="65" r="2" fill="#4CAF50" className="animate-pulse-light" style={{
-                        animationDelay: '1s'
-                      }} />
-                      <circle cx="30" cy="75" r="2" fill="#4CAF50" className="animate-pulse-light" style={{
-                        animationDelay: '1.5s'
-                      }} />
-                      <line x1="20" y1="20" x2="80" y2="30" stroke="#4CAF50" strokeWidth="0.5" strokeDasharray="2" />
-                      <line x1="80" y1="30" x2="65" y2="65" stroke="#4CAF50" strokeWidth="0.5" strokeDasharray="2" />
-                      <line x1="65" y1="65" x2="30" y2="75" stroke="#4CAF50" strokeWidth="0.5" strokeDasharray="2" />
-                      <line x1="30" y1="75" x2="20" y2="20" stroke="#4CAF50" strokeWidth="0.5" strokeDasharray="2" />
-                    </svg>
-                  </div>
                   <div className="absolute inset-0 p-6 flex flex-col justify-end">
-                    <h3 className="text-xl font-bold group-hover:text-white transition-colors">{benefit.title}</h3>
-                    <p className="text-gray-300 opacity-0 group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">{benefit.description}</p>
+                    <h3 className="text-xl font-bold group-hover:text-white transition-colors">{feature.title}</h3>
+                    <p className="text-gray-300 opacity-0 group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">{feature.description}</p>
                   </div>
                 </div>
               </div>
             ))}
           </div>
-
           {/* Mobile Carousel */}
-          <div className={`md:hidden ${visibleSections.athletes ? 'animate-reveal' : 'opacity-0'}`}>
+          <div className={`md:hidden ${visibleSections.athletes ? 'animate-reveal' : 'opacity-0'}`}> 
             <Carousel className="w-full">
-              <CarouselContent>
-                {athletesBenefits.map((benefit, index) => (
-                  <CarouselItem key={index} className="pl-1 md:basis-1/2 lg:basis-1/3">
+              <CarouselContent className="gap-4">
+                {athleteFeatures.map((feature, index) => (
+                  <CarouselItem
+                    key={index}
+                    className="basis-[80%] px-2"
+                    style={{ scrollSnapAlign: 'center' }}
+                  >
                     <div className="relative h-[300px] rounded-xl overflow-hidden bg-navy group active:scale-95 transition-all duration-300">
-                      {/* Animated border effect */}
-                      <div className="absolute inset-0 bg-gradient-to-r from-indigo via-[#2def80] to-indigo opacity-0 group-hover:opacity-100 transition-opacity duration-300" 
-                           style={{ padding: '1px' }}>
-                        <div className="absolute inset-0 bg-navy rounded-xl" />
-                      </div>
-
-                      {/* Main content */}
-                      <div className="relative h-full">
-                        <img 
-                          src={benefit.image} 
-                          alt={benefit.title}
-                          className="w-full h-full object-cover brightness-90 group-hover:brightness-100 group-hover:scale-105 transition-all duration-500"
-                          loading="lazy"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-navy via-navy/50 to-transparent opacity-90" />
-                        
-                        {/* Content overlay with animation */}
-                        <div className="absolute inset-x-0 bottom-0 p-4">
-                          <div className="bg-navy/80 backdrop-blur-sm rounded-lg p-4 border-t border-indigo/20 transform translate-y-0 group-hover:-translate-y-2 transition-transform duration-300">
-                            {/* Glowing dot indicator */}
-                            <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#2def80] shadow-lg shadow-[#2def80]/50 group-hover:animate-ping" />
-                            
-                            <h3 className="text-lg font-bold text-white mb-2 group-hover:text-[#2def80] transition-colors">
-                              {benefit.title}
-                            </h3>
-                            <p className="text-sm text-gray-300 line-clamp-2 group-hover:line-clamp-none transition-all duration-300">
-                              {benefit.description}
-                            </p>
-                          </div>
+                      <img src={feature.image} alt={feature.title} className="w-full h-full object-cover brightness-90 group-hover:brightness-100 group-hover:scale-105 transition-all duration-500" loading="lazy" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-navy via-navy/50 to-transparent opacity-90" />
+                      <div className="absolute inset-x-0 bottom-0 p-4">
+                        <div className="bg-navy/80 backdrop-blur-sm rounded-lg p-4 border-t border-indigo/20 transform translate-y-0 group-hover:-translate-y-2 transition-transform duration-300">
+                          <h3 className="text-lg font-bold text-white mb-2 group-hover:text-[#2def80] transition-colors">{feature.title}</h3>
+                          <p className="text-sm text-gray-300 line-clamp-2 group-hover:line-clamp-none transition-all duration-300">{feature.description}</p>
                         </div>
                       </div>
                     </div>
@@ -481,7 +489,6 @@ const Index: React.FC = () => {
               </div>
             </Carousel>
           </div>
-          
           <div className="mt-10 text-center">
             <Link to="/register" className="inline-flex items-center px-6 py-3 bg-indigo text-white rounded-md hover:bg-indigo-dark transition-colors">
               Join Now
