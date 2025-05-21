@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { MapPin, Star, Filter, Search, Navigation, Clock, ArrowUpDown } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -38,9 +39,6 @@ const Venues: React.FC = () => {
   const [sports, setSports] = useState<Sport[]>([]);
   const [loading, setLoading] = useState(true);
   const [sortOption, setSortOption] = useState<'distance' | 'rating'>('distance');
-  const [selectedVenue, setSelectedVenue] = useState<any>(null);
-  const [selectedCourt, setSelectedCourt] = useState<any>(null);
-  const [selectedDate, setSelectedDate] = useState(new Date());
 
   // Detect mobile
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
@@ -65,9 +63,8 @@ const Venues: React.FC = () => {
       const params = new URLSearchParams(location.search);
       const sportId = params.get('sport');
       
-      // Try using RPC first as a safer approach to bypass RLS issues
-      const { data: allVenues, error: rpcError } = await supabase
-        .rpc('fetch_all_venues')
+      let query = supabase
+        .from('venues')
         .select(`
           id, 
           name, 
@@ -77,62 +74,9 @@ const Venues: React.FC = () => {
           rating,
           latitude,
           longitude
-        `);
-        
-      // Fallback to direct query if RPC fails
-      let venueData;
-      if (rpcError) {
-        console.log('Falling back to direct query');
-        // Try direct query as fallback
-        const { data: directVenues, error: directError } = await supabase
-          .from('venues')
-          .select(`
-            id, 
-            name, 
-            location, 
-            description, 
-            image_url, 
-            rating,
-            latitude,
-            longitude
-          `)
-          .eq('is_active', true);
-          
-        if (directError) {
-          console.error('Direct query also failed:', directError);
-          // Last resort: hard-coded mock data
-          venueData = [
-            {
-              id: "mock-venue-1",
-              name: "Sports Arena",
-              location: "123 Main St, City",
-              description: "A great venue for all sports activities",
-              image_url: "https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000",
-              rating: 4.5,
-              latitude: 40.7128,
-              longitude: -74.0060
-            },
-            {
-              id: "mock-venue-2",
-              name: "Downtown Stadium",
-              location: "456 Park Ave, City",
-              description: "Professional sports venue",
-              image_url: "https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000",
-              rating: 4.8,
-              latitude: 40.7500,
-              longitude: -73.9800
-            }
-          ];
-        } else {
-          venueData = directVenues;
-        }
-      } else {
-        venueData = allVenues;
-      }
-
-      let filteredVenueData = venueData || [];
+        `)
+        .eq('is_active', true);
       
-      // Then apply sport filtering manually if we have sport ID
       if (sportId) {
         const { data: courtData, error: courtError } = await supabase
           .from('courts')
@@ -144,7 +88,7 @@ const Venues: React.FC = () => {
         
         if (courtData && courtData.length > 0) {
           const venueIds = courtData.map(court => court.venue_id);
-          filteredVenueData = filteredVenueData.filter(venue => venueIds.includes(venue.id));
+          query = query.in('id', venueIds);
         } else {
           setVenues([]);
           setLoading(false);
@@ -152,8 +96,12 @@ const Venues: React.FC = () => {
         }
       }
         
-      if (filteredVenueData) {
-        const venuesWithDistance = filteredVenueData.map(venue => {
+      const { data, error } = await query;
+      
+      if (error) throw error;
+      
+      if (data) {
+        const venuesWithDistance = data.map(venue => {
           // Calculate real distance if we have coordinates
           const distance = calculateDistance(
             latitude,
@@ -288,11 +236,6 @@ const Venues: React.FC = () => {
         }
       );
     }
-  };
-
-  const handleBookVenue = (venue: any) => {
-    setSelectedVenue(venue);
-    setIsBookModalOpen(true);
   };
 
   const filteredVenues = venues.filter(venue => {
@@ -511,7 +454,7 @@ const Venues: React.FC = () => {
                       Details
                     </button>
                     <button
-                      onClick={() => handleBookVenue(venue)}
+                      onClick={() => setIsBookModalOpen(true)}
                       className="py-1.5 md:py-2 bg-[#1e3b2c] text-white rounded-md text-xs md:text-sm font-medium hover:bg-[#2a4d3a] transition-colors"
                     >
                       Book
@@ -534,13 +477,12 @@ const Venues: React.FC = () => {
         <BookSlotModal 
           open={isBookModalOpen}
           onOpenChange={setIsBookModalOpen}
-          selectedDate={selectedDate}
-          selectedCourt={selectedCourt}
+          selectedDate={new Date()}
+          selectedCourt={null}
           hourlyRate={null}
           onBookingComplete={() => {}}
           allowCashPayments={true}
           onClose={() => setIsBookModalOpen(false)}
-          venueId={selectedVenue?.id}
         />
       )}
     </div>

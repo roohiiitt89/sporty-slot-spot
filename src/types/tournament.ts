@@ -1,4 +1,3 @@
-
 export interface Player {
   id: string;
   full_name: string | null;
@@ -136,9 +135,6 @@ export interface Tournament {
   registration_deadline: string;
   created_at: string;
   updated_at: string;
-  registration_count?: TournamentRegistrationCount[];
-  sport_name?: string;
-  venue_name?: string;
 }
 
 export interface TournamentRegistration {
@@ -217,7 +213,23 @@ export interface TournamentRegistrationCount {
   count: number;
 }
 
-// Export interface for tournament with details including registration count
-export interface TournamentWithDetails extends Tournament {
+// Remove or rename the duplicate Tournament interface
+export interface TournamentDetails {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  rules: string | null;
+  entry_fee: number | null;
+  max_participants: number;
+  start_date: string;
+  end_date: string;
+  status: string;
+  venue_id: string;
+  sport_id: string;
+  organizer_id: string;
+  registration_deadline: string;
+  created_at: string;
+  updated_at: string;
   registration_count?: TournamentRegistrationCount[];
 }

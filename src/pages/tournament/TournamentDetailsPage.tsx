@@ -11,7 +11,6 @@ import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TournamentFixtures } from "@/components/tournament/TournamentFixtures";
-import { TournamentWithDetails, Tournament } from '@/types/tournament';
 
 export function TournamentDetailsPage() {
   const { slug } = useParams<{ slug: string }>();
