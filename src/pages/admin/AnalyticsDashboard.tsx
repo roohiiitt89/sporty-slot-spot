@@ -46,7 +46,8 @@ interface BookingData {
       name: string;
     };
     venues: {
-      name: string;
+      name?: string;
+      platform_fee_percent?: number;
     };
   };
 }
@@ -100,7 +101,7 @@ const AnalyticsDashboard: React.FC = () => {
               venue_id, 
               sport_id,
               sports:sport_id (name),
-              venues:venue_id (name)
+              venues:venue_id (name, platform_fee_percent)
             )
           `);
 
@@ -113,7 +114,12 @@ const AnalyticsDashboard: React.FC = () => {
         const { data, error } = await query;
 
         if (error) throw error;
-        setBookings(data || []);
+        // Filter out bookings where court.venues is not an object (e.g., SelectQueryError)
+        const validBookings = (data || []).filter(b => {
+          const venues = b.court?.venues;
+          return venues && typeof venues === 'object' && !('error' in venues);
+        });
+        setBookings(validBookings as BookingData[]);
       } catch (error) {
         console.error('Error fetching analytics data:', error);
         toast({
@@ -170,8 +176,16 @@ const AnalyticsDashboard: React.FC = () => {
     return isInDateRange && isMatchingVenue;
   });
 
-  // Calculate total revenue
-  const totalRevenue = filteredBookings.reduce((sum, booking) => sum + booking.total_price, 0);
+  // Calculate total gross revenue
+  const totalGrossRevenue = filteredBookings.reduce((sum, booking) => sum + booking.total_price, 0);
+  // Calculate net revenue after commission (platform_fee_percent per venue, fallback to 7%)
+  const totalNetRevenue = filteredBookings.reduce((sum, booking) => {
+    let fee = 7;
+    if (booking.court && booking.court.venues && typeof booking.court.venues.platform_fee_percent === 'number') {
+      fee = booking.court.venues.platform_fee_percent;
+    }
+    return sum + (booking.total_price * ((100 - fee) / 100));
+  }, 0);
   
   // Generate data for booking trends chart (daily bookings count)
   const generateBookingTrends = () => {
@@ -199,11 +213,18 @@ const AnalyticsDashboard: React.FC = () => {
     return days.map(day => {
       const dayStr = format(day, 'yyyy-MM-dd');
       const dayBookings = filteredBookings.filter(booking => booking.booking_date === dayStr);
-      
+      // Net revenue for the day
+      const dayNetRevenue = dayBookings.reduce((sum, booking) => {
+        let fee = 7;
+        if (booking.court && booking.court.venues && typeof booking.court.venues.platform_fee_percent === 'number') {
+          fee = booking.court.venues.platform_fee_percent;
+        }
+        return sum + (booking.total_price * ((100 - fee) / 100));
+      }, 0);
       return {
         date: format(day, 'MMM dd'),
         count: dayBookings.length,
-        revenue: dayBookings.reduce((sum, booking) => sum + booking.total_price, 0)
+        revenue: dayNetRevenue
       };
     });
   };
@@ -405,8 +426,15 @@ const AnalyticsDashboard: React.FC = () => {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Revenue</CardTitle>
-            <div className="flex items-baseline space-x-2">
-              <h3 className="text-3xl font-bold">₹{totalRevenue.toLocaleString()}</h3>
+            <div className="flex flex-col items-start space-y-1">
+              <div className="flex items-baseline space-x-2">
+                <h3 className="text-2xl font-bold">₹{totalNetRevenue.toLocaleString()}</h3>
+                <span className="text-xs text-green-600 font-semibold">Net</span>
+              </div>
+              <div className="flex items-baseline space-x-2">
+                <h3 className="text-lg font-medium text-gray-500 line-through">₹{totalGrossRevenue.toLocaleString()}</h3>
+                <span className="text-xs text-gray-400">Gross</span>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -423,7 +451,7 @@ const AnalyticsDashboard: React.FC = () => {
             <div className="flex items-baseline space-x-2">
               <h3 className="text-3xl font-bold">
                 ₹{filteredBookings.length > 0 
-                  ? (totalRevenue / filteredBookings.length).toLocaleString(undefined, { 
+                  ? (totalNetRevenue / filteredBookings.length).toLocaleString(undefined, { 
                       maximumFractionDigits: 2 
                     }) 
                   : 0}
