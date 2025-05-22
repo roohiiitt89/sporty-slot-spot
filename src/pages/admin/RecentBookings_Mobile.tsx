@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -6,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { format, startOfMonth, endOfMonth, subMonths, parseISO, isWithinInterval, addDays } from 'date-fns';
 import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/context/AuthContext';
+import PaymentMethodFilter, { PaymentMethodFilterType } from '@/components/admin/PaymentMethodFilter';
 
 interface BookingData {
   id: string;
@@ -14,6 +16,7 @@ interface BookingData {
   end_time: string;
   total_price: number;
   status: string;
+  payment_method: string;
   court: {
     name: string;
     venue_id: string;
@@ -36,6 +39,7 @@ const RecentBookings_Mobile: React.FC = () => {
   const [selectedVenueId, setSelectedVenueId] = useState<string>('all');
   const [venues, setVenues] = useState<Array<{ id: string, name: string }>>([]);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState<PaymentMethodFilterType>('online');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -62,6 +66,7 @@ const RecentBookings_Mobile: React.FC = () => {
             end_time, 
             total_price, 
             status,
+            payment_method,
             court:court_id (
               name, 
               venue_id, 
@@ -97,30 +102,45 @@ const RecentBookings_Mobile: React.FC = () => {
     }
   }, [userRole, adminVenues]);
 
-  const filteredBookings = bookings.filter(booking => {
-    const bookingDate = parseISO(booking.booking_date);
-    let rangeStart, rangeEnd;
-    switch(timeRange) {
-      case 'week':
-        rangeStart = addDays(currentDate, -7);
-        rangeEnd = currentDate;
-        break;
-      case 'month':
-        rangeStart = startOfMonth(currentDate);
-        rangeEnd = endOfMonth(currentDate);
-        break;
-      case 'year':
-        rangeStart = new Date(currentDate.getFullYear(), 0, 1);
-        rangeEnd = new Date(currentDate.getFullYear(), 11, 31);
-        break;
-      default:
-        rangeStart = startOfMonth(currentDate);
-        rangeEnd = endOfMonth(currentDate);
-    }
-    const isInDateRange = isWithinInterval(bookingDate, { start: rangeStart, end: rangeEnd });
-    const isMatchingVenue = selectedVenueId === 'all' || booking.court?.venue_id === selectedVenueId;
-    return isInDateRange && isMatchingVenue;
-  });
+  const getPaymentMethodFilteredBookings = (bookings: BookingData[]) => {
+    if (paymentMethodFilter === 'all') return bookings;
+    
+    return bookings.filter(booking => {
+      const method = booking.payment_method || 'online';
+      if (paymentMethodFilter === 'online') {
+        return method === 'online';
+      } else {
+        return method === 'cash' || method === 'card';
+      }
+    });
+  };
+
+  const filteredBookings = getPaymentMethodFilteredBookings(
+    bookings.filter(booking => {
+      const bookingDate = parseISO(booking.booking_date);
+      let rangeStart, rangeEnd;
+      switch(timeRange) {
+        case 'week':
+          rangeStart = addDays(currentDate, -7);
+          rangeEnd = currentDate;
+          break;
+        case 'month':
+          rangeStart = startOfMonth(currentDate);
+          rangeEnd = endOfMonth(currentDate);
+          break;
+        case 'year':
+          rangeStart = new Date(currentDate.getFullYear(), 0, 1);
+          rangeEnd = new Date(currentDate.getFullYear(), 11, 31);
+          break;
+        default:
+          rangeStart = startOfMonth(currentDate);
+          rangeEnd = endOfMonth(currentDate);
+      }
+      const isInDateRange = isWithinInterval(bookingDate, { start: rangeStart, end: rangeEnd });
+      const isMatchingVenue = selectedVenueId === 'all' || booking.court?.venue_id === selectedVenueId;
+      return isInDateRange && isMatchingVenue;
+    })
+  );
 
   const handlePreviousPeriod = () => {
     switch(timeRange) {
@@ -185,6 +205,12 @@ const RecentBookings_Mobile: React.FC = () => {
           <h1 className="text-2xl font-bold">Recent Bookings</h1>
           <p className="text-muted-foreground">Latest bookings across your venues</p>
         </div>
+        
+        <PaymentMethodFilter 
+          selectedFilter={paymentMethodFilter}
+          onFilterChange={setPaymentMethodFilter}
+        />
+        
         <div className="flex flex-col gap-2">
           <select 
             value={selectedVenueId}

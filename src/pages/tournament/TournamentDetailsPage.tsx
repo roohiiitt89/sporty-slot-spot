@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useTournamentDetails } from "@/hooks/use-tournament";
@@ -24,6 +25,8 @@ export function TournamentDetailsPage() {
   const isOngoing = tournament && new Date(tournament.start_date) <= new Date() && new Date(tournament.end_date) >= new Date();
   const registrationOpen = tournament && new Date(tournament.registration_deadline) >= new Date();
   const daysUntilStart = tournament && isUpcoming ? differenceInDays(new Date(tournament.start_date), new Date()) : 0;
+  // Use a default value or optional chaining for registration_count
+  const registrationCount = tournament?.registration_count || 0;
 
   // Check if user is registered for this tournament
   const checkRegistration = async () => {
@@ -223,7 +226,7 @@ export function TournamentDetailsPage() {
                     <h3 className="font-medium">Participants</h3>
                   </div>
                   <p className="text-muted-foreground">
-                    {tournament.registration_count} / {tournament.max_participants} registered
+                    {registrationCount} / {tournament.max_participants} registered
                   </p>
                 </div>
                 

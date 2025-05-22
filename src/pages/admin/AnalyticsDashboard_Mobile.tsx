@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,6 +7,7 @@ import { CalendarIcon, UsersIcon } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subMonths, parseISO, isWithinInterval, addDays } from 'date-fns';
 import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/context/AuthContext';
+import PaymentMethodFilter, { PaymentMethodFilterType } from '@/components/admin/PaymentMethodFilter';
 
 interface BookingData {
   id: string;
@@ -14,6 +16,7 @@ interface BookingData {
   end_time: string;
   total_price: number;
   status: string;
+  payment_method: string;
   court: {
     name: string;
     venue_id: string;
@@ -37,6 +40,7 @@ const AnalyticsDashboard_Mobile: React.FC = () => {
   const [selectedVenueId, setSelectedVenueId] = useState<string>('all');
   const [venues, setVenues] = useState<Array<{ id: string, name: string }>>([]);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState<PaymentMethodFilterType>('online');
 
   useEffect(() => {
     const fetchVenues = async () => {
@@ -69,6 +73,7 @@ const AnalyticsDashboard_Mobile: React.FC = () => {
             end_time,
             total_price,
             status,
+            payment_method,
             court:court_id (
               venue_id,
               venues:venue_id (name, platform_fee_percent)
@@ -113,30 +118,45 @@ const AnalyticsDashboard_Mobile: React.FC = () => {
     }
   }, [userRole, adminVenues]);
 
-  const filteredBookings = bookings.filter(booking => {
-    const bookingDate = parseISO(booking.booking_date);
-    let rangeStart, rangeEnd;
-    switch(timeRange) {
-      case 'week':
-        rangeStart = addDays(currentDate, -7);
-        rangeEnd = currentDate;
-        break;
-      case 'month':
-        rangeStart = startOfMonth(currentDate);
-        rangeEnd = endOfMonth(currentDate);
-        break;
-      case 'year':
-        rangeStart = new Date(currentDate.getFullYear(), 0, 1);
-        rangeEnd = new Date(currentDate.getFullYear(), 11, 31);
-        break;
-      default:
-        rangeStart = startOfMonth(currentDate);
-        rangeEnd = endOfMonth(currentDate);
-    }
-    const isInDateRange = isWithinInterval(bookingDate, { start: rangeStart, end: rangeEnd });
-    const isMatchingVenue = selectedVenueId === 'all' || booking.court?.venue_id === selectedVenueId;
-    return isInDateRange && isMatchingVenue;
-  });
+  const getPaymentMethodFilteredBookings = (bookings: BookingData[]) => {
+    if (paymentMethodFilter === 'all') return bookings;
+    
+    return bookings.filter(booking => {
+      const method = booking.payment_method || 'online';
+      if (paymentMethodFilter === 'online') {
+        return method === 'online';
+      } else {
+        return method === 'cash' || method === 'card';
+      }
+    });
+  };
+
+  const filteredBookings = getPaymentMethodFilteredBookings(
+    bookings.filter(booking => {
+      const bookingDate = parseISO(booking.booking_date);
+      let rangeStart, rangeEnd;
+      switch(timeRange) {
+        case 'week':
+          rangeStart = addDays(currentDate, -7);
+          rangeEnd = currentDate;
+          break;
+        case 'month':
+          rangeStart = startOfMonth(currentDate);
+          rangeEnd = endOfMonth(currentDate);
+          break;
+        case 'year':
+          rangeStart = new Date(currentDate.getFullYear(), 0, 1);
+          rangeEnd = new Date(currentDate.getFullYear(), 11, 31);
+          break;
+        default:
+          rangeStart = startOfMonth(currentDate);
+          rangeEnd = endOfMonth(currentDate);
+      }
+      const isInDateRange = isWithinInterval(bookingDate, { start: rangeStart, end: rangeEnd });
+      const isMatchingVenue = selectedVenueId === 'all' || booking.court?.venue_id === selectedVenueId;
+      return isInDateRange && isMatchingVenue;
+    })
+  );
 
   const totalGrossRevenue = filteredBookings.reduce((sum, booking) => sum + booking.total_price, 0);
   const totalNetRevenue = filteredBookings.reduce((sum, booking) => {
@@ -210,6 +230,12 @@ const AnalyticsDashboard_Mobile: React.FC = () => {
           <h1 className="text-2xl font-bold">Analytics Dashboard</h1>
           <p className="text-muted-foreground">Track your venue performance and booking trends</p>
         </div>
+
+        <PaymentMethodFilter 
+          selectedFilter={paymentMethodFilter}
+          onFilterChange={setPaymentMethodFilter}
+        />
+
         <div className="flex flex-col gap-2">
           <select 
             value={selectedVenueId}
@@ -345,4 +371,4 @@ const AnalyticsDashboard_Mobile: React.FC = () => {
   );
 };
 
-export default AnalyticsDashboard_Mobile; 
+export default AnalyticsDashboard_Mobile;
