@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import PaymentMethodFilter, { PaymentMethodFilterType } from '@/components/admin/PaymentMethodFilter';
 
 // Admin quick links with enhanced styling and organization
 const quickLinks = [
@@ -249,6 +250,7 @@ const AdminHome_Mobile: React.FC = () => {
   const [popularCourts, setPopularCourts] = useState<CourtStats[]>([]);
   const [courtDataLoading, setCourtDataLoading] = useState(true);
   const [venuesWithStats, setVenuesWithStats] = useState<VenueWithBookingStats[]>([]);
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState<PaymentMethodFilterType>('online');
   
   // If not on mobile, redirect to desktop admin
   useEffect(() => {
@@ -311,12 +313,23 @@ const AdminHome_Mobile: React.FC = () => {
         const sevenDaysAgo = format(subDays(new Date(), 7), 'yyyy-MM-dd');
         
         // Get recent bookings
-        const { data: recentBookings, error: bookingsError } = await supabase
+        let bookingsQuery = supabase
           .from('bookings')
-          .select('id, created_at, guest_name, court_id, status, booking_date')
+          .select('id, created_at, guest_name, court_id, status, booking_date, payment_method')
           .order('created_at', { ascending: false })
           .limit(5);
           
+        // Apply payment method filter
+        if (paymentMethodFilter !== 'all') {
+          if (paymentMethodFilter === 'online') {
+            bookingsQuery = bookingsQuery.eq('payment_method', 'online');
+          } else {
+            bookingsQuery = bookingsQuery.or('payment_method.eq.cash,payment_method.eq.card');
+          }
+        }
+          
+        const { data: recentBookings, error: bookingsError } = await bookingsQuery;
+        
         if (bookingsError) throw bookingsError;
         
         // Get recent reviews
@@ -359,7 +372,7 @@ const AdminHome_Mobile: React.FC = () => {
     };
     
     fetchRecentActivity();
-  }, [adminVenues]);
+  }, [adminVenues, paymentMethodFilter]);
 
   // Fetch venues with their stats and platform fees
   useEffect(() => {
@@ -412,13 +425,24 @@ const AdminHome_Mobile: React.FC = () => {
           const thirtyDaysAgo = format(subDays(new Date(), 30), 'yyyy-MM-dd');
           const today = format(new Date(), 'yyyy-MM-dd');
           
-          const { data: bookings, error: bookingsError } = await supabase
+          let bookingsQuery = supabase
             .from('bookings')
-            .select('total_price, booking_date')
+            .select('total_price, booking_date, payment_method')
             .in('court_id', courtIds)
             .in('status', ['confirmed', 'completed'])
             .gte('booking_date', thirtyDaysAgo)
             .lte('booking_date', today);
+            
+          // Apply payment method filter
+          if (paymentMethodFilter !== 'all') {
+            if (paymentMethodFilter === 'online') {
+              bookingsQuery = bookingsQuery.eq('payment_method', 'online');
+            } else {
+              bookingsQuery = bookingsQuery.or('payment_method.eq.cash,payment_method.eq.card');
+            }
+          }
+            
+          const { data: bookings, error: bookingsError } = await bookingsQuery;
             
           if (bookingsError || !bookings) {
             return {
@@ -455,7 +479,7 @@ const AdminHome_Mobile: React.FC = () => {
     if (adminVenues.length > 0 || userRoleState === 'super_admin') {
       fetchVenuesWithStats();
     }
-  }, [adminVenues, userRoleState]);
+  }, [adminVenues, userRoleState, paymentMethodFilter]);
 
   // Fetch real dashboard metrics
   useEffect(() => {
@@ -478,30 +502,66 @@ const AdminHome_Mobile: React.FC = () => {
         }
 
         // 1. Fetch today's bookings with court join
-        const { data: todayBookingsData } = await supabase
+        let todayBookingsQuery = supabase
           .from('bookings')
-          .select('id, court:court_id (venue_id), status, booking_date')
+          .select('id, court:court_id (venue_id), status, booking_date, payment_method')
           .eq('booking_date', today)
           .in('status', ['confirmed', 'pending', 'completed']);
+          
+        // Apply payment method filter  
+        if (paymentMethodFilter !== 'all') {
+          if (paymentMethodFilter === 'online') {
+            todayBookingsQuery = todayBookingsQuery.eq('payment_method', 'online');
+          } else {
+            todayBookingsQuery = todayBookingsQuery.or('payment_method.eq.cash,payment_method.eq.card');
+          }
+        }
+          
+        const { data: todayBookingsData } = await todayBookingsQuery;
+        
         const todayBookings = (todayBookingsData || []).filter(b => b.court && (!venueIds.length || venueIds.includes(b.court.venue_id)));
         const bookingsCount = todayBookings.length;
 
         // 2. Fetch pending bookings with court join
-        const { data: pendingBookingsData } = await supabase
+        let pendingBookingsQuery = supabase
           .from('bookings')
-          .select('id, court:court_id (venue_id), status, booking_date')
+          .select('id, court:court_id (venue_id), status, booking_date, payment_method')
           .gte('booking_date', today)
           .eq('status', 'pending');
+          
+        // Apply payment method filter
+        if (paymentMethodFilter !== 'all') {
+          if (paymentMethodFilter === 'online') {
+            pendingBookingsQuery = pendingBookingsQuery.eq('payment_method', 'online');
+          } else {
+            pendingBookingsQuery = pendingBookingsQuery.or('payment_method.eq.cash,payment_method.eq.card');
+          }
+        }
+          
+        const { data: pendingBookingsData } = await pendingBookingsQuery;
+        
         const pendingBookings = (pendingBookingsData || []).filter(b => b.court && (!venueIds.length || venueIds.includes(b.court.venue_id)));
         const pendingBookingsCount = pendingBookings.length;
 
         // 3. Fetch upcoming bookings (next 7 days) with court join
-        const { data: upcomingBookingsData } = await supabase
+        let upcomingBookingsQuery = supabase
           .from('bookings')
-          .select('id, court:court_id (venue_id), status, booking_date')
+          .select('id, court:court_id (venue_id), status, booking_date, payment_method')
           .gte('booking_date', today)
           .lte('booking_date', format(subDays(new Date(), -7), 'yyyy-MM-dd'))
           .in('status', ['confirmed', 'pending']);
+          
+        // Apply payment method filter
+        if (paymentMethodFilter !== 'all') {
+          if (paymentMethodFilter === 'online') {
+            upcomingBookingsQuery = upcomingBookingsQuery.eq('payment_method', 'online');
+          } else {
+            upcomingBookingsQuery = upcomingBookingsQuery.or('payment_method.eq.cash,payment_method.eq.card');
+          }
+        }
+          
+        const { data: upcomingBookingsData } = await upcomingBookingsQuery;
+        
         const upcomingBookings = (upcomingBookingsData || []).filter(b => b.court && (!venueIds.length || venueIds.includes(b.court.venue_id)));
         const upcomingBookingsCount = upcomingBookings.length;
         
@@ -530,16 +590,28 @@ const AdminHome_Mobile: React.FC = () => {
         const todayStr = format(new Date(), 'yyyy-MM-dd');
         
         // Get bookings with venue information for accurate fee calculation
-        const { data: todaysBookingsWithVenue } = await supabase
+        let todaysBookingsQuery = supabase
           .from('bookings')
           .select(`
             total_price,
+            payment_method,
             court:court_id (
               venue_id
             )
           `)
           .eq('booking_date', todayStr)
           .in('status', ['confirmed', 'completed']);
+          
+        // Apply payment method filter
+        if (paymentMethodFilter !== 'all') {
+          if (paymentMethodFilter === 'online') {
+            todaysBookingsQuery = todaysBookingsQuery.eq('payment_method', 'online');
+          } else {
+            todaysBookingsQuery = todaysBookingsQuery.or('payment_method.eq.cash,payment_method.eq.card');
+          }
+        }
+          
+        const { data: todaysBookingsWithVenue } = await todaysBookingsQuery;
         
         // Filter by admin venues if needed
         const filteredTodaysBookings = (todaysBookingsWithVenue || []).filter(b => 
@@ -574,10 +646,11 @@ const AdminHome_Mobile: React.FC = () => {
           const end = format(customEndDate, 'yyyy-MM-dd');
           
           // Get bookings for custom date range with venue info
-          const { data: customRangeBookings } = await supabase
+          let customRangeQuery = supabase
             .from('bookings')
             .select(`
               total_price,
+              payment_method,
               court:court_id (
                 venue_id
               )
@@ -585,6 +658,17 @@ const AdminHome_Mobile: React.FC = () => {
             .gte('booking_date', start)
             .lte('booking_date', end)
             .in('status', ['confirmed', 'completed']);
+            
+          // Apply payment method filter
+          if (paymentMethodFilter !== 'all') {
+            if (paymentMethodFilter === 'online') {
+              customRangeQuery = customRangeQuery.eq('payment_method', 'online');
+            } else {
+              customRangeQuery = customRangeQuery.or('payment_method.eq.cash,payment_method.eq.card');
+            }
+          }
+          
+          const { data: customRangeBookings } = await customRangeQuery;
           
           // Filter by admin venues if needed
           const filteredCustomBookings = (customRangeBookings || []).filter(b => 
@@ -630,12 +714,23 @@ const AdminHome_Mobile: React.FC = () => {
           const lastThirtyDays = format(subDays(new Date(), 30), 'yyyy-MM-dd');
           
           const courtWithStats = await Promise.all(filteredCourts.map(async (court) => {
-            const { count } = await supabase
+            let courtBookingsQuery = supabase
               .from('bookings')
-              .select('id', { count: 'exact' })
+              .select('id, payment_method', { count: 'exact' })
               .eq('court_id', court.id)
               .gte('booking_date', lastThirtyDays)
               .in('status', ['confirmed', 'completed']);
+              
+            // Apply payment method filter
+            if (paymentMethodFilter !== 'all') {
+              if (paymentMethodFilter === 'online') {
+                courtBookingsQuery = courtBookingsQuery.eq('payment_method', 'online');
+              } else {
+                courtBookingsQuery = courtBookingsQuery.or('payment_method.eq.cash,payment_method.eq.card');
+              }
+            }
+              
+            const { count } = await courtBookingsQuery;
               
             return {
               court_id: court.id,
@@ -663,12 +758,24 @@ const AdminHome_Mobile: React.FC = () => {
         }
         
         // 7. Calculate occupancy rate (past 7 days) with court join
-        const { data: recentBookingsData } = await supabase
+        let recentBookingsQuery = supabase
           .from('bookings')
-          .select('id, court:court_id (venue_id), status, booking_date')
+          .select('id, court:court_id (venue_id), status, booking_date, payment_method')
           .gte('booking_date', format(subDays(new Date(), 7), 'yyyy-MM-dd'))
           .lte('booking_date', today)
           .in('status', ['confirmed', 'completed']);
+          
+        // Apply payment method filter
+        if (paymentMethodFilter !== 'all') {
+          if (paymentMethodFilter === 'online') {
+            recentBookingsQuery = recentBookingsQuery.eq('payment_method', 'online');
+          } else {
+            recentBookingsQuery = recentBookingsQuery.or('payment_method.eq.cash,payment_method.eq.card');
+          }
+        }
+        
+        const { data: recentBookingsData } = await recentBookingsQuery;
+        
         const recentBookings = (recentBookingsData || []).filter(b => b.court && (!venueIds.length || venueIds.includes(b.court.venue_id)));
         const recentBookingsCount = recentBookings.length;
         
@@ -738,7 +845,7 @@ const AdminHome_Mobile: React.FC = () => {
       supabase.removeChannel(bookingsChannel);
       supabase.removeChannel(reviewsChannel);
     };
-  }, [adminVenues, venuesWithStats, customStartDate, customEndDate, userRoleState]);
+  }, [adminVenues, venuesWithStats, customStartDate, customEndDate, userRoleState, paymentMethodFilter]);
 
   const handleLogout = async () => {
     try {
@@ -784,6 +891,14 @@ const AdminHome_Mobile: React.FC = () => {
           <h2 className="text-xl font-semibold text-white mb-1">Welcome, {user?.user_metadata?.full_name?.split(' ')[0] || 'Admin'}!</h2>
           <p className="text-gray-300 text-sm">Manage your Grid2Play venues and bookings on the go.</p>
         </div>
+      </section>
+      
+      {/* Payment Method Filter - Added to the top of the page */}
+      <section className="px-4 mb-2">
+        <PaymentMethodFilter
+          selectedFilter={paymentMethodFilter}
+          onFilterChange={setPaymentMethodFilter}
+        />
       </section>
 
       {/* Enhanced Stats Overview with Tabs */}
