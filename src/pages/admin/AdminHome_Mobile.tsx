@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
@@ -12,6 +11,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { format, parseISO, subDays } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from '@/components/ui/button';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 // Admin quick links with enhanced styling and organization
 const quickLinks = [
@@ -98,6 +100,90 @@ interface CourtStats {
   court_name: string;
   bookings_percentage: number;
 }
+
+// WeatherWidget for AdminHome_Mobile
+const WeatherWidget: React.FC<{ venueId: string }> = ({ venueId }) => {
+  const [weather, setWeather] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchWeather = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const jwt = localStorage.getItem('sb-access-token') || localStorage.getItem('supabase.auth.token') || '';
+        const res = await fetch('/functions/v1/weather-proxy', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${jwt}`,
+          },
+          body: JSON.stringify({ venue_id: venueId }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to fetch weather');
+        setWeather(data);
+      } catch (e: any) {
+        setError(e.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (venueId) fetchWeather();
+  }, [venueId]);
+
+  if (!venueId) return null;
+
+  return (
+    <Card className="mb-4">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">Weather Forecast</CardTitle>
+      </CardHeader>
+      <CardContent className="pt-0">
+        {loading && <div className="text-xs text-gray-500">Loading weather...</div>}
+        {error && <div className="text-xs text-red-500">{error}</div>}
+        {weather && (
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-2xl font-bold">{Math.round(weather.current.temp)}°C</span>
+              <span className="text-xs text-gray-500">Now</span>
+              {weather.severe && weather.severe.length > 0 && (
+                <Badge variant="destructive">Severe Weather</Badge>
+              )}
+            </div>
+            <div className="flex gap-1 overflow-x-auto pb-1">
+              {weather.forecast.map((f: any, i: number) => (
+                <div key={f.time} className="flex flex-col items-center min-w-[48px]">
+                  <span className="text-xs text-gray-500">{new Date(f.time).getHours()}:00</span>
+                  <span className="font-medium text-sm">{Math.round(f.temp)}°</span>
+                  {f.precipitation > 0 && (
+                    <span className="text-blue-500 text-xs">{f.precipitation}mm</span>
+                  )}
+                  {[95,96,99].includes(f.weathercode) && (
+                    <span className="text-red-500 text-xs">Storm</span>
+                  )}
+                </div>
+              ))}
+            </div>
+            {weather.severe && weather.severe.length > 0 && (
+              <Alert variant="destructive" className="mt-2">
+                <AlertTitle>Severe Weather Alert</AlertTitle>
+                <AlertDescription>
+                  {weather.severe.map((s: any) => (
+                    <div key={s.time}>
+                      {new Date(s.time).toLocaleString()}: {s.precipitation > 5 ? `${s.precipitation}mm rain` : ''} {[95,96,99].includes(s.weathercode) ? 'Storm' : ''}
+                    </div>
+                  ))}
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
 
 const AdminHome_Mobile: React.FC = () => {
   const { user, signOut } = useAuth();
@@ -660,6 +746,9 @@ const AdminHome_Mobile: React.FC = () => {
           <p className="text-gray-300 text-sm">Manage your Grid2Play venues and bookings on the go.</p>
         </div>
       </section>
+
+      {/* Weather Widget */}
+      {adminVenues[0] && <WeatherWidget venueId={adminVenues[0].venue_id} />}
 
       {/* Enhanced Stats Overview with Tabs */}
       <section className="px-4 mb-4">
