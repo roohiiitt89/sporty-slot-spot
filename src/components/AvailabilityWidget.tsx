@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getAvailableSlots } from '@/integrations/supabase/custom-types';
@@ -9,6 +8,14 @@ import { Button } from '@/components/ui/button';
 import { GetAvailableSlotsResult } from '@/types/help';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from '@/hooks/use-toast';
+
+interface AvailabilitySlot {
+  start_time: string;
+  end_time: string;
+  is_available: boolean;
+  is_booked?: boolean;
+  is_blocked?: boolean;
+}
 
 interface AvailabilityWidgetProps {
   courtId: string;
@@ -23,7 +30,7 @@ const AvailabilityWidget: React.FC<AvailabilityWidgetProps> = ({
   onSelectSlot,
   isAdmin = false
 }) => {
-  const [slots, setSlots] = useState<GetAvailableSlotsResult>([]);
+  const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const isMobile = useIsMobile();
@@ -106,7 +113,9 @@ const AvailabilityWidget: React.FC<AvailabilityWidgetProps> = ({
         
         return {
           ...slot,
-          is_available: slot.is_available && !isBooked && !isBlocked
+          is_available: slot.is_available && !isBooked && !isBlocked,
+          is_booked: isBooked,
+          is_blocked: isBlocked
         };
       }) || [];
       
@@ -196,7 +205,15 @@ const AvailabilityWidget: React.FC<AvailabilityWidgetProps> = ({
     return `${hour12}:${minutes} ${ampm}`;
   };
 
-  const handleSlotClick = (slot: { start_time: string; end_time: string; is_available: boolean }) => {
+  const handleSlotClick = (slot: { start_time: string; end_time: string; is_available: boolean; is_booked?: boolean; is_blocked?: boolean }) => {
+    if (slot.is_blocked) {
+      toast({
+        title: 'Slot Blocked',
+        description: 'Slot is booked/blocked already, select another one.',
+        variant: 'destructive'
+      });
+      return;
+    }
     if (onSelectSlot && (slot.is_available || isAdmin)) {
       console.log('Slot selected:', slot);
       onSelectSlot(slot);
@@ -252,30 +269,57 @@ const AvailabilityWidget: React.FC<AvailabilityWidgetProps> = ({
             {slots.map((slot, index) => (
               <div 
                 key={`${slot.start_time}-${slot.end_time}-${index}`}
-                className={`
-                  border rounded-md p-2 text-center transition-all cursor-pointer
+                className={
+                  `border rounded-md p-2 text-center transition-all cursor-pointer
                   hover:transform hover:scale-105
-                  ${(slot.is_available || isAdmin) 
-                    ? 'border-green-500/30 bg-green-500/10 hover:bg-green-500/20' 
-                    : 'border-red-500/30 bg-red-500/10'}
+                  ${slot.is_available || isAdmin ? 'border-green-500/30 bg-green-500/10 hover:bg-green-500/20' : ''}
+                  ${slot.is_booked ? 'border-red-500/30 bg-red-500/10' : ''}
+                  ${slot.is_blocked ? 'border-yellow-500/30 bg-yellow-500/10' : ''}
                   ${(!slot.is_available && isAdmin) ? 'cursor-pointer opacity-70 hover:opacity-100' : ''}
                   ${!slot.is_available && !isAdmin ? 'cursor-not-allowed' : 'cursor-pointer'}
-                `}
+                  `
+                }
                 onClick={() => handleSlotClick(slot)}
               >
                 <p className="text-sm font-medium text-white">
                   {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
                 </p>
-                <Badge 
-                  className={`
-                    mt-1
-                    ${slot.is_available 
-                      ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' 
-                      : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'}
-                  `}
-                >
-                  {slot.is_available ? 'Available' : 'Booked'}
-                </Badge>
+                {slot.is_blocked ? (
+                  <Badge className="mt-1 bg-yellow-500/20 text-yellow-700 hover:bg-yellow-500/30">Blocked</Badge>
+                ) : slot.is_booked ? (
+                  <Badge className="mt-1 bg-red-500/20 text-red-400 hover:bg-red-500/30">Booked</Badge>
+                ) : (
+                  <Badge className="mt-1 bg-green-500/20 text-green-400 hover:bg-green-500/30">Available</Badge>
+                )}
+                {/* Unblock button for admins on blocked slots */}
+                {isAdmin && slot.is_blocked && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="mt-2 text-xs bg-yellow-100 text-yellow-800 border-yellow-400 hover:bg-yellow-200"
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      // Call Supabase to delete the blocked slot
+                      await supabase
+                        .from('blocked_slots')
+                        .delete()
+                        .match({
+                          court_id: courtId,
+                          start_time: slot.start_time,
+                          end_time: slot.end_time,
+                          date: date
+                        });
+                      toast({
+                        title: 'Slot Unblocked',
+                        description: 'The slot has been unblocked.',
+                        variant: 'default'
+                      });
+                      setLastRefetch(Date.now());
+                    }}
+                  >
+                    Undo Block
+                  </Button>
+                )}
               </div>
             ))}
           </div>
