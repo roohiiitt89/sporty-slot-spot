@@ -15,6 +15,7 @@ interface AvailabilitySlot {
   is_available: boolean;
   is_booked?: boolean;
   is_blocked?: boolean;
+  blocked_court_id?: string;
 }
 
 interface AvailabilityWidgetProps {
@@ -100,22 +101,21 @@ const AvailabilityWidget: React.FC<AvailabilityWidgetProps> = ({
       const slotsWithStatus = data?.map(slot => {
         const slotStart = padTime(slot.start_time);
         const slotEnd = padTime(slot.end_time);
-        
+        const blockedSlot = blockedSlots?.find(bs =>
+          padTime(bs.start_time) === slotStart &&
+          padTime(bs.end_time) === slotEnd
+        );
+        const isBlocked = !!blockedSlot;
         const isBooked = bookings?.some(b =>
           padTime(b.start_time) === slotStart &&
           padTime(b.end_time) === slotEnd
         );
-        
-        const isBlocked = blockedSlots?.some(bs =>
-          padTime(bs.start_time) === slotStart &&
-          padTime(bs.end_time) === slotEnd
-        );
-        
         return {
           ...slot,
           is_available: slot.is_available && !isBooked && !isBlocked,
           is_booked: isBooked,
-          is_blocked: isBlocked
+          is_blocked: isBlocked,
+          blocked_court_id: blockedSlot ? blockedSlot.court_id : undefined
         };
       }) || [];
       
@@ -299,16 +299,63 @@ const AvailabilityWidget: React.FC<AvailabilityWidgetProps> = ({
                     className="mt-2 text-xs bg-yellow-100 text-yellow-800 border-yellow-400 hover:bg-yellow-200"
                     onClick={async (e) => {
                       e.stopPropagation();
-                      // Call Supabase to delete the blocked slot
-                      await supabase
+                      const padTime = (t: string) => t.length === 5 ? t + ':00' : t;
+                      // Use the actual blocked_court_id for unblock
+                      const unblockCourtId = slot.blocked_court_id || courtId;
+                      // Fetch courtIdsToCheck as in fetchAvailability
+                      let courtIdsToCheck = [unblockCourtId];
+                      const { data: courtDetails } = await supabase
+                        .from('courts')
+                        .select('court_group_id')
+                        .eq('id', unblockCourtId)
+                        .single();
+                      if (courtDetails && courtDetails.court_group_id) {
+                        const { data: groupCourts } = await supabase
+                          .from('courts')
+                          .select('id')
+                          .eq('court_group_id', courtDetails.court_group_id)
+                          .eq('is_active', true);
+                        if (groupCourts) courtIdsToCheck = groupCourts.map((c: { id: string }) => c.id);
+                      }
+                      // Print all blocked slots for all courts in group for this date
+                      const { data: allBlockedBefore } = await supabase
                         .from('blocked_slots')
-                        .delete()
-                        .match({
-                          court_id: courtId,
-                          start_time: slot.start_time,
-                          end_time: slot.end_time,
-                          date: date
-                        });
+                        .select('*')
+                        .in('court_id', courtIdsToCheck)
+                        .eq('date', date);
+                      console.log('All blocked slots for group/date BEFORE delete:', allBlockedBefore);
+                      const matchObj = {
+                        court_id: unblockCourtId,
+                        start_time: padTime(slot.start_time),
+                        end_time: padTime(slot.end_time),
+                        date: date
+                      };
+                      console.log('Attempting to unblock:', matchObj);
+                      const { data: blockedRows, error: fetchError } = await supabase
+                        .from('blocked_slots')
+                        .select('*')
+                        .match(matchObj);
+                      console.log('Blocked slot rows found for unblock:', blockedRows, fetchError);
+                      if (blockedRows && blockedRows.length > 0 && blockedRows[0].id) {
+                        const { error: delError } = await supabase
+                          .from('blocked_slots')
+                          .delete()
+                          .eq('id', blockedRows[0].id);
+                        console.log('Deleted by id:', blockedRows[0].id, delError);
+                      } else {
+                        const { error: delError } = await supabase
+                          .from('blocked_slots')
+                          .delete()
+                          .match(matchObj);
+                        console.log('Deleted by match:', matchObj, delError);
+                      }
+                      // Print all blocked slots for all courts in group for this date after delete
+                      const { data: allBlockedAfter } = await supabase
+                        .from('blocked_slots')
+                        .select('*')
+                        .in('court_id', courtIdsToCheck)
+                        .eq('date', date);
+                      console.log('All blocked slots for group/date AFTER delete:', allBlockedAfter);
                       toast({
                         title: 'Slot Unblocked',
                         description: 'The slot has been unblocked.',
