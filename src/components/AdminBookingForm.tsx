@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
@@ -176,7 +175,9 @@ const AdminBookingForm: React.FC<AdminBookingFormProps> = ({
         <p className="text-gray-300">Court: {courtName}</p>
         <p className="text-gray-300">Date: {new Date(date).toLocaleDateString()}</p>
         <p className="text-gray-300">Time: {formatTime(selectedSlot.start_time)} - {formatTime(selectedSlot.end_time)}</p>
-        <p className="font-semibold mt-1 text-emerald-400">Total Price: ₹{totalPrice.toFixed(2)}</p>
+        {paymentMethod === 'cash' && amountCollected !== '' && (
+          <p className="font-semibold mt-1 text-emerald-400">Amount Collected: ₹{Number(amountCollected).toFixed(2)}</p>
+        )}
       </div>
       
       {success && (
