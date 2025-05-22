@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useTournamentDetails } from "@/hooks/use-tournament";
@@ -223,7 +224,7 @@ export function TournamentDetailsPage() {
                     <h3 className="font-medium">Participants</h3>
                   </div>
                   <p className="text-muted-foreground">
-                    {tournament.registration_count} / {tournament.max_participants} registered
+                    {tournament.registration_count || 0} / {tournament.max_participants} registered
                   </p>
                 </div>
                 

@@ -1,16 +1,20 @@
+
 import { Database } from '@/integrations/supabase/types';
 
-export type Tournament = Database['public']['Tables']['tournaments']['Row'] & {
+export type TournamentBase = Database['public']['Tables']['tournaments']['Row'] & {
+  venue_name?: string;
+  sport_name?: string;
+};
+
+export type Tournament = TournamentBase & {
   registration_count?: number;
   created_by?: string;
   organizer_name?: string;
   contact_info?: string;
   is_approved?: boolean;
-  venue_name?: string;
-  sport_name?: string;
 };
 
-export interface TournamentWithDetails extends Tournament {
+export interface TournamentWithDetails extends TournamentBase {
   registration_count: number;
   created_by: string;
   organizer_name: string;
@@ -77,26 +81,4 @@ export interface TournamentType {
   id: string;
   name: string;
   created_at: string;
-}
-
-export interface Tournament {
-  id: string;
-  name: string;
-  slug: string;
-  description?: string;
-  start_date: string;
-  end_date: string;
-  registration_deadline: string;
-  venue_id: string;
-  sport_id: string;
-  max_participants: number;
-  entry_fee?: number;
-  rules?: string;
-  status: string;
-  // Add these fields to fix the type errors
-  registration_count: number;
-  created_by: string;
-  organizer_name: string;
-  contact_info: string;
-  is_approved: boolean;
 }
