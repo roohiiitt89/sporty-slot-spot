@@ -112,9 +112,10 @@ const WeatherWidget: React.FC<{ venueId: string }> = ({ venueId }) => {
       setLoading(true);
       setError(null);
       try {
-        const jwt = localStorage.getItem('sb-access-token') || localStorage.getItem('supabase.auth.token') || '';
+        const sessionResult = await supabase.auth.getSession();
+        const jwt = sessionResult.data.session?.access_token;
+        if (!jwt) throw new Error('Not authenticated');
         const weatherUrl = 'https://lrtirloetmulgmdxnusl.supabase.co/functions/v1/weather-proxy';
-
         const res = await fetch(weatherUrl, {
           method: 'POST',
           headers: {
@@ -123,9 +124,9 @@ const WeatherWidget: React.FC<{ venueId: string }> = ({ venueId }) => {
           },
           body: JSON.stringify({ venue_id: venueId }),
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Failed to fetch weather');
-        setWeather(data);
+        const weatherData = await res.json();
+        if (!res.ok) throw new Error(weatherData.error || 'Failed to fetch weather');
+        setWeather(weatherData);
       } catch (e: any) {
         setError(e.message);
       } finally {
