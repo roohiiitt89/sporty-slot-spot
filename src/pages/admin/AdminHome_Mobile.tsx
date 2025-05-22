@@ -151,21 +151,21 @@ const WeatherWidget: React.FC<{ venueId: string }> = ({ venueId }) => {
   const impact = getImpactScore();
 
   return (
-    <Card className="mb-4 cursor-pointer" onClick={() => setExpanded(e => !e)}>
-      <CardHeader className="pb-2 flex flex-row items-center justify-between">
+    <Card className="mb-4 cursor-pointer text-xs rounded-xl border border-navy-700/50 bg-navy-800/70" onClick={() => setExpanded(e => !e)}>
+      <CardHeader className="pb-1 flex flex-row items-center justify-between">
         <CardTitle className="text-base">Weather Forecast</CardTitle>
         {impact && (
           <span className={`text-xs px-2 py-1 rounded ${impact.color} text-white`}>{impact.label} for outdoor play</span>
         )}
       </CardHeader>
-      <CardContent className="pt-0">
+      <CardContent className="pt-0 px-2">
         {loading && <div className="text-xs text-gray-500">Loading weather...</div>}
         {error && <div className="text-xs text-red-500">{error}</div>}
         {weather && (
           <>
             {/* Current Weather */}
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-2xl font-bold">{Math.round(weather.current.temp)}°C</span>
+            <div className="flex items-center gap-2 mb-1 ml-4">
+              <span className="text-xl font-bold">{Math.round(weather.current.temp)}°C</span>
               <span className="text-xs text-gray-500">Now</span>
               {weather.severe && weather.severe.length > 0 && (
                 <Badge variant="destructive">Severe Weather</Badge>
@@ -173,14 +173,14 @@ const WeatherWidget: React.FC<{ venueId: string }> = ({ venueId }) => {
             </div>
             {/* 3-Day Compact Forecast */}
             {weather.daily && (
-              <div className="flex gap-2 mb-2">
+              <div className="flex gap-1 mb-1">
                 {weather.daily.slice(0, 3).map((d: any, i: number) => (
-                  <div key={d.date} className="flex flex-col items-center min-w-[56px]">
-                    <span className="text-xs text-gray-500 font-medium">{d.day}</span>
-                    <span className="text-lg font-bold">{Math.round(d.temp_max)}°</span>
-                    <span className="text-xs text-gray-400">{Math.round(d.temp_min)}°</span>
+                  <div key={d.date} className="flex flex-col items-center min-w-[48px]">
+                    <span className="text-[10px] text-gray-500 font-medium">{d.day}</span>
+                    <span className="text-base font-bold">{Math.round(d.temp_max)}°</span>
+                    <span className="text-[10px] text-gray-400">{Math.round(d.temp_min)}°</span>
                     <span className="text-xs">{d.icon}</span>
-                    {d.rain > 0 && <span className="text-blue-500 text-xs">{d.rain}mm</span>}
+                    {d.rain > 0 && <span className="text-blue-500 text-[10px]">{d.rain}mm</span>}
                   </div>
                 ))}
               </div>
@@ -188,14 +188,14 @@ const WeatherWidget: React.FC<{ venueId: string }> = ({ venueId }) => {
             {/* Hourly Rain/Storm Timeline (next 12h) */}
             <div className="flex gap-1 overflow-x-auto pb-1">
               {weather.forecast.slice(0, 12).map((f: any, i: number) => (
-                <div key={f.time} className="flex flex-col items-center min-w-[40px]">
-                  <span className="text-xs text-gray-500">{new Date(f.time).getHours()}:00</span>
-                  <span className="font-medium text-sm">{Math.round(f.temp)}°</span>
+                <div key={f.time} className="flex flex-col items-center min-w-[32px]">
+                  <span className="text-[10px] text-gray-500">{new Date(f.time).getHours()}:00</span>
+                  <span className="font-medium text-xs">{Math.round(f.temp)}°</span>
                   {f.precipitation > 0 && (
-                    <span className="text-blue-500 text-xs">{f.precipitation}mm</span>
+                    <span className="text-blue-500 text-[10px]">{f.precipitation}mm</span>
                   )}
                   {[95,96,99].includes(f.weathercode) && (
-                    <span className="text-red-500 text-xs">Storm</span>
+                    <span className="text-red-500 text-[10px]">Storm</span>
                   )}
                 </div>
               ))}
@@ -786,9 +786,6 @@ const AdminHome_Mobile: React.FC = () => {
         </div>
       </section>
 
-      {/* Weather Widget */}
-      {adminVenues[0] && <WeatherWidget venueId={adminVenues[0].venue_id} />}
-
       {/* Enhanced Stats Overview with Tabs */}
       <section className="px-4 mb-4">
         <Tabs defaultValue="overview" className="w-full">
@@ -1039,6 +1036,13 @@ const AdminHome_Mobile: React.FC = () => {
           )}
         </div>
       </section>
+
+      {/* Weather Widget - moved below custom net revenue */}
+      {adminVenues[0] && (
+        <section className="px-4 mt-6">
+          <WeatherWidget venueId={adminVenues[0].venue_id} />
+        </section>
+      )}
       
       {/* Footer */}
       <footer className="px-4 py-6 mt-8 text-center">
