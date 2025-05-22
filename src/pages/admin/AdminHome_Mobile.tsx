@@ -113,7 +113,9 @@ const WeatherWidget: React.FC<{ venueId: string }> = ({ venueId }) => {
       setError(null);
       try {
         const jwt = localStorage.getItem('sb-access-token') || localStorage.getItem('supabase.auth.token') || '';
-        const res = await fetch('/functions/v1/weather-proxy', {
+        const weatherUrl = 'https://lrtirloetmulgmdxnusl.supabase.co/functions/v1/weather-proxy';
+
+        const res = await fetch(weatherUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
