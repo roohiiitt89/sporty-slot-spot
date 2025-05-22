@@ -1,9 +1,7 @@
-
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { MapPin, Edit, Trash2, CheckCircle, XCircle, Plus } from 'lucide-react';
-
 interface Venue {
   id: string;
   name: string;
@@ -16,12 +14,15 @@ interface Venue {
   opening_hours?: string | null;
   latitude?: number | null;
   longitude?: number | null;
-  platform_fee_percent?: number | null;
 }
-
 const VenueManagement_Mobile: React.FC = () => {
-  const { user, userRole } = useAuth();
-  const [adminVenues, setAdminVenues] = useState<Array<{ venue_id: string; }>>([]);
+  const {
+    user,
+    userRole
+  } = useAuth();
+  const [adminVenues, setAdminVenues] = useState<Array<{
+    venue_id: string;
+  }>>([]);
   const [venues, setVenues] = useState<Venue[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -29,35 +30,35 @@ const VenueManagement_Mobile: React.FC = () => {
     name: '',
     location: '',
     description: '',
-    is_active: true,
-    platform_fee_percent: 7 // Default platform fee
+    is_active: true
   });
   const [isEditing, setIsEditing] = useState(false);
-
   useEffect(() => {
     const fetchVenues = async () => {
       let venueIds: string[] = [];
       if (userRole === 'admin') {
-        const { data, error } = await supabase.rpc('get_admin_venues');
+        const {
+          data,
+          error
+        } = await supabase.rpc('get_admin_venues');
         if (!error) {
           setAdminVenues(data || []);
           venueIds = (data || []).map((v: any) => v.venue_id);
         }
       }
-      
       let query = supabase.from('venues').select('*');
       if (userRole === 'admin' && venueIds.length > 0) {
         query = query.in('id', venueIds);
       }
-      
-      const { data: venuesData, error: venuesError } = await query.order('name');
+      const {
+        data: venuesData,
+        error: venuesError
+      } = await query.order('name');
       if (!venuesError) setVenues(venuesData || []);
       setLoading(false);
     };
-    
     fetchVenues();
   }, [userRole]);
-
   const openModal = (venue?: Venue) => {
     if (venue) {
       setCurrentVenue(venue);
@@ -73,19 +74,19 @@ const VenueManagement_Mobile: React.FC = () => {
         image_url: '',
         is_active: true,
         latitude: null,
-        longitude: null,
-        platform_fee_percent: 7 // Default platform fee
+        longitude: null
       });
       setIsEditing(false);
     }
     setIsModalOpen(true);
   };
-
   const closeModal = () => setIsModalOpen(false);
-
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value, type } = e.target;
-    
+    const {
+      name,
+      value,
+      type
+    } = e.target;
     if (name === 'is_active' && type === 'checkbox') {
       const checkbox = e.target as HTMLInputElement;
       setCurrentVenue({
@@ -94,7 +95,6 @@ const VenueManagement_Mobile: React.FC = () => {
       });
       return;
     }
-    
     if (name === 'capacity') {
       setCurrentVenue({
         ...currentVenue,
@@ -102,7 +102,6 @@ const VenueManagement_Mobile: React.FC = () => {
       });
       return;
     }
-    
     if (name === 'latitude' || name === 'longitude') {
       setCurrentVenue({
         ...currentVenue,
@@ -110,28 +109,19 @@ const VenueManagement_Mobile: React.FC = () => {
       });
       return;
     }
-    
-    if (name === 'platform_fee_percent') {
-      setCurrentVenue({
-        ...currentVenue,
-        [name]: value ? parseFloat(value) : 7
-      });
-      return;
-    }
-    
     setCurrentVenue({
       ...currentVenue,
       [name]: value
     });
   };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentVenue.name || !currentVenue.location) return;
-    
     try {
       if (isEditing && currentVenue.id) {
-        const { error } = await supabase.from('venues').update({
+        const {
+          error
+        } = await supabase.from('venues').update({
           name: currentVenue.name,
           location: currentVenue.location,
           description: currentVenue.description,
@@ -141,10 +131,8 @@ const VenueManagement_Mobile: React.FC = () => {
           image_url: currentVenue.image_url,
           is_active: currentVenue.is_active,
           latitude: currentVenue.latitude,
-          longitude: currentVenue.longitude,
-          platform_fee_percent: currentVenue.platform_fee_percent
+          longitude: currentVenue.longitude
         }).eq('id', currentVenue.id);
-        
         if (error) throw error;
       } else {
         // Ensure required fields are provided
@@ -152,8 +140,9 @@ const VenueManagement_Mobile: React.FC = () => {
           alert("Venue name and location are required");
           return;
         }
-        
-        const { error } = await supabase.from('venues').insert({
+        const {
+          error
+        } = await supabase.from('venues').insert({
           name: currentVenue.name,
           location: currentVenue.location,
           description: currentVenue.description,
@@ -163,37 +152,38 @@ const VenueManagement_Mobile: React.FC = () => {
           image_url: currentVenue.image_url,
           is_active: currentVenue.is_active,
           latitude: currentVenue.latitude,
-          longitude: currentVenue.longitude,
-          platform_fee_percent: currentVenue.platform_fee_percent
+          longitude: currentVenue.longitude
         });
-        
         if (error) throw error;
       }
-      
       closeModal();
       setLoading(true);
-      const { data: venuesData } = await supabase.from('venues').select('*').order('name');
+      const {
+        data: venuesData
+      } = await supabase.from('venues').select('*').order('name');
       setVenues(venuesData || []);
       setLoading(false);
     } catch (error) {
       console.error('Error saving venue:', error);
     }
   };
-
   const deleteVenue = async (venue: Venue) => {
     if (!window.confirm('Delete this venue?')) return;
     try {
-      const { error } = await supabase.from('venues').delete().eq('id', venue.id);
+      const {
+        error
+      } = await supabase.from('venues').delete().eq('id', venue.id);
       if (error) throw error;
       setVenues(venues.filter(v => v.id !== venue.id));
     } catch (error) {
       // handle error
     }
   };
-
   const toggleVenueStatus = async (venue: Venue) => {
     try {
-      const { error } = await supabase.from('venues').update({
+      const {
+        error
+      } = await supabase.from('venues').update({
         is_active: !venue.is_active
       }).eq('id', venue.id);
       if (error) throw error;
@@ -205,11 +195,9 @@ const VenueManagement_Mobile: React.FC = () => {
       // handle error
     }
   };
-
   if (loading) {
     return <div className="flex justify-center items-center min-h-screen"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo"></div></div>;
   }
-  
   return <div className="p-2 max-w-md mx-auto">
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-lg font-bold text-white">Venues</h2>
@@ -229,11 +217,6 @@ const VenueManagement_Mobile: React.FC = () => {
                 <MapPin className="w-3 h-3 mr-1" />
                 <span className="truncate">{venue.location}</span>
               </div>
-              {venue.platform_fee_percent !== null && venue.platform_fee_percent !== undefined && (
-                <div className="text-xs text-gray-400 mt-0.5">
-                  Platform Fee: {venue.platform_fee_percent}%
-                </div>
-              )}
             </div>
             <div className="flex flex-col gap-1 ml-2">
               <button className="p-1 rounded bg-navy-900 hover:bg-navy-700 text-indigo-300" title="Edit" onClick={() => openModal(venue)}><Edit className="w-4 h-4" /></button>
@@ -283,20 +266,6 @@ const VenueManagement_Mobile: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Longitude</label>
                     <input type="number" step="any" name="longitude" value={currentVenue.longitude === null ? '' : currentVenue.longitude} onChange={handleChange} placeholder="e.g., -74.0060" className="w-full p-2 border rounded-md" />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Platform Fee (%)</label>
-                    <input 
-                      type="number" 
-                      step="0.01" 
-                      name="platform_fee_percent" 
-                      value={currentVenue.platform_fee_percent === null ? 7 : currentVenue.platform_fee_percent} 
-                      onChange={handleChange} 
-                      placeholder="e.g., 7.00" 
-                      className="w-full p-2 border rounded-md"
-                      min="0"
-                      max="100"
-                    />
-                  </div>
                 </div>
                 <div className="flex items-center">
                   <input type="checkbox" name="is_active" id="is_active" checked={currentVenue.is_active || false} onChange={handleChange} className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded" />
@@ -312,5 +281,4 @@ const VenueManagement_Mobile: React.FC = () => {
         </div>}
     </div>;
 };
-
 export default VenueManagement_Mobile;
