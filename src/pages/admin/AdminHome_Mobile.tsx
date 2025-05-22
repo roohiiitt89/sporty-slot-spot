@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
@@ -84,6 +85,20 @@ interface RecentActivity {
   details: string;
 }
 
+interface VenueWithBookingStats {
+  id: string;
+  name: string;
+  platform_fee_percent: number;
+  bookings_count: number;
+  total_revenue: number;
+  net_revenue: number;
+}
+
+interface CourtStats {
+  court_name: string;
+  bookings_percentage: number;
+}
+
 const AdminHome_Mobile: React.FC = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
@@ -106,6 +121,9 @@ const AdminHome_Mobile: React.FC = () => {
   const [customEndDate, setCustomEndDate] = useState<Date | null>(null);
   const [todaysNetRevenue, setTodaysNetRevenue] = useState(0);
   const [customNetRevenue, setCustomNetRevenue] = useState(0);
+  const [popularCourts, setPopularCourts] = useState<CourtStats[]>([]);
+  const [courtDataLoading, setCourtDataLoading] = useState(true);
+  const [venuesWithStats, setVenuesWithStats] = useState<VenueWithBookingStats[]>([]);
   
   // If not on mobile, redirect to desktop admin
   useEffect(() => {
@@ -218,12 +236,109 @@ const AdminHome_Mobile: React.FC = () => {
     fetchRecentActivity();
   }, [adminVenues]);
 
+  // Fetch venues with their stats and platform fees
+  useEffect(() => {
+    const fetchVenuesWithStats = async () => {
+      try {
+        // Get venue IDs for admin
+        const venueIds = adminVenues.map(v => v.venue_id);
+        
+        // Get venues with their platform fee percentages
+        let venueQuery = supabase
+          .from('venues')
+          .select('id, name, platform_fee_percent');
+          
+        // Filter by venue IDs if user is admin
+        if (userRoleState === 'admin' && venueIds.length > 0) {
+          venueQuery = venueQuery.in('id', venueIds);
+        }
+          
+        const { data: venues, error: venueError } = await venueQuery;
+        
+        if (venueError) throw venueError;
+        
+        if (!venues || venues.length === 0) {
+          console.log('No venues found');
+          return;
+        }
+        
+        // For each venue, get bookings
+        const venuesWithData = await Promise.all(venues.map(async (venue) => {
+          // Get courts for this venue
+          const { data: courts, error: courtsError } = await supabase
+            .from('courts')
+            .select('id')
+            .eq('venue_id', venue.id)
+            .eq('is_active', true);
+            
+          if (courtsError || !courts || courts.length === 0) {
+            return {
+              id: venue.id,
+              name: venue.name,
+              platform_fee_percent: venue.platform_fee_percent || 7,
+              bookings_count: 0,
+              total_revenue: 0,
+              net_revenue: 0
+            };
+          }
+          
+          // Get bookings for these courts from the past 30 days
+          const courtIds = courts.map(c => c.id);
+          const thirtyDaysAgo = format(subDays(new Date(), 30), 'yyyy-MM-dd');
+          const today = format(new Date(), 'yyyy-MM-dd');
+          
+          const { data: bookings, error: bookingsError } = await supabase
+            .from('bookings')
+            .select('total_price, booking_date')
+            .in('court_id', courtIds)
+            .in('status', ['confirmed', 'completed'])
+            .gte('booking_date', thirtyDaysAgo)
+            .lte('booking_date', today);
+            
+          if (bookingsError || !bookings) {
+            return {
+              id: venue.id,
+              name: venue.name,
+              platform_fee_percent: venue.platform_fee_percent || 7,
+              bookings_count: 0,
+              total_revenue: 0,
+              net_revenue: 0
+            };
+          }
+          
+          // Calculate total and net revenue
+          const total_revenue = bookings.reduce((sum, b) => sum + (b.total_price || 0), 0);
+          const platformFee = venue.platform_fee_percent || 7;
+          const net_revenue = total_revenue * ((100 - platformFee) / 100);
+          
+          return {
+            id: venue.id,
+            name: venue.name,
+            platform_fee_percent: platformFee,
+            bookings_count: bookings.length,
+            total_revenue,
+            net_revenue
+          };
+        }));
+        
+        setVenuesWithStats(venuesWithData);
+      } catch (error) {
+        console.error('Error fetching venues with stats:', error);
+      }
+    };
+    
+    if (adminVenues.length > 0 || userRoleState === 'super_admin') {
+      fetchVenuesWithStats();
+    }
+  }, [adminVenues, userRoleState]);
+
   // Fetch real dashboard metrics
   useEffect(() => {
     const fetchDashboardMetrics = async () => {
       try {
         // Set loading state
         setStats(prev => ({ ...prev, isLoading: true }));
+        setCourtDataLoading(true);
 
         // Get today's date
         const today = format(new Date(), 'yyyy-MM-dd');
@@ -243,7 +358,7 @@ const AdminHome_Mobile: React.FC = () => {
           .select('id, court:court_id (venue_id), status, booking_date')
           .eq('booking_date', today)
           .in('status', ['confirmed', 'pending', 'completed']);
-        const todayBookings = (todayBookingsData || []).filter(b => b.court && venueIds.includes(b.court.venue_id));
+        const todayBookings = (todayBookingsData || []).filter(b => b.court && (!venueIds.length || venueIds.includes(b.court.venue_id)));
         const bookingsCount = todayBookings.length;
 
         // 2. Fetch pending bookings with court join
@@ -252,7 +367,7 @@ const AdminHome_Mobile: React.FC = () => {
           .select('id, court:court_id (venue_id), status, booking_date')
           .gte('booking_date', today)
           .eq('status', 'pending');
-        const pendingBookings = (pendingBookingsData || []).filter(b => b.court && venueIds.includes(b.court.venue_id));
+        const pendingBookings = (pendingBookingsData || []).filter(b => b.court && (!venueIds.length || venueIds.includes(b.court.venue_id)));
         const pendingBookingsCount = pendingBookings.length;
 
         // 3. Fetch upcoming bookings (next 7 days) with court join
@@ -262,7 +377,7 @@ const AdminHome_Mobile: React.FC = () => {
           .gte('booking_date', today)
           .lte('booking_date', format(subDays(new Date(), -7), 'yyyy-MM-dd'))
           .in('status', ['confirmed', 'pending']);
-        const upcomingBookings = (upcomingBookingsData || []).filter(b => b.court && venueIds.includes(b.court.venue_id));
+        const upcomingBookings = (upcomingBookingsData || []).filter(b => b.court && (!venueIds.length || venueIds.includes(b.court.venue_id)));
         const upcomingBookingsCount = upcomingBookings.length;
         
         // 4. Fetch average rating
@@ -281,53 +396,146 @@ const AdminHome_Mobile: React.FC = () => {
           .select('id', { count: 'exact' })
           .gte('created_at', thirtyDaysAgo)
           .match(venueFilter);
+
+        // 6. Calculate monthly revenue - use venue stats we already collected
+        // Get total revenue from all venues using the platform fee from each venue
+        let totalNetRevenue = venuesWithStats.reduce((sum, venue) => sum + venue.net_revenue, 0);
         
-        // 6. Calculate monthly revenue
-        const { data: monthlyBookings } = await supabase
+        // Calculate today's net revenue and custom date range net revenue
+        const todayStr = format(new Date(), 'yyyy-MM-dd');
+        
+        // Get bookings with venue information for accurate fee calculation
+        const { data: todaysBookingsWithVenue } = await supabase
           .from('bookings')
           .select(`
             total_price,
-            booking_date,
             court:court_id (
-              id,
-              court_group_id,
               venue_id
-            ),
-            venue:venue_id (
-              platform_fee_percent
             )
           `)
-          .gte('booking_date', firstDayOfMonth)
-          .lte('booking_date', today)
+          .eq('booking_date', todayStr)
           .in('status', ['confirmed', 'completed']);
         
-        console.log('monthlyBookings', monthlyBookings);
-        console.log('venueIds', venueIds);
-        const filteredBookings = (monthlyBookings || []).filter(b => b.court && venueIds.includes(b.court.venue_id));
-        console.log('filteredBookings', filteredBookings);
-        const todayStr = format(new Date(), 'yyyy-MM-dd');
-        const todaysBookings = filteredBookings.filter(b => b.booking_date === todayStr);
-        const todaysNetRevenueCalc = todaysBookings.reduce((acc, booking) => {
-          const fee = 7;
-          const share = typeof booking.total_price === 'number' ? booking.total_price * ((100 - fee) / 100) : 0;
-          return acc + share;
-        }, 0);
-        setTodaysNetRevenue(todaysNetRevenueCalc);
+        // Filter by admin venues if needed
+        const filteredTodaysBookings = (todaysBookingsWithVenue || []).filter(b => 
+          b.court && (!venueIds.length || venueIds.includes(b.court.venue_id))
+        );
         
-        let customNetRevenueCalc = 0;
+        // Calculate today's net revenue using venue-specific platform fees
+        let todaysNetRevenueValue = 0;
+        
+        if (filteredTodaysBookings.length > 0) {
+          // For each booking, find its venue and use its platform fee
+          todaysNetRevenueValue = await filteredTodaysBookings.reduce(async (accPromise, booking) => {
+            const acc = await accPromise;
+            if (!booking.court?.venue_id) return acc;
+            
+            // Find the venue in our previously collected stats
+            const venueInfo = venuesWithStats.find(v => v.id === booking.court.venue_id);
+            const platformFee = venueInfo?.platform_fee_percent || 7; // Default to 7% if not found
+            
+            const netAmount = booking.total_price * ((100 - platformFee) / 100);
+            return acc + netAmount;
+          }, Promise.resolve(0));
+        }
+        
+        setTodaysNetRevenue(todaysNetRevenueValue);
+        
+        // Calculate custom date range net revenue
+        let customNetRevenueValue = 0;
+        
         if (customStartDate && customEndDate) {
           const start = format(customStartDate, 'yyyy-MM-dd');
           const end = format(customEndDate, 'yyyy-MM-dd');
-          const customBookings = filteredBookings.filter(
-            b => b.booking_date >= start && b.booking_date <= end
+          
+          // Get bookings for custom date range with venue info
+          const { data: customRangeBookings } = await supabase
+            .from('bookings')
+            .select(`
+              total_price,
+              court:court_id (
+                venue_id
+              )
+            `)
+            .gte('booking_date', start)
+            .lte('booking_date', end)
+            .in('status', ['confirmed', 'completed']);
+          
+          // Filter by admin venues if needed
+          const filteredCustomBookings = (customRangeBookings || []).filter(b => 
+            b.court && (!venueIds.length || venueIds.includes(b.court.venue_id))
           );
-          customNetRevenueCalc = customBookings.reduce((acc, booking) => {
-            const fee = 7;
-            const share = typeof booking.total_price === 'number' ? booking.total_price * ((100 - fee) / 100) : 0;
-            return acc + share;
-          }, 0);
+          
+          // Calculate custom range net revenue using venue-specific platform fees
+          if (filteredCustomBookings.length > 0) {
+            customNetRevenueValue = await filteredCustomBookings.reduce(async (accPromise, booking) => {
+              const acc = await accPromise;
+              if (!booking.court?.venue_id) return acc;
+              
+              // Find the venue in our previously collected stats
+              const venueInfo = venuesWithStats.find(v => v.id === booking.court.venue_id);
+              const platformFee = venueInfo?.platform_fee_percent || 7; // Default to 7% if not found
+              
+              const netAmount = booking.total_price * ((100 - platformFee) / 100);
+              return acc + netAmount;
+            }, Promise.resolve(0));
+          }
         }
-        setCustomNetRevenue(customNetRevenueCalc);
+        
+        setCustomNetRevenue(customNetRevenueValue);
+        
+        // 7. Fetch popular courts
+        const { data: courtsWithBookings } = await supabase
+          .from('courts')
+          .select(`
+            id, 
+            name,
+            venue_id
+          `)
+          .eq('is_active', true)
+          .order('name');
+          
+        if (courtsWithBookings) {
+          // Filter courts by venue IDs if admin
+          const filteredCourts = venueIds.length > 0 
+            ? courtsWithBookings.filter(c => venueIds.includes(c.venue_id))
+            : courtsWithBookings;
+          
+          // For each court, get booking count for past 30 days
+          const lastThirtyDays = format(subDays(new Date(), 30), 'yyyy-MM-dd');
+          
+          const courtWithStats = await Promise.all(filteredCourts.map(async (court) => {
+            const { count } = await supabase
+              .from('bookings')
+              .select('id', { count: 'exact' })
+              .eq('court_id', court.id)
+              .gte('booking_date', lastThirtyDays)
+              .in('status', ['confirmed', 'completed']);
+              
+            return {
+              court_id: court.id,
+              court_name: court.name,
+              bookings_count: count || 0
+            };
+          }));
+          
+          // Sort by booking count and calculate percentage
+          courtWithStats.sort((a, b) => b.bookings_count - a.bookings_count);
+          
+          // Take top 3
+          const topCourts = courtWithStats.slice(0, 3);
+          
+          // Calculate booking percentage based on maximum possible bookings (assume 10 bookings per day as max capacity)
+          const maxPossibleBookings = 10 * 30; // 10 bookings per day for 30 days
+          
+          const courtsWithPercentage = topCourts.map(court => ({
+            court_name: court.court_name,
+            bookings_percentage: Math.min(100, Math.round((court.bookings_count * 100) / maxPossibleBookings))
+          }));
+          
+          setPopularCourts(courtsWithPercentage);
+          setCourtDataLoading(false);
+        }
         
         // 7. Calculate occupancy rate (past 7 days) with court join
         const { data: recentBookingsData } = await supabase
@@ -336,14 +544,14 @@ const AdminHome_Mobile: React.FC = () => {
           .gte('booking_date', format(subDays(new Date(), 7), 'yyyy-MM-dd'))
           .lte('booking_date', today)
           .in('status', ['confirmed', 'completed']);
-        const recentBookings = (recentBookingsData || []).filter(b => b.court && venueIds.includes(b.court.venue_id));
+        const recentBookings = (recentBookingsData || []).filter(b => b.court && (!venueIds.length || venueIds.includes(b.court.venue_id)));
         const recentBookingsCount = recentBookings.length;
         
         // For simplicity, we'll use a target of 10 bookings per day per venue as "full capacity"
         let venueCount = 1; // Default to 1 if no venues
-        if (adminVenues.length > 0) {
-          venueCount = adminVenues.length;
-        } else {
+        if (venueIds.length > 0) {
+          venueCount = venueIds.length;
+        } else if (userRoleState === 'super_admin') {
           // For super admin, get total venue count
           const { count } = await supabase
             .from('venues')
@@ -367,7 +575,7 @@ const AdminHome_Mobile: React.FC = () => {
           occupancyRate,
           isLoading: false,
           pendingBookings: pendingBookingsCount,
-          monthlyRevenue: todaysNetRevenueCalc,
+          monthlyRevenue: todaysNetRevenueValue, // Use today's revenue for now
           upcomingBookings: upcomingBookingsCount,
           recentReviews: recentReviewsCount || 0
         });
@@ -405,7 +613,7 @@ const AdminHome_Mobile: React.FC = () => {
       supabase.removeChannel(bookingsChannel);
       supabase.removeChannel(reviewsChannel);
     };
-  }, [adminVenues]);
+  }, [adminVenues, venuesWithStats, customStartDate, customEndDate, userRoleState]);
 
   const handleLogout = async () => {
     try {
@@ -642,24 +850,22 @@ const AdminHome_Mobile: React.FC = () => {
             <Link to="/admin/analytics-mobile" className="text-xs text-indigo-400">View All</Link>
           </div>
           
-          {stats.isLoading ? (
+          {courtDataLoading || stats.isLoading ? (
             <div className="flex justify-center items-center py-4">
               <Loader2 className="h-6 w-6 animate-spin text-indigo-400" />
             </div>
+          ) : popularCourts.length === 0 ? (
+            <div className="text-center py-4 text-gray-500">
+              <p>No booking data available</p>
+            </div>
           ) : (
             <div className="space-y-2">
-              <div className="flex justify-between bg-navy-700/40 p-2 rounded">
-                <span className="text-sm text-gray-300">Badminton Court 1</span>
-                <span className="text-sm font-medium text-emerald-400">89% booked</span>
-              </div>
-              <div className="flex justify-between bg-navy-700/40 p-2 rounded">
-                <span className="text-sm text-gray-300">Cricket Pitch 3</span>
-                <span className="text-sm font-medium text-emerald-400">78% booked</span>
-              </div>
-              <div className="flex justify-between bg-navy-700/40 p-2 rounded">
-                <span className="text-sm text-gray-300">Tennis Court A</span>
-                <span className="text-sm font-medium text-amber-400">65% booked</span>
-              </div>
+              {popularCourts.map((court, index) => (
+                <div key={index} className="flex justify-between bg-navy-700/40 p-2 rounded">
+                  <span className="text-sm text-gray-300">{court.court_name}</span>
+                  <span className="text-sm font-medium text-emerald-400">{court.bookings_percentage}% booked</span>
+                </div>
+              ))}
             </div>
           )}
         </div>

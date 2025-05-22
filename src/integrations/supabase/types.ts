@@ -431,7 +431,7 @@ export type Database = {
           read_status: boolean
           title: string
           type: string | null
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -441,7 +441,7 @@ export type Database = {
           read_status?: boolean
           title: string
           type?: string | null
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -451,7 +451,7 @@ export type Database = {
           read_status?: boolean
           title?: string
           type?: string | null
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -1340,7 +1340,9 @@ export type Database = {
           longitude: number | null
           name: string
           opening_hours: string | null
+          platform_fee_percent: number | null
           rating: number | null
+          razorpay_account_id: string | null
           updated_at: string
         }
         Insert: {
@@ -1358,7 +1360,9 @@ export type Database = {
           longitude?: number | null
           name: string
           opening_hours?: string | null
+          platform_fee_percent?: number | null
           rating?: number | null
+          razorpay_account_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -1376,7 +1380,9 @@ export type Database = {
           longitude?: number | null
           name?: string
           opening_hours?: string | null
+          platform_fee_percent?: number | null
           rating?: number | null
+          razorpay_account_id?: string | null
           updated_at?: string
         }
         Relationships: []
