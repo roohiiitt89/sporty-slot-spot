@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
@@ -10,21 +9,34 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from '@/components/ui/use-toast';
 import AvailabilityWidget from '@/components/AvailabilityWidget';
 import SlotBlockingForm from '@/components/admin/SlotBlockingForm';
-
 interface SlotBlockingTabProps {
   userRole: string | null;
-  adminVenues: { venue_id: string }[];
+  adminVenues: {
+    venue_id: string;
+  }[];
 }
-
-const SlotBlockingTab: React.FC<SlotBlockingTabProps> = ({ userRole, adminVenues }) => {
-  const [venues, setVenues] = useState<{ id: string; name: string }[]>([]);
+const SlotBlockingTab: React.FC<SlotBlockingTabProps> = ({
+  userRole,
+  adminVenues
+}) => {
+  const [venues, setVenues] = useState<{
+    id: string;
+    name: string;
+  }[]>([]);
   const [selectedVenueId, setSelectedVenueId] = useState<string>('');
   const [selectedVenueName, setSelectedVenueName] = useState<string>('');
-  const [courts, setCourts] = useState<{ id: string; name: string }[]>([]);
+  const [courts, setCourts] = useState<{
+    id: string;
+    name: string;
+  }[]>([]);
   const [selectedCourtId, setSelectedCourtId] = useState<string>('');
   const [selectedCourtName, setSelectedCourtName] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [selectedSlot, setSelectedSlot] = useState<{ start_time: string; end_time: string; is_available: boolean } | null>(null);
+  const [selectedSlot, setSelectedSlot] = useState<{
+    start_time: string;
+    end_time: string;
+    is_available: boolean;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<number>(Date.now());
 
@@ -34,16 +46,13 @@ const SlotBlockingTab: React.FC<SlotBlockingTabProps> = ({ userRole, adminVenues
       try {
         setLoading(true);
         let data;
-        
         if (userRole === 'admin') {
           // For admin users, only show venues they manage
           if (adminVenues.length > 0) {
-            const { data: venuesData, error: venuesError } = await supabase
-              .from('venues')
-              .select('id, name')
-              .in('id', adminVenues.map(v => v.venue_id))
-              .eq('is_active', true);
-              
+            const {
+              data: venuesData,
+              error: venuesError
+            } = await supabase.from('venues').select('id, name').in('id', adminVenues.map(v => v.venue_id)).eq('is_active', true);
             if (venuesError) throw venuesError;
             data = venuesData;
           } else {
@@ -51,15 +60,13 @@ const SlotBlockingTab: React.FC<SlotBlockingTabProps> = ({ userRole, adminVenues
           }
         } else if (userRole === 'super_admin') {
           // For super_admin, show all venues
-          const { data: venuesData, error: venuesError } = await supabase
-            .from('venues')
-            .select('id, name')
-            .eq('is_active', true);
-            
+          const {
+            data: venuesData,
+            error: venuesError
+          } = await supabase.from('venues').select('id, name').eq('is_active', true);
           if (venuesError) throw venuesError;
           data = venuesData;
         }
-        
         if (data && data.length > 0) {
           setVenues(data);
           setSelectedVenueId(data[0].id);
@@ -76,7 +83,6 @@ const SlotBlockingTab: React.FC<SlotBlockingTabProps> = ({ userRole, adminVenues
         setLoading(false);
       }
     };
-
     if (userRole === 'admin' || userRole === 'super_admin') {
       fetchVenues();
     }
@@ -86,17 +92,13 @@ const SlotBlockingTab: React.FC<SlotBlockingTabProps> = ({ userRole, adminVenues
   useEffect(() => {
     const fetchCourts = async () => {
       if (!selectedVenueId) return;
-      
       try {
         setLoading(true);
-        const { data, error } = await supabase
-          .from('courts')
-          .select('id, name')
-          .eq('venue_id', selectedVenueId)
-          .eq('is_active', true);
-        
+        const {
+          data,
+          error
+        } = await supabase.from('courts').select('id, name').eq('venue_id', selectedVenueId).eq('is_active', true);
         if (error) throw error;
-        
         if (data && data.length > 0) {
           setCourts(data);
           setSelectedCourtId(data[0].id);
@@ -117,7 +119,6 @@ const SlotBlockingTab: React.FC<SlotBlockingTabProps> = ({ userRole, adminVenues
         setLoading(false);
       }
     };
-    
     fetchCourts();
   }, [selectedVenueId]);
 
@@ -155,39 +156,30 @@ const SlotBlockingTab: React.FC<SlotBlockingTabProps> = ({ userRole, adminVenues
   const handleManualRefresh = () => {
     setLastRefresh(Date.now());
   };
-
   if (loading && venues.length === 0) {
-    return (
-      <div className="flex justify-center items-center p-4">
+    return <div className="flex justify-center items-center p-4">
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="space-y-4">
+  return <div className="space-y-4">
       {/* Venue Selection */}
-      {venues.length > 0 && (
-        <div className="mb-4">
+      {venues.length > 0 && <div className="mb-4">
           <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
             Select Venue
           </label>
-          <Select value={selectedVenueId} onValueChange={(value) => {
-            setSelectedVenueId(value);
-            const venue = venues.find(v => v.id === value);
-            if (venue) setSelectedVenueName(venue.name);
-          }}>
+          <Select value={selectedVenueId} onValueChange={value => {
+        setSelectedVenueId(value);
+        const venue = venues.find(v => v.id === value);
+        if (venue) setSelectedVenueName(venue.name);
+      }}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select a venue" />
             </SelectTrigger>
             <SelectContent>
-              {venues.map((venue) => (
-                <SelectItem key={venue.id} value={venue.id}>{venue.name}</SelectItem>
-              ))}
+              {venues.map(venue => <SelectItem key={venue.id} value={venue.id}>{venue.name}</SelectItem>)}
             </SelectContent>
           </Select>
-        </div>
-      )}
+        </div>}
       
       {/* Date Selection */}
       <div className="mb-4">
@@ -202,24 +194,18 @@ const SlotBlockingTab: React.FC<SlotBlockingTabProps> = ({ userRole, adminVenues
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0">
-            <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={(date) => {
-                if (date) {
-                  setSelectedDate(date);
-                  setSelectedSlot(null);
-                }
-              }}
-              initialFocus
-            />
+            <Calendar mode="single" selected={selectedDate} onSelect={date => {
+            if (date) {
+              setSelectedDate(date);
+              setSelectedSlot(null);
+            }
+          }} initialFocus />
           </PopoverContent>
         </Popover>
       </div>
       
       {/* Court Selection */}
-      {courts.length > 0 && (
-        <div className="mb-4">
+      {courts.length > 0 && <div className="mb-4">
           <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
             Select Court
           </label>
@@ -228,62 +214,32 @@ const SlotBlockingTab: React.FC<SlotBlockingTabProps> = ({ userRole, adminVenues
               <SelectValue placeholder="Select a court" />
             </SelectTrigger>
             <SelectContent>
-              {courts.map((court) => (
-                <SelectItem key={court.id} value={court.id}>{court.name}</SelectItem>
-              ))}
+              {courts.map(court => <SelectItem key={court.id} value={court.id}>{court.name}</SelectItem>)}
             </SelectContent>
           </Select>
-        </div>
-      )}
+        </div>}
       
       {/* Manual refresh button */}
-      <Button 
-        variant="outline" 
-        size="sm" 
-        onClick={handleManualRefresh}
-        className="mb-4 w-full"
-      >
+      <Button variant="outline" size="sm" onClick={handleManualRefresh} className="mb-4 w-full">
         Refresh Availability
       </Button>
       
       {/* Availability Widget */}
-      {selectedCourtId ? (
-        <div className="bg-white dark:bg-navy-800 rounded-lg shadow p-4 mb-6">
+      {selectedCourtId ? <div className="dark:bg-navy-800 rounded-lg shadow p-4 mb-6 bg-emerald-900">
           <h3 className="text-md font-medium mb-3 text-gray-900 dark:text-white">Available Time Slots</h3>
-          <AvailabilityWidget
-            courtId={selectedCourtId}
-            date={format(selectedDate, 'yyyy-MM-dd')}
-            onSelectSlot={handleSlotSelect}
-            isAdmin={true}
-            key={`availability-${selectedCourtId}-${format(selectedDate, 'yyyy-MM-dd')}-${lastRefresh}`}
-          />
-        </div>
-      ) : (
-        <div className="bg-white dark:bg-navy-800 rounded-lg shadow p-4 mb-6">
+          <AvailabilityWidget courtId={selectedCourtId} date={format(selectedDate, 'yyyy-MM-dd')} onSelectSlot={handleSlotSelect} isAdmin={true} key={`availability-${selectedCourtId}-${format(selectedDate, 'yyyy-MM-dd')}-${lastRefresh}`} />
+        </div> : <div className="bg-white dark:bg-navy-800 rounded-lg shadow p-4 mb-6">
           <p className="text-gray-500 dark:text-gray-400 text-center py-4">Select a court to view availability</p>
-        </div>
-      )}
+        </div>}
       
       {/* Slot Blocking Form */}
-      {selectedCourtId && selectedSlot ? (
-        <div className="bg-white dark:bg-navy-800 rounded-lg shadow p-4">
-          <SlotBlockingForm
-            courtId={selectedCourtId}
-            courtName={selectedCourtName}
-            date={format(selectedDate, 'yyyy-MM-dd')}
-            selectedSlot={selectedSlot}
-            onBlockComplete={handleBlockComplete}
-          />
-        </div>
-      ) : (
-        <div className="bg-white dark:bg-navy-800 rounded-lg shadow p-4">
+      {selectedCourtId && selectedSlot ? <div className="bg-white dark:bg-navy-800 rounded-lg shadow p-4">
+          <SlotBlockingForm courtId={selectedCourtId} courtName={selectedCourtName} date={format(selectedDate, 'yyyy-MM-dd')} selectedSlot={selectedSlot} onBlockComplete={handleBlockComplete} />
+        </div> : <div className="bg-white dark:bg-navy-800 rounded-lg shadow p-4">
           <p className="text-gray-500 dark:text-gray-400 text-center py-4">
             Select a time slot to block
           </p>
-        </div>
-      )}
-    </div>
-  );
+        </div>}
+    </div>;
 };
-
 export default SlotBlockingTab;
