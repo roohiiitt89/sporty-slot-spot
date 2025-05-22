@@ -206,9 +206,9 @@ const AvailabilityWidget: React.FC<AvailabilityWidgetProps> = ({
   };
 
   const handleSlotClick = (slot: { start_time: string; end_time: string; is_available: boolean; is_booked?: boolean; is_blocked?: boolean }) => {
-    if (slot.is_blocked) {
+    if (slot.is_blocked || slot.is_booked) {
       toast({
-        title: 'Slot Blocked',
+        title: 'Slot Unavailable',
         description: 'Slot is booked/blocked already, select another one.',
         variant: 'destructive'
       });
