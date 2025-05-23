@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   BarChart, Calendar, Map, Users, Star, MessageCircle, 
   HelpCircle, LogOut, ChevronRight, AlertCircle, Loader2, 
-  Clock, Banknote, BarChart2, Award
+  Clock, Banknote, BarChart2, Award, CheckCircle
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
@@ -256,6 +256,8 @@ const AdminHome_Mobile: React.FC = () => {
   const [broadcastTitle, setBroadcastTitle] = useState('');
   const [broadcastMessage, setBroadcastMessage] = useState('');
   const [broadcastLoading, setBroadcastLoading] = useState(false);
+  const approvedBroadcastIdsRef = useRef<Set<string>>(new Set());
+  const [broadcastHistory, setBroadcastHistory] = useState<Record<string, any[]>>({});
   
   // If not on mobile, redirect to desktop admin
   useEffect(() => {
@@ -764,6 +766,32 @@ const AdminHome_Mobile: React.FC = () => {
     fetchSubscribers();
   }, [adminVenues]);
 
+  // Fetch previous broadcasts for each venue
+  useEffect(() => {
+    const fetchBroadcasts = async () => {
+      if (!adminVenues.length) return;
+      const venueIds = adminVenues.map(v => v.venue_id);
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('type', 'venue_broadcast')
+        .or(venueIds.map(id => `metadata->>venue_id.eq.${id}`).join(','))
+        .order('created_at', { ascending: false });
+      if (!error && data) {
+        // Group by venue_id
+        const grouped: Record<string, any[]> = {};
+        data.forEach((n: any) => {
+          const venueId = n.metadata?.venue_id;
+          if (!venueId) return;
+          if (!grouped[venueId]) grouped[venueId] = [];
+          grouped[venueId].push(n);
+        });
+        setBroadcastHistory(grouped);
+      }
+    };
+    fetchBroadcasts();
+  }, [adminVenues]);
+
   const handleSendBroadcast = async () => {
     if (!broadcastTitle || !broadcastMessage || !broadcastModal.venueId) return;
     setBroadcastLoading(true);
@@ -783,13 +811,14 @@ const AdminHome_Mobile: React.FC = () => {
       title: broadcastTitle,
       message: broadcastMessage,
       type: 'venue_broadcast',
-      metadata: { venue_id: broadcastModal.venueId }
+      metadata: { venue_id: broadcastModal.venueId },
+      approved: false
     }));
     const { error: notifError } = await supabase
       .from('notifications')
       .insert(notifications);
     if (!notifError) {
-      toast.success('Broadcast sent to all subscribers!');
+      toast.success('Sent to Grid2Play for approval. You will be notified when your broadcast is approved.');
       setBroadcastModal({ open: false, venueId: null });
       setBroadcastTitle('');
       setBroadcastMessage('');
@@ -807,6 +836,32 @@ const AdminHome_Mobile: React.FC = () => {
       console.error('Error signing out:', error);
     }
   };
+
+  useEffect(() => {
+    if (!user) return;
+    // Listen for updates to notifications for this admin's venues
+    const channel = supabase.channel('admin_broadcast_approval')
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'notifications',
+        filter: 'type=eq.venue_broadcast'
+      }, async (payload) => {
+        const notif = payload.new;
+        // Only notify if this admin sent the broadcast (by venue ownership)
+        if (notif.approved === true && notif.metadata && notif.metadata.venue_id && adminVenues.some(v => v.venue_id === notif.metadata.venue_id)) {
+          // Only show once per notification
+          if (!approvedBroadcastIdsRef.current.has(notif.id)) {
+            approvedBroadcastIdsRef.current.add(notif.id);
+            toast.success('Your broadcast message has been approved and sent to your subscribers!');
+          }
+        }
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, adminVenues]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-navy-900 to-navy-800 pb-20">
@@ -1109,9 +1164,44 @@ const AdminHome_Mobile: React.FC = () => {
         <div className="space-y-4">
           {adminVenues.map(v => (
             <div key={v.venue_id} className="bg-navy-800/70 rounded-xl p-4 border border-navy-700/50 flex flex-col md:flex-row md:items-center md:justify-between">
-              <div>
+              <div className="w-full">
                 <div className="text-white font-semibold text-lg mb-1">{venuesWithStats.find(venue => venue.id === v.venue_id)?.name || 'Venue'}</div>
                 <div className="text-xs text-gray-400 mb-2">Subscribers: <span className="text-emerald-400 font-bold">{venueSubscribers[v.venue_id] || 0}</span></div>
+                {/* Broadcast History Table */}
+                <div className="mt-2">
+                  <div className="text-xs text-gray-300 mb-1 font-semibold">Previous Broadcasts</div>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-xs text-left">
+                      <thead>
+                        <tr>
+                          <th className="pr-2 pb-1 font-medium">Title</th>
+                          <th className="pr-2 pb-1 font-medium">Message</th>
+                          <th className="pr-2 pb-1 font-medium">Status</th>
+                          <th className="pr-2 pb-1 font-medium">Time</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(broadcastHistory[v.venue_id] || []).slice(0, 5).map((b) => (
+                          <tr key={b.id}>
+                            <td className="pr-2 py-1 text-white max-w-[120px] truncate">{b.title}</td>
+                            <td className="pr-2 py-1 text-gray-300 max-w-[180px] truncate">{b.message}</td>
+                            <td className="pr-2 py-1">
+                              {b.approved ? (
+                                <span className="flex items-center text-green-400 font-semibold"><CheckCircle className="w-4 h-4 mr-1" /> Approved</span>
+                              ) : (
+                                <span className="flex items-center text-yellow-400 font-semibold"><Clock className="w-4 h-4 mr-1" /> Sent</span>
+                              )}
+                            </td>
+                            <td className="pr-2 py-1 text-gray-400">{new Date(b.created_at).toLocaleString()}</td>
+                          </tr>
+                        ))}
+                        {(broadcastHistory[v.venue_id] || []).length === 0 && (
+                          <tr><td colSpan={4} className="text-gray-500 py-2">No broadcasts yet</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
               <Button
                 className="mt-2 md:mt-0"
