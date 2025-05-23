@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MapPin, Star, ArrowLeft, MessageCircle, Navigation, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -19,6 +18,8 @@ import AvailabilityWidget from '@/components/AvailabilityWidget';
 import VenueImageCarousel from '@/components/VenueImageCarousel';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { toast } from "react-hot-toast";
 
 interface Venue {
   id: string;
@@ -70,6 +71,9 @@ const VenueDetails: React.FC = () => {
   const [distance, setDistance] = useState<number | null>(null);
   const isMobile = useIsMobile();
   const [venueImages, setVenueImages] = useState<string[]>([]);
+  const [isSubscribeModalOpen, setIsSubscribeModalOpen] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [subLoading, setSubLoading] = useState(false);
 
   // Use isMobile to conditionally apply mobile-optimized classes
   const containerClass = isMobile ? 'max-w-screen-sm mx-auto px-2' : 'container mx-auto px-4';
@@ -157,6 +161,52 @@ const VenueDetails: React.FC = () => {
     fetchVenueDetails();
   }, [id, latitude, longitude]);
 
+  useEffect(() => {
+    const checkSubscription = async () => {
+      if (!user || !id) return;
+      const { data, error } = await supabase
+        .from('venue_subscriptions')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('venue_id', id)
+        .single();
+      setIsSubscribed(!!data && !error);
+    };
+    checkSubscription();
+  }, [user, id]);
+
+  const handleSubscribe = async () => {
+    setSubLoading(true);
+    if (!user || !id) return;
+    if (isSubscribed) {
+      // Unsubscribe
+      const { error } = await supabase
+        .from('venue_subscriptions')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('venue_id', id);
+      if (!error) {
+        setIsSubscribed(false);
+        toast.success('Unsubscribed from this venue.');
+      } else {
+        toast.error('Failed to unsubscribe.');
+      }
+    } else {
+      // Subscribe
+      const { error } = await supabase
+        .from('venue_subscriptions')
+        .insert({ user_id: user.id, venue_id: id });
+      if (!error) {
+        setIsSubscribed(true);
+        toast.success('Subscribed to this venue!');
+      } else {
+        toast.error('Failed to subscribe.');
+      }
+    }
+    setSubLoading(false);
+    setIsSubscribeModalOpen(false);
+  };
+
   if (loading) {
     return (
       <div className={containerClass + ' min-h-screen bg-black'}>
@@ -203,14 +253,24 @@ const VenueDetails: React.FC = () => {
           </Button>
           
           {user && (
-            <Button
-              onClick={() => setIsChatModalOpen(true)}
-              variant="outline"
-              className="w-full mt-3 flex items-center justify-center border-gray-600 text-gray-300 hover:bg-navy hover:text-white"
-            >
-              <MessageCircle className="mr-2 h-4 w-4" />
-              Chat with Venue
-            </Button>
+            <>
+              <Button
+                onClick={() => setIsChatModalOpen(true)}
+                variant="outline"
+                className="w-full mt-3 flex items-center justify-center border-gray-600 text-gray-300 hover:bg-navy hover:text-white"
+              >
+                <MessageCircle className="mr-2 h-4 w-4" />
+                Chat with Venue
+              </Button>
+              <Button
+                onClick={() => setIsSubscribeModalOpen(true)}
+                variant={isSubscribed ? "secondary" : "default"}
+                className="w-full mt-3 flex items-center justify-center border-indigo-600 text-indigo-300 hover:bg-indigo hover:text-white"
+                disabled={subLoading}
+              >
+                {isSubscribed ? "Unsubscribe from this venue" : "Subscribe to this venue"}
+              </Button>
+            </>
           )}
           
           {/* Info Card */}
@@ -468,14 +528,24 @@ const VenueDetails: React.FC = () => {
             </Button>
             
             {user && (
-              <Button
-                onClick={() => setIsChatModalOpen(true)}
-                variant="outline"
-                className="w-full mt-3 flex items-center justify-center border-gray-600 text-gray-300 hover:bg-navy hover:text-white"
-              >
-                <MessageCircle className="mr-2 h-4 w-4" />
-                Chat with Venue
-              </Button>
+              <>
+                <Button
+                  onClick={() => setIsChatModalOpen(true)}
+                  variant="outline"
+                  className="w-full mt-3 flex items-center justify-center border-gray-600 text-gray-300 hover:bg-navy hover:text-white"
+                >
+                  <MessageCircle className="mr-2 h-4 w-4" />
+                  Chat with Venue
+                </Button>
+                <Button
+                  onClick={() => setIsSubscribeModalOpen(true)}
+                  variant={isSubscribed ? "secondary" : "default"}
+                  className="w-full mt-3 flex items-center justify-center border-indigo-600 text-indigo-300 hover:bg-indigo hover:text-white"
+                  disabled={subLoading}
+                >
+                  {isSubscribed ? "Unsubscribe from this venue" : "Subscribe to this venue"}
+                </Button>
+              </>
             )}
             
             {/* Info Card */}
@@ -610,6 +680,28 @@ const VenueDetails: React.FC = () => {
           onClose={() => setIsReviewModalOpen(false)}
           bookingId=""
         />
+      )}
+      {isSubscribeModalOpen && (
+        <Dialog open={isSubscribeModalOpen} onOpenChange={setIsSubscribeModalOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{isSubscribed ? "Unsubscribe from Venue" : "Subscribe to Venue"}</DialogTitle>
+            </DialogHeader>
+            <div className="py-2 text-gray-200 text-sm">
+              {isSubscribed
+                ? "Are you sure you want to unsubscribe from this venue? You will stop receiving updates and notifications."
+                : "Subscribing means you'll receive notifications and updates from this venue, such as offers or important announcements. Continue?"}
+            </div>
+            <DialogFooter>
+              <Button onClick={handleSubscribe} disabled={subLoading}>
+                {isSubscribed ? "Yes, Unsubscribe" : "Yes, Subscribe"}
+              </Button>
+              <Button variant="ghost" onClick={() => setIsSubscribeModalOpen(false)}>
+                Cancel
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
