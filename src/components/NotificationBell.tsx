@@ -34,6 +34,7 @@ const NotificationBell: React.FC = () => {
         .from('notifications')
         .select('*')
         .eq('user_id', user.id)
+        .or('approved.is.true,approved.is.null')
         .order('created_at', { ascending: false })
         .limit(20);
       if (!error && data) {
