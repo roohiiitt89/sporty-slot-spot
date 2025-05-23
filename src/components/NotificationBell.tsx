@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Bell } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/context/AuthContext';
@@ -17,6 +17,8 @@ const NotificationBell: React.FC = () => {
   const lastFetchTimeRef = useRef<number>(Date.now());
   const highlightedIdsRef = useRef<Set<string>>(new Set());
   const notificationAudioRef = useRef<HTMLAudioElement | null>(null);
+  const [filter, setFilter] = useState<'all' | 'venue' | 'booking'>('all');
+  const [venueInfo, setVenueInfo] = useState<Record<string, { name: string; image_url: string | null }>>({});
 
   useEffect(() => {
     if (typeof window !== 'undefined' && !notificationAudioRef.current) {
@@ -66,6 +68,36 @@ const NotificationBell: React.FC = () => {
       if (fetchTimeout) clearTimeout(fetchTimeout);
     };
   }, [user, dropdownOpen]);
+
+  // Fetch venue info for venue_broadcast notifications
+  useEffect(() => {
+    const fetchVenueInfo = async () => {
+      const venueIds = notifications
+        .filter(n => n.type === 'venue_broadcast' && n.metadata && n.metadata.venue_id)
+        .map(n => n.metadata.venue_id);
+      const uniqueVenueIds = Array.from(new Set(venueIds));
+      if (uniqueVenueIds.length === 0) return;
+      const { data, error } = await supabase
+        .from('venues')
+        .select('id, name, image_url')
+        .in('id', uniqueVenueIds);
+      if (!error && data) {
+        const info: Record<string, { name: string; image_url: string | null }> = {};
+        data.forEach((v: any) => {
+          info[v.id] = { name: v.name, image_url: v.image_url };
+        });
+        setVenueInfo(info);
+      }
+    };
+    fetchVenueInfo();
+  }, [notifications]);
+
+  const filteredNotifications = useMemo(() => {
+    if (filter === 'all') return notifications;
+    if (filter === 'venue') return notifications.filter(n => n.type === 'venue_broadcast');
+    if (filter === 'booking') return notifications.filter(n => n.type === 'booking');
+    return notifications;
+  }, [notifications, filter]);
 
   const handleDropdownOpen = async (open: boolean) => {
     setDropdownOpen(open);
@@ -146,11 +178,19 @@ const NotificationBell: React.FC = () => {
               <button onClick={handleClearAll} className="text-xs text-red-500 hover:underline">Clear all</button>
             </div>
           </div>
-          {notifications.length === 0 && (
+          {/* Filter Tabs */}
+          <div className="flex gap-2 px-3 pb-2">
+            <button onClick={() => setFilter('all')} className={`text-xs px-2 py-1 rounded ${filter === 'all' ? 'bg-green-600 text-white' : 'bg-navy-700 text-gray-300'}`}>All</button>
+            <button onClick={() => setFilter('venue')} className={`text-xs px-2 py-1 rounded ${filter === 'venue' ? 'bg-green-600 text-white' : 'bg-navy-700 text-gray-300'}`}>Venue Updates</button>
+            <button onClick={() => setFilter('booking')} className={`text-xs px-2 py-1 rounded ${filter === 'booking' ? 'bg-green-600 text-white' : 'bg-navy-700 text-gray-300'}`}>Bookings</button>
+          </div>
+          {filteredNotifications.length === 0 && (
             <div className="px-4 py-2 text-gray-500">No notifications</div>
           )}
-          {notifications.map((notif) => {
+          {filteredNotifications.map((notif) => {
             const { icon, color } = getNotifTypeProps(notif.type);
+            const isVenueBroadcast = notif.type === 'venue_broadcast';
+            const venue = isVenueBroadcast && notif.metadata && notif.metadata.venue_id ? venueInfo[notif.metadata.venue_id] : null;
             return (
               <DropdownMenuItem
                 key={notif.id}
@@ -158,8 +198,16 @@ const NotificationBell: React.FC = () => {
                 onClick={() => handleNotificationClick(notif)}
               >
                 <span className="text-xl mt-0.5">{icon}</span>
-                <span className="flex flex-col items-start gap-0.5">
-                  <span>{notif.title}</span>
+                <span className="flex flex-col items-start gap-0.5 w-full">
+                  <span className="flex items-center gap-2">
+                    {isVenueBroadcast && venue && (
+                      <>
+                        {venue.image_url && <img src={venue.image_url} alt={venue.name} className="w-5 h-5 rounded-full object-cover border border-gray-400" />}
+                        <span className="text-xs text-green-700 font-bold">{venue.name}</span>
+                      </>
+                    )}
+                    <span>{notif.title}</span>
+                  </span>
                   <span className="text-xs text-gray-500">{notif.message}</span>
                   <span className="text-[10px] text-gray-400 mt-1">{new Date(notif.created_at).toLocaleString()}</span>
                 </span>
