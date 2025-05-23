@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useTournamentDetails } from "@/hooks/use-tournament";
@@ -12,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TournamentFixtures } from "@/components/tournament/TournamentFixtures";
+import type { TournamentWithDetails } from "@/types/tournament";
 
 export function TournamentDetailsPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -324,7 +324,7 @@ export function TournamentDetailsPage() {
         <DialogContent className="sm:max-w-md">
           <DialogTitle>Register for Tournament</DialogTitle>
           <RegisterTournamentForm 
-            tournament={tournament} 
+            tournament={tournament as TournamentWithDetails} 
             onSuccess={handleRegistrationSuccess} 
             onCancel={() => setIsDialogOpen(false)} 
           />
