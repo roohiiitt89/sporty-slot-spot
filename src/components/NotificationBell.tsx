@@ -20,6 +20,19 @@ const NotificationBell: React.FC = () => {
   const [filter, setFilter] = useState<'all' | 'venue' | 'booking'>('all');
   const [venueInfo, setVenueInfo] = useState<Record<string, { name: string; image_url: string | null }>>({});
 
+  // Track read notification IDs in sessionStorage
+  const READ_KEY = 'g2p_read_notif_ids';
+  const getReadIds = () => {
+    try {
+      return new Set(JSON.parse(sessionStorage.getItem(READ_KEY) || '[]'));
+    } catch {
+      return new Set();
+    }
+  };
+  const saveReadIds = (ids: string[]) => {
+    sessionStorage.setItem(READ_KEY, JSON.stringify(ids));
+  };
+
   useEffect(() => {
     if (typeof window !== 'undefined' && !notificationAudioRef.current) {
       notificationAudioRef.current = new window.Audio('/notification.mp3');
@@ -34,12 +47,16 @@ const NotificationBell: React.FC = () => {
         .from('notifications')
         .select('*')
         .eq('user_id', user.id)
-        .or('approved.is.true,approved.is.null')
         .order('created_at', { ascending: false })
         .limit(20);
-      if (!error && data) {
+      // Only show venue_broadcast if approved, others always show
+      const filtered = data ? data.filter((n: any) => n.type !== 'venue_broadcast' || n.approved === true || n.approved === null) : [];
+      if (!error) {
+        // Get locally read IDs
+        const readIds = getReadIds();
+        // Only highlight and play sound for truly new notifications
         const now = Date.now();
-        const newNotifs = data.filter((n: any) => {
+        const newNotifs = filtered.filter((n: any) => {
           const created = new Date(n.created_at).getTime();
           return created > lastFetchTimeRef.current && !highlightedIdsRef.current.has(n.id);
         });
@@ -53,11 +70,11 @@ const NotificationBell: React.FC = () => {
           setTimeout(() => setHighlightedIds([]), 2000);
         }
         lastFetchTimeRef.current = now;
-        setNotifications(data);
+        setNotifications(filtered);
         if (suppressUnreadCountRef.current) {
           setUnreadCount(0);
         } else {
-          setUnreadCount(data.filter((n: any) => !n.read_status).length);
+          setUnreadCount(filtered.filter((n: any) => !n.read_status && !readIds.has(n.id)).length);
         }
       }
     };
@@ -102,13 +119,16 @@ const NotificationBell: React.FC = () => {
 
   const handleDropdownOpen = async (open: boolean) => {
     setDropdownOpen(open);
-    if (open && notifications.some(n => !n.read_status)) {
+    if (open) {
       const unreadIds = notifications.filter(n => !n.read_status).map(n => n.id);
+      setUnreadCount(0);
+      suppressUnreadCountRef.current = true;
+      setTimeout(() => { suppressUnreadCountRef.current = false; }, 2000);
       if (unreadIds.length > 0) {
         setNotifications(prev => prev.map(n => unreadIds.includes(n.id) ? { ...n, read_status: true } : n));
-        setUnreadCount(0);
-        suppressUnreadCountRef.current = true;
-        setTimeout(() => { suppressUnreadCountRef.current = false; }, 2000);
+        // Save locally as read
+        const prevRead = Array.from(getReadIds());
+        saveReadIds([...new Set([...prevRead, ...unreadIds])]);
         try {
           await supabase
             .from('notifications')
