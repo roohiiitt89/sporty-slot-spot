@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import NotificationBell from './NotificationBell';
 
 const Header: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -292,53 +293,7 @@ const Header: React.FC = () => {
                 </div>
 
                 {user && !isAdminUser && (
-                  <div className="relative">
-                    <DropdownMenu onOpenChange={handleDropdownOpen}>
-                      <DropdownMenuTrigger asChild>
-                        <button className="relative focus:outline-none">
-                          <Bell className={`w-6 h-6 ${isScrolled ? 'text-navy-dark' : 'text-white'}`} />
-                          {unreadCount > 0 && (
-                            <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full text-xs w-4 h-4 flex items-center justify-center">{unreadCount}</span>
-                          )}
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-80 max-h-96 overflow-y-auto animate-fade-in">
-                        <div className="px-3 py-2 font-semibold text-navy-dark flex justify-between items-center">
-                          <span>Notifications</span>
-                          <div className="flex gap-2">
-                            <Link to="/notifications" className="text-xs text-indigo hover:underline">View All</Link>
-                            <button onClick={handleMarkAllAsRead} className="text-xs text-indigo hover:underline">Mark all as read</button>
-                            <button onClick={handleClearAll} className="text-xs text-red-500 hover:underline">Clear all</button>
-                          </div>
-                        </div>
-                        {notifications.length === 0 && (
-                          <div className="px-4 py-2 text-gray-500">No notifications</div>
-                        )}
-                        {notifications.map((notif) => (
-                          (() => {
-                            const { icon, color } = getNotifTypeProps(notif.type);
-                            return (
-                              <DropdownMenuItem
-                                key={notif.id}
-                                className={`flex flex-row items-start gap-2 transition-all duration-150 cursor-pointer pl-2 border-l-4 ${color} ${!notif.read_status ? 'bg-indigo/10 font-semibold' : ''} hover:bg-indigo/20 ${highlightedIds.includes(notif.id) ? 'animate-pulse bg-emerald-100' : ''}`}
-                                onClick={() => handleNotificationClick(notif)}
-                                onTouchStart={(e) => handleTouchStart(e, notif.id)}
-                                onTouchMove={(e) => handleTouchMove(e, notif.id)}
-                                onTouchEnd={(e) => handleTouchEnd(e, notif.id)}
-                              >
-                                <span className="text-xl mt-0.5">{icon}</span>
-                                <span className="flex flex-col items-start gap-0.5">
-                                  <span>{notif.title}</span>
-                                  <span className="text-xs text-gray-500">{notif.message}</span>
-                                  <span className="text-[10px] text-gray-400 mt-1">{new Date(notif.created_at).toLocaleString()}</span>
-                                </span>
-                              </DropdownMenuItem>
-                            );
-                          })()
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
+                  <NotificationBell />
                 )}
               </>
             ) : (
