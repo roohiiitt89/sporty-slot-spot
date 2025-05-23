@@ -76,7 +76,6 @@ const Header: React.FC = () => {
         .from('notifications')
         .select('*')
         .eq('user_id', user.id)
-        .or('approved.is.true,approved.is.null')
         .order('created_at', { ascending: false })
         .limit(20);
       if (!error && data) {
@@ -97,7 +96,9 @@ const Header: React.FC = () => {
           setTimeout(() => setHighlightedIds([]), 2000);
         }
         lastFetchTimeRef.current = now;
-        setNotifications(data);
+        // Only show venue_broadcast if approved, others always show
+        const filtered = data ? data.filter((n: any) => n.type !== 'venue_broadcast' || n.approved === true || n.approved === null) : [];
+        setNotifications(filtered);
         if (suppressUnreadCountRef.current) {
           setUnreadCount(0);
         } else {
