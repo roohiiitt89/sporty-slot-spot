@@ -7,6 +7,7 @@ import { toast } from '@/components/ui/use-toast';
 import { LogOut, Edit, Calendar, User, Phone, Mail, CreditCard, ChevronRight, ArrowLeft, Shield, Info } from 'lucide-react';
 import SportDisplayName from '@/components/SportDisplayName';
 import HelpChatWidget from '@/components/HelpChatWidget';
+import { Button } from '@/components/ui/button';
 
 interface Booking {
   id: string;
@@ -40,7 +41,7 @@ interface UserProfile {
 const Profile: React.FC = () => {
   const navigate = useNavigate();
   const { user, signOut, userRole } = useAuth();
-  const [activeTab, setActiveTab] = useState<'profile' | 'bookings'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'bookings' | 'subscriptions'>('profile');
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,6 +50,7 @@ const Profile: React.FC = () => {
     full_name: '',
     phone: ''
   });
+  const [subscriptions, setSubscriptions] = useState<any[]>([]);
 
   // Detect mobile
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
@@ -57,6 +59,7 @@ const Profile: React.FC = () => {
     if (user) {
       fetchUserProfile();
       fetchUserBookings();
+      fetchUserSubscriptions();
     }
   }, [user]);
 
@@ -130,6 +133,15 @@ const Profile: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchUserSubscriptions = async () => {
+    if (!user) return;
+    const { data, error } = await supabase
+      .from('venue_subscriptions')
+      .select('venue_id, venues:venue_id(name, image_url)')
+      .eq('user_id', user.id);
+    if (!error && data) setSubscriptions(data);
   };
 
   const updateProfile = async () => {
@@ -234,7 +246,7 @@ const Profile: React.FC = () => {
                   <div>
                     <h1 className="text-xl sm:text-3xl font-bold">My Account</h1>
                     <p className="mt-1 sm:mt-2 opacity-90 text-sm sm:text-base">
-                      {activeTab === 'profile' ? 'Manage your personal information' : 'View and manage your bookings'}
+                      {activeTab === 'profile' ? 'Manage your personal information' : activeTab === 'bookings' ? 'View and manage your bookings' : 'Manage your subscriptions'}
                     </p>
                   </div>
                   <div className="mt-4 md:mt-0">
@@ -274,6 +286,19 @@ const Profile: React.FC = () => {
                       {bookings.length > 0 && (
                         <span className="ml-auto bg-emerald-500 text-white text-xs font-bold px-2 py-1 rounded-full">
                           {bookings.length}
+                        </span>
+                      )}
+                    </button>
+                    
+                    <button
+                      onClick={() => setActiveTab('subscriptions')}
+                      className={`flex items-center w-full p-4 rounded-xl transition-all ${activeTab === 'subscriptions' ? 'bg-gradient-to-r from-pink-500/20 to-pink-600/20 text-white font-medium shadow-inner border border-pink-400/30' : 'text-gray-300 hover:bg-white/5'}`}
+                    >
+                      <span className="mr-3">❤️</span>
+                      <span>Subscriptions</span>
+                      {subscriptions.length > 0 && (
+                        <span className="ml-auto bg-pink-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                          {subscriptions.length}
                         </span>
                       )}
                     </button>
@@ -470,7 +495,7 @@ const Profile: React.FC = () => {
                       )}
                     </div>
                   </div>
-                ) : (
+                ) : activeTab === 'bookings' ? (
                   <div>
                     <div className="backdrop-blur-sm bg-white/10 rounded-lg sm:rounded-xl shadow overflow-hidden border border-white/20">
                       <div className="p-4 sm:p-6 border-b border-white/20 bg-gradient-to-r from-white/5 to-white/10">
@@ -603,6 +628,31 @@ const Profile: React.FC = () => {
                         </div>
                       )}
                     </div>
+                  </div>
+                ) : (
+                  <div className="backdrop-blur-sm bg-white/10 rounded-lg sm:rounded-xl shadow overflow-hidden border border-white/20 p-4 sm:p-6 mt-4">
+                    <h3 className="text-lg sm:text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                      <span role="img" aria-label="Heart">❤️</span> Your Subscriptions
+                    </h3>
+                    {subscriptions.length === 0 ? (
+                      <div className="text-gray-400 text-sm">You are not subscribed to any venues yet.</div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                        {subscriptions.map(sub => (
+                          <div key={sub.venue_id} className="flex items-center bg-navy/40 rounded-lg p-3 border border-navy gap-3">
+                            <img src={sub.venues?.image_url || 'https://placehold.co/48x48'} alt={sub.venues?.name} className="w-12 h-12 rounded-full object-cover border border-gray-400" />
+                            <div className="flex-1">
+                              <a href={`/venues/${sub.venue_id}`} className="text-white font-semibold hover:underline">{sub.venues?.name}</a>
+                            </div>
+                            <Button size="sm" variant="destructive" onClick={async () => {
+                              await supabase.from('venue_subscriptions').delete().eq('user_id', user.id).eq('venue_id', sub.venue_id);
+                              setSubscriptions(subscriptions.filter(s => s.venue_id !== sub.venue_id));
+                              toast({ title: 'Unsubscribed', description: `You have unsubscribed from ${sub.venues?.name}` });
+                            }}>Unsubscribe</Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
