@@ -20,6 +20,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "react-hot-toast";
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Heart } from 'lucide-react';
 
 interface Venue {
   id: string;
@@ -74,6 +76,10 @@ const VenueDetails: React.FC = () => {
   const [isSubscribeModalOpen, setIsSubscribeModalOpen] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [subLoading, setSubLoading] = useState(false);
+  const [subscriberCount, setSubscriberCount] = useState<number>(0);
+  const [showSubSuccess, setShowSubSuccess] = useState(false);
+  const [showUnsubModal, setShowUnsubModal] = useState(false);
+  const [unsubReason, setUnsubReason] = useState('');
 
   // Use isMobile to conditionally apply mobile-optimized classes
   const containerClass = isMobile ? 'max-w-screen-sm mx-auto px-2' : 'container mx-auto px-4';
@@ -175,6 +181,18 @@ const VenueDetails: React.FC = () => {
     checkSubscription();
   }, [user, id]);
 
+  useEffect(() => {
+    if (!id) return;
+    const fetchCount = async () => {
+      const { count, error } = await supabase
+        .from('venue_subscriptions')
+        .select('id', { count: 'exact', head: true })
+        .eq('venue_id', id);
+      setSubscriberCount(count || 0);
+    };
+    fetchCount();
+  }, [id, isSubscribed]);
+
   const handleSubscribe = async () => {
     setSubLoading(true);
     if (!user || !id) return;
@@ -199,6 +217,7 @@ const VenueDetails: React.FC = () => {
       if (!error) {
         setIsSubscribed(true);
         toast.success('Subscribed to this venue!');
+        setShowSubSuccess(true);
       } else {
         toast.error('Failed to subscribe.');
       }
@@ -263,13 +282,28 @@ const VenueDetails: React.FC = () => {
                 Chat with Venue
               </Button>
               <Button
-                onClick={() => setIsSubscribeModalOpen(true)}
+                onClick={() => user ? (isSubscribed ? setShowUnsubModal(true) : setIsSubscribeModalOpen(true)) : navigate('/login')}
                 variant={isSubscribed ? "secondary" : "default"}
-                className="w-full mt-3 flex items-center justify-center border-indigo-600 text-indigo-300 hover:bg-indigo hover:text-white"
+                className="w-full mt-3 flex items-center justify-center border-indigo-600 text-indigo-300 hover:bg-indigo hover:text-white relative group"
                 disabled={subLoading}
               >
-                {isSubscribed ? "Unsubscribe from this venue" : "Subscribe to this venue"}
+                <span className="mr-2">
+                  <Heart className={`w-5 h-5 transition-transform duration-300 ${isSubscribed ? 'fill-pink-500 scale-110' : 'stroke-pink-500 group-hover:scale-110'}`} />
+                </span>
+                <span>{isSubscribed ? "Unsubscribe" : "Subscribe"}</span>
+                {/* Tooltip */}
+                <span className="absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-black text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg z-10">
+                  {isSubscribed ? "Stop receiving updates from this venue" : "Get updates, offers, and more from this venue!"}
+                </span>
               </Button>
+              {/* Subscriber count and avatars - always visible */}
+              <div className="flex items-center mt-2 gap-1">
+                {subscriberCount === 0 ? (
+                  <span className="text-xs text-gray-400">Be the first to subscribe!</span>
+                ) : (
+                  <span className="text-xs text-pink-400 font-semibold animate-pulse">{subscriberCount} people have already subscribed. Join them for exclusive updates!</span>
+                )}
+              </div>
             </>
           )}
           
@@ -538,13 +572,28 @@ const VenueDetails: React.FC = () => {
                   Chat with Venue
                 </Button>
                 <Button
-                  onClick={() => setIsSubscribeModalOpen(true)}
+                  onClick={() => user ? (isSubscribed ? setShowUnsubModal(true) : setIsSubscribeModalOpen(true)) : navigate('/login')}
                   variant={isSubscribed ? "secondary" : "default"}
-                  className="w-full mt-3 flex items-center justify-center border-indigo-600 text-indigo-300 hover:bg-indigo hover:text-white"
+                  className="w-full mt-3 flex items-center justify-center border-indigo-600 text-indigo-300 hover:bg-indigo hover:text-white relative group"
                   disabled={subLoading}
                 >
-                  {isSubscribed ? "Unsubscribe from this venue" : "Subscribe to this venue"}
+                  <span className="mr-2">
+                    <Heart className={`w-5 h-5 transition-transform duration-300 ${isSubscribed ? 'fill-pink-500 scale-110' : 'stroke-pink-500 group-hover:scale-110'}`} />
+                  </span>
+                  <span>{isSubscribed ? "Unsubscribe" : "Subscribe"}</span>
+                  {/* Tooltip */}
+                  <span className="absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-black text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg z-10">
+                    {isSubscribed ? "Stop receiving updates from this venue" : "Get updates, offers, and more from this venue!"}
+                  </span>
                 </Button>
+                {/* Subscriber count and avatars - always visible */}
+                <div className="flex items-center mt-2 gap-1">
+                  {subscriberCount === 0 ? (
+                    <span className="text-xs text-gray-400">Be the first to subscribe!</span>
+                  ) : (
+                    <span className="text-xs text-pink-400 font-semibold animate-pulse">{subscriberCount} people have already subscribed. Join them for exclusive updates!</span>
+                  )}
+                </div>
               </>
             )}
             
@@ -703,6 +752,30 @@ const VenueDetails: React.FC = () => {
           </DialogContent>
         </Dialog>
       )}
+      {/* Subscribe confirmation modal with confetti/checkmark */}
+      <Dialog open={showSubSuccess} onOpenChange={setShowSubSuccess}>
+        <DialogContent className="flex flex-col items-center justify-center text-center">
+          <div className="w-16 h-16 mx-auto mb-4">
+            {/* Confetti/checkmark animation (SVG or Lottie placeholder) */}
+            <svg className="w-16 h-16 text-green-400 mx-auto animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+          </div>
+          <DialogTitle className="text-green-500">Subscribed!</DialogTitle>
+          <p className="text-gray-300 mt-2">You'll now get updates, offers, and more from this venue.</p>
+          <Button onClick={() => setShowSubSuccess(false)} className="mt-4">Close</Button>
+        </DialogContent>
+      </Dialog>
+      {/* Unsubscribe feedback modal */}
+      <Dialog open={showUnsubModal} onOpenChange={setShowUnsubModal}>
+        <DialogContent>
+          <DialogTitle>Unsubscribe from this venue?</DialogTitle>
+          <p className="text-gray-400 mb-2">We'd love to know why (optional):</p>
+          <textarea className="w-full rounded border border-gray-300 p-2 mb-4" rows={3} value={unsubReason} onChange={e => setUnsubReason(e.target.value)} placeholder="Your feedback helps us improve" />
+          <div className="flex gap-2 justify-end">
+            <Button variant="ghost" onClick={() => setShowUnsubModal(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={async () => { setShowUnsubModal(false); await handleSubscribe(); }}>{subLoading ? 'Unsubscribing...' : 'Unsubscribe'}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
