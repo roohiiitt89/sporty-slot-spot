@@ -14,7 +14,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import PaymentMethodFilter, { PaymentMethodFilterType } from '@/components/admin/PaymentMethodFilter';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { toast } from "react-hot-toast";
 
 // Admin quick links with enhanced styling and organization
 const quickLinks = [
@@ -250,7 +251,11 @@ const AdminHome_Mobile: React.FC = () => {
   const [popularCourts, setPopularCourts] = useState<CourtStats[]>([]);
   const [courtDataLoading, setCourtDataLoading] = useState(true);
   const [venuesWithStats, setVenuesWithStats] = useState<VenueWithBookingStats[]>([]);
-  const [paymentMethodFilter, setPaymentMethodFilter] = useState<PaymentMethodFilterType>('online');
+  const [venueSubscribers, setVenueSubscribers] = useState<Record<string, number>>({});
+  const [broadcastModal, setBroadcastModal] = useState<{ open: boolean, venueId: string | null }>({ open: false, venueId: null });
+  const [broadcastTitle, setBroadcastTitle] = useState('');
+  const [broadcastMessage, setBroadcastMessage] = useState('');
+  const [broadcastLoading, setBroadcastLoading] = useState(false);
   
   // If not on mobile, redirect to desktop admin
   useEffect(() => {
@@ -313,23 +318,12 @@ const AdminHome_Mobile: React.FC = () => {
         const sevenDaysAgo = format(subDays(new Date(), 7), 'yyyy-MM-dd');
         
         // Get recent bookings
-        let bookingsQuery = supabase
+        const { data: recentBookings, error: bookingsError } = await supabase
           .from('bookings')
-          .select('id, created_at, guest_name, court_id, status, booking_date, payment_method')
+          .select('id, created_at, guest_name, court_id, status, booking_date')
           .order('created_at', { ascending: false })
           .limit(5);
           
-        // Apply payment method filter
-        if (paymentMethodFilter !== 'all') {
-          if (paymentMethodFilter === 'online') {
-            bookingsQuery = bookingsQuery.eq('payment_method', 'online');
-          } else {
-            bookingsQuery = bookingsQuery.or('payment_method.eq.cash,payment_method.eq.card');
-          }
-        }
-          
-        const { data: recentBookings, error: bookingsError } = await bookingsQuery;
-        
         if (bookingsError) throw bookingsError;
         
         // Get recent reviews
@@ -372,7 +366,7 @@ const AdminHome_Mobile: React.FC = () => {
     };
     
     fetchRecentActivity();
-  }, [adminVenues, paymentMethodFilter]);
+  }, [adminVenues]);
 
   // Fetch venues with their stats and platform fees
   useEffect(() => {
@@ -425,24 +419,13 @@ const AdminHome_Mobile: React.FC = () => {
           const thirtyDaysAgo = format(subDays(new Date(), 30), 'yyyy-MM-dd');
           const today = format(new Date(), 'yyyy-MM-dd');
           
-          let bookingsQuery = supabase
+          const { data: bookings, error: bookingsError } = await supabase
             .from('bookings')
-            .select('total_price, booking_date, payment_method')
+            .select('total_price, booking_date')
             .in('court_id', courtIds)
             .in('status', ['confirmed', 'completed'])
             .gte('booking_date', thirtyDaysAgo)
             .lte('booking_date', today);
-            
-          // Apply payment method filter
-          if (paymentMethodFilter !== 'all') {
-            if (paymentMethodFilter === 'online') {
-              bookingsQuery = bookingsQuery.eq('payment_method', 'online');
-            } else {
-              bookingsQuery = bookingsQuery.or('payment_method.eq.cash,payment_method.eq.card');
-            }
-          }
-            
-          const { data: bookings, error: bookingsError } = await bookingsQuery;
             
           if (bookingsError || !bookings) {
             return {
@@ -479,7 +462,7 @@ const AdminHome_Mobile: React.FC = () => {
     if (adminVenues.length > 0 || userRoleState === 'super_admin') {
       fetchVenuesWithStats();
     }
-  }, [adminVenues, userRoleState, paymentMethodFilter]);
+  }, [adminVenues, userRoleState]);
 
   // Fetch real dashboard metrics
   useEffect(() => {
@@ -502,66 +485,30 @@ const AdminHome_Mobile: React.FC = () => {
         }
 
         // 1. Fetch today's bookings with court join
-        let todayBookingsQuery = supabase
+        const { data: todayBookingsData } = await supabase
           .from('bookings')
-          .select('id, court:court_id (venue_id), status, booking_date, payment_method')
+          .select('id, court:court_id (venue_id), status, booking_date')
           .eq('booking_date', today)
           .in('status', ['confirmed', 'pending', 'completed']);
-          
-        // Apply payment method filter  
-        if (paymentMethodFilter !== 'all') {
-          if (paymentMethodFilter === 'online') {
-            todayBookingsQuery = todayBookingsQuery.eq('payment_method', 'online');
-          } else {
-            todayBookingsQuery = todayBookingsQuery.or('payment_method.eq.cash,payment_method.eq.card');
-          }
-        }
-          
-        const { data: todayBookingsData } = await todayBookingsQuery;
-        
         const todayBookings = (todayBookingsData || []).filter(b => b.court && (!venueIds.length || venueIds.includes(b.court.venue_id)));
         const bookingsCount = todayBookings.length;
 
         // 2. Fetch pending bookings with court join
-        let pendingBookingsQuery = supabase
+        const { data: pendingBookingsData } = await supabase
           .from('bookings')
-          .select('id, court:court_id (venue_id), status, booking_date, payment_method')
+          .select('id, court:court_id (venue_id), status, booking_date')
           .gte('booking_date', today)
           .eq('status', 'pending');
-          
-        // Apply payment method filter
-        if (paymentMethodFilter !== 'all') {
-          if (paymentMethodFilter === 'online') {
-            pendingBookingsQuery = pendingBookingsQuery.eq('payment_method', 'online');
-          } else {
-            pendingBookingsQuery = pendingBookingsQuery.or('payment_method.eq.cash,payment_method.eq.card');
-          }
-        }
-          
-        const { data: pendingBookingsData } = await pendingBookingsQuery;
-        
         const pendingBookings = (pendingBookingsData || []).filter(b => b.court && (!venueIds.length || venueIds.includes(b.court.venue_id)));
         const pendingBookingsCount = pendingBookings.length;
 
         // 3. Fetch upcoming bookings (next 7 days) with court join
-        let upcomingBookingsQuery = supabase
+        const { data: upcomingBookingsData } = await supabase
           .from('bookings')
-          .select('id, court:court_id (venue_id), status, booking_date, payment_method')
+          .select('id, court:court_id (venue_id), status, booking_date')
           .gte('booking_date', today)
           .lte('booking_date', format(subDays(new Date(), -7), 'yyyy-MM-dd'))
           .in('status', ['confirmed', 'pending']);
-          
-        // Apply payment method filter
-        if (paymentMethodFilter !== 'all') {
-          if (paymentMethodFilter === 'online') {
-            upcomingBookingsQuery = upcomingBookingsQuery.eq('payment_method', 'online');
-          } else {
-            upcomingBookingsQuery = upcomingBookingsQuery.or('payment_method.eq.cash,payment_method.eq.card');
-          }
-        }
-          
-        const { data: upcomingBookingsData } = await upcomingBookingsQuery;
-        
         const upcomingBookings = (upcomingBookingsData || []).filter(b => b.court && (!venueIds.length || venueIds.includes(b.court.venue_id)));
         const upcomingBookingsCount = upcomingBookings.length;
         
@@ -590,28 +537,16 @@ const AdminHome_Mobile: React.FC = () => {
         const todayStr = format(new Date(), 'yyyy-MM-dd');
         
         // Get bookings with venue information for accurate fee calculation
-        let todaysBookingsQuery = supabase
+        const { data: todaysBookingsWithVenue } = await supabase
           .from('bookings')
           .select(`
             total_price,
-            payment_method,
             court:court_id (
               venue_id
             )
           `)
           .eq('booking_date', todayStr)
           .in('status', ['confirmed', 'completed']);
-          
-        // Apply payment method filter
-        if (paymentMethodFilter !== 'all') {
-          if (paymentMethodFilter === 'online') {
-            todaysBookingsQuery = todaysBookingsQuery.eq('payment_method', 'online');
-          } else {
-            todaysBookingsQuery = todaysBookingsQuery.or('payment_method.eq.cash,payment_method.eq.card');
-          }
-        }
-          
-        const { data: todaysBookingsWithVenue } = await todaysBookingsQuery;
         
         // Filter by admin venues if needed
         const filteredTodaysBookings = (todaysBookingsWithVenue || []).filter(b => 
@@ -646,11 +581,10 @@ const AdminHome_Mobile: React.FC = () => {
           const end = format(customEndDate, 'yyyy-MM-dd');
           
           // Get bookings for custom date range with venue info
-          let customRangeQuery = supabase
+          const { data: customRangeBookings } = await supabase
             .from('bookings')
             .select(`
               total_price,
-              payment_method,
               court:court_id (
                 venue_id
               )
@@ -658,17 +592,6 @@ const AdminHome_Mobile: React.FC = () => {
             .gte('booking_date', start)
             .lte('booking_date', end)
             .in('status', ['confirmed', 'completed']);
-            
-          // Apply payment method filter
-          if (paymentMethodFilter !== 'all') {
-            if (paymentMethodFilter === 'online') {
-              customRangeQuery = customRangeQuery.eq('payment_method', 'online');
-            } else {
-              customRangeQuery = customRangeQuery.or('payment_method.eq.cash,payment_method.eq.card');
-            }
-          }
-          
-          const { data: customRangeBookings } = await customRangeQuery;
           
           // Filter by admin venues if needed
           const filteredCustomBookings = (customRangeBookings || []).filter(b => 
@@ -714,23 +637,12 @@ const AdminHome_Mobile: React.FC = () => {
           const lastThirtyDays = format(subDays(new Date(), 30), 'yyyy-MM-dd');
           
           const courtWithStats = await Promise.all(filteredCourts.map(async (court) => {
-            let courtBookingsQuery = supabase
+            const { count } = await supabase
               .from('bookings')
-              .select('id, payment_method', { count: 'exact' })
+              .select('id', { count: 'exact' })
               .eq('court_id', court.id)
               .gte('booking_date', lastThirtyDays)
               .in('status', ['confirmed', 'completed']);
-              
-            // Apply payment method filter
-            if (paymentMethodFilter !== 'all') {
-              if (paymentMethodFilter === 'online') {
-                courtBookingsQuery = courtBookingsQuery.eq('payment_method', 'online');
-              } else {
-                courtBookingsQuery = courtBookingsQuery.or('payment_method.eq.cash,payment_method.eq.card');
-              }
-            }
-              
-            const { count } = await courtBookingsQuery;
               
             return {
               court_id: court.id,
@@ -758,24 +670,12 @@ const AdminHome_Mobile: React.FC = () => {
         }
         
         // 7. Calculate occupancy rate (past 7 days) with court join
-        let recentBookingsQuery = supabase
+        const { data: recentBookingsData } = await supabase
           .from('bookings')
-          .select('id, court:court_id (venue_id), status, booking_date, payment_method')
+          .select('id, court:court_id (venue_id), status, booking_date')
           .gte('booking_date', format(subDays(new Date(), 7), 'yyyy-MM-dd'))
           .lte('booking_date', today)
           .in('status', ['confirmed', 'completed']);
-          
-        // Apply payment method filter
-        if (paymentMethodFilter !== 'all') {
-          if (paymentMethodFilter === 'online') {
-            recentBookingsQuery = recentBookingsQuery.eq('payment_method', 'online');
-          } else {
-            recentBookingsQuery = recentBookingsQuery.or('payment_method.eq.cash,payment_method.eq.card');
-          }
-        }
-        
-        const { data: recentBookingsData } = await recentBookingsQuery;
-        
         const recentBookings = (recentBookingsData || []).filter(b => b.court && (!venueIds.length || venueIds.includes(b.court.venue_id)));
         const recentBookingsCount = recentBookings.length;
         
@@ -845,7 +745,59 @@ const AdminHome_Mobile: React.FC = () => {
       supabase.removeChannel(bookingsChannel);
       supabase.removeChannel(reviewsChannel);
     };
-  }, [adminVenues, venuesWithStats, customStartDate, customEndDate, userRoleState, paymentMethodFilter]);
+  }, [adminVenues, venuesWithStats, customStartDate, customEndDate, userRoleState]);
+
+  // Fetch subscriber counts for each admin venue
+  useEffect(() => {
+    const fetchSubscribers = async () => {
+      if (!adminVenues.length) return;
+      const counts: Record<string, number> = {};
+      for (const v of adminVenues) {
+        const { count } = await supabase
+          .from('venue_subscriptions')
+          .select('id', { count: 'exact' })
+          .eq('venue_id', v.venue_id);
+        counts[v.venue_id] = count || 0;
+      }
+      setVenueSubscribers(counts);
+    };
+    fetchSubscribers();
+  }, [adminVenues]);
+
+  const handleSendBroadcast = async () => {
+    if (!broadcastTitle || !broadcastMessage || !broadcastModal.venueId) return;
+    setBroadcastLoading(true);
+    // Get all subscribers for this venue
+    const { data: subs, error } = await supabase
+      .from('venue_subscriptions')
+      .select('user_id')
+      .eq('venue_id', broadcastModal.venueId);
+    if (error) {
+      toast.error('Failed to fetch subscribers');
+      setBroadcastLoading(false);
+      return;
+    }
+    // Insert notification for each subscriber
+    const notifications = subs.map((s: any) => ({
+      user_id: s.user_id,
+      title: broadcastTitle,
+      message: broadcastMessage,
+      type: 'venue_broadcast',
+      metadata: { venue_id: broadcastModal.venueId }
+    }));
+    const { error: notifError } = await supabase
+      .from('notifications')
+      .insert(notifications);
+    if (!notifError) {
+      toast.success('Broadcast sent to all subscribers!');
+      setBroadcastModal({ open: false, venueId: null });
+      setBroadcastTitle('');
+      setBroadcastMessage('');
+    } else {
+      toast.error('Failed to send broadcast');
+    }
+    setBroadcastLoading(false);
+  };
 
   const handleLogout = async () => {
     try {
@@ -891,14 +843,6 @@ const AdminHome_Mobile: React.FC = () => {
           <h2 className="text-xl font-semibold text-white mb-1">Welcome, {user?.user_metadata?.full_name?.split(' ')[0] || 'Admin'}!</h2>
           <p className="text-gray-300 text-sm">Manage your Grid2Play venues and bookings on the go.</p>
         </div>
-      </section>
-      
-      {/* Payment Method Filter - Added to the top of the page */}
-      <section className="px-4 mb-2">
-        <PaymentMethodFilter
-          selectedFilter={paymentMethodFilter}
-          onFilterChange={setPaymentMethodFilter}
-        />
       </section>
 
       {/* Enhanced Stats Overview with Tabs */}
@@ -1158,6 +1102,59 @@ const AdminHome_Mobile: React.FC = () => {
           <WeatherWidget venueId={adminVenues[0].venue_id} />
         </section>
       )}
+      
+      {/* Venue Subscribers & Broadcasts Section */}
+      <section className="px-4 mt-6">
+        <h3 className="text-sm uppercase text-indigo-300 font-semibold mb-3 tracking-wider">Venue Subscribers & Broadcasts</h3>
+        <div className="space-y-4">
+          {adminVenues.map(v => (
+            <div key={v.venue_id} className="bg-navy-800/70 rounded-xl p-4 border border-navy-700/50 flex flex-col md:flex-row md:items-center md:justify-between">
+              <div>
+                <div className="text-white font-semibold text-lg mb-1">{venuesWithStats.find(venue => venue.id === v.venue_id)?.name || 'Venue'}</div>
+                <div className="text-xs text-gray-400 mb-2">Subscribers: <span className="text-emerald-400 font-bold">{venueSubscribers[v.venue_id] || 0}</span></div>
+              </div>
+              <Button
+                className="mt-2 md:mt-0"
+                onClick={() => setBroadcastModal({ open: true, venueId: v.venue_id })}
+              >
+                Send Notification
+              </Button>
+            </div>
+          ))}
+        </div>
+        <Dialog open={broadcastModal.open} onOpenChange={open => setBroadcastModal({ open, venueId: open ? broadcastModal.venueId : null })}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Send Broadcast Notification</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-2">
+              <input
+                className="w-full px-3 py-2 rounded bg-navy-900 text-white border border-navy-700"
+                placeholder="Title"
+                value={broadcastTitle}
+                onChange={e => setBroadcastTitle(e.target.value)}
+                maxLength={80}
+              />
+              <textarea
+                className="w-full px-3 py-2 rounded bg-navy-900 text-white border border-navy-700"
+                placeholder="Message"
+                value={broadcastMessage}
+                onChange={e => setBroadcastMessage(e.target.value)}
+                rows={3}
+                maxLength={300}
+              />
+            </div>
+            <DialogFooter>
+              <Button onClick={handleSendBroadcast} disabled={broadcastLoading || !broadcastTitle || !broadcastMessage}>
+                {broadcastLoading ? 'Sending...' : 'Send'}
+              </Button>
+              <Button variant="ghost" onClick={() => setBroadcastModal({ open: false, venueId: null })}>
+                Cancel
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </section>
       
       {/* Footer */}
       <footer className="px-4 py-6 mt-8 text-center">
