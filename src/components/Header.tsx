@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, User, CalendarDays, LogOut, LayoutGrid, Bell } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -68,6 +68,20 @@ const Header: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
   
+  // Track read notification IDs in sessionStorage
+  const READ_KEY = 'g2p_read_notif_ids';
+  const getReadIds = () => {
+    try {
+      return new Set(JSON.parse(sessionStorage.getItem(READ_KEY) || '[]'));
+    } catch {
+      return new Set();
+    }
+  };
+  const saveReadIds = (ids: string[]) => {
+    sessionStorage.setItem(READ_KEY, JSON.stringify(ids));
+  };
+  const [venueInfo, setVenueInfo] = useState<Record<string, { name: string; image_url: string | null }>>({});
+  
   useEffect(() => {
     if (!user) return;
     let fetchTimeout: NodeJS.Timeout | null = null;
@@ -78,15 +92,18 @@ const Header: React.FC = () => {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(20);
-      if (!error && data) {
+      // Only show venue_broadcast if approved, others always show
+      const filtered = data ? data.filter((n: any) => n.type !== 'venue_broadcast' || n.approved === true || n.approved === null) : [];
+      if (!error) {
+        // Get locally read IDs
+        const readIds = getReadIds();
+        // Only highlight and play sound for truly new notifications
         const now = Date.now();
-        // Only highlight notifications created after the last fetch
-        const newNotifs = data.filter((n: any) => {
+        const newNotifs = filtered.filter((n: any) => {
           const created = new Date(n.created_at).getTime();
           return created > lastFetchTimeRef.current && !highlightedIdsRef.current.has(n.id);
         });
         if (newNotifs.length > 0) {
-          // Play notification sound (may be blocked by browser if no user gesture)
           if (notificationAudioRef.current) {
             notificationAudioRef.current.currentTime = 0;
             notificationAudioRef.current.play().catch(() => {});
@@ -96,13 +113,11 @@ const Header: React.FC = () => {
           setTimeout(() => setHighlightedIds([]), 2000);
         }
         lastFetchTimeRef.current = now;
-        // Only show venue_broadcast if approved, others always show
-        const filtered = data ? data.filter((n: any) => n.type !== 'venue_broadcast' || n.approved === true || n.approved === null) : [];
         setNotifications(filtered);
         if (suppressUnreadCountRef.current) {
           setUnreadCount(0);
         } else {
-          setUnreadCount(data.filter((n: any) => !n.read_status).length);
+          setUnreadCount(filtered.filter((n: any) => !n.read_status && !readIds.has(n.id)).length);
         }
       }
     };
@@ -115,6 +130,31 @@ const Header: React.FC = () => {
     };
   // eslint-disable-next-line
   }, [user, dropdownOpen]);
+  
+  // Fetch venue info for venue_broadcast notifications
+  useEffect(() => {
+    const fetchVenueInfo = async () => {
+      const venueIds = notifications
+        .filter(n => n.type === 'venue_broadcast' && n.metadata && n.metadata.venue_id)
+        .map(n => n.metadata.venue_id);
+      const uniqueVenueIds = Array.from(new Set(venueIds));
+      if (uniqueVenueIds.length === 0) return;
+      const { data, error } = await supabase
+        .from('venues')
+        .select('id, name, image_url')
+        .in('id', uniqueVenueIds);
+      if (!error && data) {
+        const info: Record<string, { name: string; image_url: string | null }> = {};
+        data.forEach((v: any) => {
+          info[v.id] = { name: v.name, image_url: v.image_url };
+        });
+        setVenueInfo(info);
+      }
+    };
+    fetchVenueInfo();
+  }, [notifications]);
+  
+  const filteredNotifications = useMemo(() => notifications, [notifications]);
   
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
@@ -161,13 +201,16 @@ const Header: React.FC = () => {
   
   const handleDropdownOpen = async (open: boolean) => {
     setDropdownOpen(open);
-    if (open && notifications.some(n => !n.read_status)) {
+    if (open) {
       const unreadIds = notifications.filter(n => !n.read_status).map(n => n.id);
+      setUnreadCount(0);
+      suppressUnreadCountRef.current = true;
+      setTimeout(() => { suppressUnreadCountRef.current = false; }, 2000);
       if (unreadIds.length > 0) {
         setNotifications(prev => prev.map(n => unreadIds.includes(n.id) ? { ...n, read_status: true } : n));
-        setUnreadCount(0);
-        suppressUnreadCountRef.current = true;
-        setTimeout(() => { suppressUnreadCountRef.current = false; }, 2000);
+        // Save locally as read
+        const prevRead = Array.from(getReadIds());
+        saveReadIds([...new Set([...prevRead, ...unreadIds])]);
         try {
           await supabase
             .from('notifications')
@@ -314,28 +357,36 @@ const Header: React.FC = () => {
                         {notifications.length === 0 && (
                           <div className="px-4 py-2 text-gray-500">No notifications</div>
                         )}
-                        {notifications.map((notif) => (
-                          (() => {
-                            const { icon, color } = getNotifTypeProps(notif.type);
-                            return (
-                              <DropdownMenuItem
-                                key={notif.id}
-                                className={`flex flex-row items-start gap-2 transition-all duration-150 cursor-pointer pl-2 border-l-4 ${color} ${!notif.read_status ? 'bg-indigo/10 font-semibold' : ''} hover:bg-indigo/20 ${highlightedIds.includes(notif.id) ? 'animate-pulse bg-emerald-100' : ''}`}
-                                onClick={() => handleNotificationClick(notif)}
-                                onTouchStart={(e) => handleTouchStart(e, notif.id)}
-                                onTouchMove={(e) => handleTouchMove(e, notif.id)}
-                                onTouchEnd={(e) => handleTouchEnd(e, notif.id)}
-                              >
-                                <span className="text-xl mt-0.5">{icon}</span>
-                                <span className="flex flex-col items-start gap-0.5">
+                        {filteredNotifications.map((notif) => {
+                          const { icon, color } = getNotifTypeProps(notif.type);
+                          const isVenueBroadcast = notif.type === 'venue_broadcast';
+                          const venue = isVenueBroadcast && notif.metadata && notif.metadata.venue_id ? venueInfo[notif.metadata.venue_id] : null;
+                          return (
+                            <DropdownMenuItem
+                              key={notif.id}
+                              className={`flex flex-row items-start gap-2 transition-all duration-150 cursor-pointer pl-2 border-l-4 ${color} ${!notif.read_status ? 'bg-indigo/10 font-semibold' : ''} hover:bg-indigo/20 ${highlightedIds.includes(notif.id) ? 'animate-pulse bg-emerald-100' : ''}`}
+                              onClick={() => handleNotificationClick(notif)}
+                              onTouchStart={(e) => handleTouchStart(e, notif.id)}
+                              onTouchMove={(e) => handleTouchMove(e, notif.id)}
+                              onTouchEnd={(e) => handleTouchEnd(e, notif.id)}
+                            >
+                              <span className="text-xl mt-0.5">{icon}</span>
+                              <span className="flex flex-col items-start gap-0.5">
+                                <span className="flex items-center gap-2">
+                                  {isVenueBroadcast && venue && (
+                                    <>
+                                      {venue.image_url && <img src={venue.image_url} alt={venue.name} className="w-5 h-5 rounded-full object-cover border border-gray-400" />}
+                                      <span className="text-xs text-green-700 font-bold">{venue.name}</span>
+                                    </>
+                                  )}
                                   <span>{notif.title}</span>
-                                  <span className="text-xs text-gray-500">{notif.message}</span>
-                                  <span className="text-[10px] text-gray-400 mt-1">{new Date(notif.created_at).toLocaleString()}</span>
                                 </span>
-                              </DropdownMenuItem>
-                            );
-                          })()
-                        ))}
+                                <span className="text-xs text-gray-500">{notif.message}</span>
+                                <span className="text-[10px] text-gray-400 mt-1">{new Date(notif.created_at).toLocaleString()}</span>
+                              </span>
+                            </DropdownMenuItem>
+                          );
+                        })}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
