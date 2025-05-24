@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
@@ -948,21 +949,21 @@ const AdminHome_Mobile: React.FC = () => {
       }, 0);
       const totalNetRevenue = totalRevenue - totalPlatformFee;
       
-      // Add summary data
+      // Add summary data - fix the TypeScript error by using 'N/A' instead of empty strings
       excelData.push({
-        'Booking ID': '',
-        'Date': '',
-        'Time': '',
-        'Venue': '',
-        'Court': '',
-        'Customer': '',
-        'Status': '',
-        'Payment Method': 'SUMMARY',
+        'Booking ID': 'SUMMARY',
+        'Date': 'N/A',
+        'Time': 'N/A',
+        'Venue': 'N/A',
+        'Court': 'N/A',
+        'Customer': 'N/A',
+        'Status': 'N/A',
+        'Payment Method': 'TOTAL',
         'Total Amount (₹)': totalRevenue,
-        'Platform Fee %': '',
+        'Platform Fee %': 'N/A',
         'Platform Fee Amount (₹)': totalPlatformFee.toFixed(2),
         'Net Revenue (₹)': totalNetRevenue.toFixed(2),
-        'Booking Created': ''
+        'Booking Created': 'N/A'
       });
       
       // Create workbook and worksheet
