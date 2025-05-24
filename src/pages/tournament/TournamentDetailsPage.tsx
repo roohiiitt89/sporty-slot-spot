@@ -9,20 +9,14 @@ import { Button } from "@/components/ui/button";
 import { toast } from "react-hot-toast";
 import { TournamentHeroSection } from '@/components/tournament/TournamentHeroSection';
 import { TournamentTabs } from '@/components/tournament/TournamentTabs';
+import type { Database } from '@/integrations/supabase/types';
 
-interface Tournament {
-  id: string;
-  slug: string;
-  name: string;
-  description: string;
-  image_url: string;
-  start_date: string;
-  end_date: string;
-  location: string;
-  entry_fee: number;
-  max_participants: number;
-  registration_deadline: string;
-  is_active: boolean;
+type TournamentRow = Database['public']['Tables']['tournaments']['Row'];
+
+interface Tournament extends TournamentRow {
+  sport_name?: string;
+  venue_name?: string;
+  venue_location?: string;
 }
 
 const TournamentDetailsPage: React.FC = () => {
@@ -43,27 +37,22 @@ const TournamentDetailsPage: React.FC = () => {
 
         const { data, error } = await supabase
           .from('tournaments')
-          .select('*')
+          .select(`
+            *,
+            sports(name),
+            venues(name, location)
+          `)
           .eq('slug', slug)
-          .eq('is_active', true)
+          .eq('status', 'upcoming')
           .single();
 
         if (error) throw error;
 
-        // Transform the data to match our Tournament interface
         const tournamentData: Tournament = {
-          id: data.id,
-          slug: data.slug,
-          name: data.name,
-          description: data.description,
-          image_url: data.image_url || '',
-          start_date: data.start_date,
-          end_date: data.end_date,
-          location: data.location || '',
-          entry_fee: data.entry_fee,
-          max_participants: data.max_participants,
-          registration_deadline: data.registration_deadline,
-          is_active: data.is_active
+          ...data,
+          sport_name: data.sports?.name,
+          venue_name: data.venues?.name,
+          venue_location: data.venues?.location
         };
 
         setTournament(tournamentData);
@@ -169,7 +158,7 @@ const TournamentDetailsPage: React.FC = () => {
           <div className="text-center">
             <h2 className="text-2xl font-bold text-white mb-4">Tournament not found</h2>
             <button
-              onClick={() => navigate('/tournament')}
+              onClick={() => navigate('/tournaments')}
               className="px-4 py-2 bg-[#1e3b2c] text-white rounded-md hover:bg-[#2a4d3a] transition-colors"
             >
               Back to Tournaments
@@ -178,8 +167,31 @@ const TournamentDetailsPage: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2">
-              <TournamentHeroSection tournament={tournament} />
-              <TournamentTabs tournament={tournament} />
+              <TournamentHeroSection />
+              <div className="mt-8 space-y-6">
+                <div className="bg-navy-light p-6 rounded-lg">
+                  <h2 className="text-2xl font-bold text-white mb-4">{tournament.name}</h2>
+                  <p className="text-gray-300 mb-4">{tournament.description}</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-400">Sport:</span>
+                      <span className="text-white ml-2">{tournament.sport_name}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">Venue:</span>
+                      <span className="text-white ml-2">{tournament.venue_name}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">Start Date:</span>
+                      <span className="text-white ml-2">{format(new Date(tournament.start_date), 'MMM dd, yyyy')}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">End Date:</span>
+                      <span className="text-white ml-2">{format(new Date(tournament.end_date), 'MMM dd, yyyy')}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
             
             <div className="lg:col-span-1">

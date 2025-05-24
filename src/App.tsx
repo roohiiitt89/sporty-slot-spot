@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -27,7 +28,7 @@ import Privacy from "./pages/Privacy";
 import BottomNav from "./components/ui/BottomNav";
 import { useState, useEffect } from 'react';
 import { TournamentDashboard } from "./pages/tournament/TournamentDashboard";
-import { TournamentDetailsPage } from "./pages/tournament/TournamentDetailsPage";
+import TournamentDetailsPage from "./pages/tournament/TournamentDetailsPage";
 import { HostTournamentPage } from "./pages/tournament/HostTournamentPage";
 import MorePage from "./pages/MorePage";
 import ScrollToTopOnMobile from "@/components/ScrollToTopOnMobile";

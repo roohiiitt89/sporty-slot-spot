@@ -1,13 +1,13 @@
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Tournament } from "@/hooks/use-tournament";
 import { TournamentCard } from "./TournamentCard";
 import { TournamentListSkeleton } from "./TournamentListSkeleton";
 
 type TournamentStatus = 'upcoming' | 'ongoing' | 'completed';
-type TournamentWithDetails = Tournament;
 
 interface TournamentTabsProps {
-  tournaments: TournamentWithDetails[];
+  tournaments: Tournament[];
   isLoading: boolean;
   activeTab: TournamentStatus;
   setActiveTab: (tab: TournamentStatus) => void;
