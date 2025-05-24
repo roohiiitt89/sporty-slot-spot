@@ -918,7 +918,7 @@ const AdminHome_Mobile: React.FC = () => {
       );
       
       // Prepare Excel data
-      const excelData = filteredBookings.map(booking => {
+      const excelData: any[] = filteredBookings.map(booking => {
         const venue = booking.court?.venue;
         const platformFee = venue?.platform_fee_percent || 7;
         const platformFeeAmount = booking.total_price * (platformFee / 100);
@@ -949,7 +949,7 @@ const AdminHome_Mobile: React.FC = () => {
       }, 0);
       const totalNetRevenue = totalRevenue - totalPlatformFee;
       
-      // Add summary data - fix the TypeScript error by using 'N/A' instead of empty strings
+      // Add summary data - use 'any' type to avoid TypeScript errors
       excelData.push({
         'Booking ID': 'SUMMARY',
         'Date': 'N/A',
@@ -957,7 +957,7 @@ const AdminHome_Mobile: React.FC = () => {
         'Venue': 'N/A',
         'Court': 'N/A',
         'Customer': 'N/A',
-        'Status': 'N/A',
+        'Status': 'TOTAL',
         'Payment Method': 'TOTAL',
         'Total Amount (₹)': totalRevenue,
         'Platform Fee %': 'N/A',
