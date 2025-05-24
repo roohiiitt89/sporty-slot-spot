@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { 
   BarChart, Calendar, Map, Users, Star, MessageCircle, 
   HelpCircle, LogOut, ChevronRight, AlertCircle, Loader2, 
-  Clock, Banknote, BarChart2, Award, CheckCircle
+  Clock, Banknote, BarChart2, Award, CheckCircle, Download
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "react-hot-toast";
+import * as XLSX from 'xlsx';
 
 // Admin quick links with enhanced styling and organization
 const quickLinks = [
@@ -258,7 +259,8 @@ const AdminHome_Mobile: React.FC = () => {
   const [broadcastLoading, setBroadcastLoading] = useState(false);
   const approvedBroadcastIdsRef = useRef<Set<string>>(new Set());
   const [broadcastHistory, setBroadcastHistory] = useState<Record<string, any[]>>({});
-  
+  const [downloadingReport, setDownloadingReport] = useState(false);
+
   // If not on mobile, redirect to desktop admin
   useEffect(() => {
     if (!isMobile) {
@@ -863,6 +865,147 @@ const AdminHome_Mobile: React.FC = () => {
     };
   }, [user, adminVenues]);
 
+  const downloadRevenueReport = async () => {
+    if (!customStartDate || !customEndDate) {
+      toast.error('Please select both start and end dates');
+      return;
+    }
+
+    setDownloadingReport(true);
+    
+    try {
+      const start = format(customStartDate, 'yyyy-MM-dd');
+      const end = format(customEndDate, 'yyyy-MM-dd');
+      
+      // Prepare venue filter for admin
+      const venueIds = adminVenues.map(v => v.venue_id);
+      
+      // Get detailed bookings for the custom date range
+      let bookingsQuery = supabase
+        .from('bookings')
+        .select(`
+          id,
+          booking_date,
+          start_time,
+          end_time,
+          total_price,
+          guest_name,
+          status,
+          payment_method,
+          created_at,
+          court:court_id (
+            name,
+            venue:venue_id (
+              id,
+              name,
+              platform_fee_percent
+            )
+          )
+        `)
+        .gte('booking_date', start)
+        .lte('booking_date', end)
+        .in('status', ['confirmed', 'completed'])
+        .order('booking_date', { ascending: false });
+
+      const { data: bookings, error } = await bookingsQuery;
+      
+      if (error) throw error;
+      
+      // Filter by admin venues if needed
+      const filteredBookings = (bookings || []).filter(b => 
+        b.court?.venue && (!venueIds.length || venueIds.includes(b.court.venue.id))
+      );
+      
+      // Prepare Excel data
+      const excelData = filteredBookings.map(booking => {
+        const venue = booking.court?.venue;
+        const platformFee = venue?.platform_fee_percent || 7;
+        const platformFeeAmount = booking.total_price * (platformFee / 100);
+        const netRevenue = booking.total_price - platformFeeAmount;
+        
+        return {
+          'Booking ID': booking.id,
+          'Date': format(parseISO(booking.booking_date), 'dd-MM-yyyy'),
+          'Time': `${booking.start_time} - ${booking.end_time}`,
+          'Venue': venue?.name || 'N/A',
+          'Court': booking.court?.name || 'N/A',
+          'Customer': booking.guest_name || 'N/A',
+          'Status': booking.status,
+          'Payment Method': booking.payment_method || 'N/A',
+          'Total Amount (₹)': booking.total_price,
+          'Platform Fee %': `${platformFee}%`,
+          'Platform Fee Amount (₹)': platformFeeAmount.toFixed(2),
+          'Net Revenue (₹)': netRevenue.toFixed(2),
+          'Booking Created': format(parseISO(booking.created_at), 'dd-MM-yyyy HH:mm')
+        };
+      });
+      
+      // Add summary row
+      const totalRevenue = filteredBookings.reduce((sum, b) => sum + b.total_price, 0);
+      const totalPlatformFee = filteredBookings.reduce((sum, b) => {
+        const platformFee = b.court?.venue?.platform_fee_percent || 7;
+        return sum + (b.total_price * (platformFee / 100));
+      }, 0);
+      const totalNetRevenue = totalRevenue - totalPlatformFee;
+      
+      // Add summary data
+      excelData.push({
+        'Booking ID': '',
+        'Date': '',
+        'Time': '',
+        'Venue': '',
+        'Court': '',
+        'Customer': '',
+        'Status': '',
+        'Payment Method': 'SUMMARY',
+        'Total Amount (₹)': totalRevenue,
+        'Platform Fee %': '',
+        'Platform Fee Amount (₹)': totalPlatformFee.toFixed(2),
+        'Net Revenue (₹)': totalNetRevenue.toFixed(2),
+        'Booking Created': ''
+      });
+      
+      // Create workbook and worksheet
+      const ws = XLSX.utils.json_to_sheet(excelData);
+      const wb = XLSX.utils.book_new();
+      
+      // Set column widths
+      const colWidths = [
+        { width: 15 }, // Booking ID
+        { width: 12 }, // Date
+        { width: 15 }, // Time
+        { width: 20 }, // Venue
+        { width: 15 }, // Court
+        { width: 15 }, // Customer
+        { width: 12 }, // Status
+        { width: 15 }, // Payment Method
+        { width: 15 }, // Total Amount
+        { width: 15 }, // Platform Fee %
+        { width: 20 }, // Platform Fee Amount
+        { width: 15 }, // Net Revenue
+        { width: 18 }  // Booking Created
+      ];
+      ws['!cols'] = colWidths;
+      
+      // Add worksheet to workbook
+      XLSX.utils.book_append_sheet(wb, ws, 'Revenue Report');
+      
+      // Generate filename
+      const filename = `Revenue_Report_${start}_to_${end}.xlsx`;
+      
+      // Download file
+      XLSX.writeFile(wb, filename);
+      
+      toast.success('Revenue report downloaded successfully!');
+      
+    } catch (error) {
+      console.error('Error generating report:', error);
+      toast.error('Failed to generate revenue report');
+    } finally {
+      setDownloadingReport(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-navy-900 to-navy-800 pb-20">
       {/* Header */}
@@ -1146,6 +1289,33 @@ const AdminHome_Mobile: React.FC = () => {
               </div>
               <div className="text-lg font-bold text-pink-400">₹{customNetRevenue.toFixed(0)}</div>
               <div className="text-xs text-gray-300">Net Revenue (Custom Range)</div>
+              
+              {/* Download Button */}
+              {customStartDate && customEndDate && (
+                <div className="mt-3 pt-2 border-t border-pink-500/30">
+                  <Button
+                    onClick={downloadRevenueReport}
+                    disabled={downloadingReport}
+                    size="sm"
+                    className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white text-xs"
+                  >
+                    {downloadingReport ? (
+                      <>
+                        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                        Generating Report...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-3 h-3 mr-1" />
+                        Download Revenue Report
+                      </>
+                    )}
+                  </Button>
+                  <p className="text-xs text-gray-400 mt-1 text-center">
+                    Excel sheet with booking details & revenue calculations
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>
