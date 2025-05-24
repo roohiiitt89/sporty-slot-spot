@@ -1,11 +1,12 @@
+
 import React, { useState, useEffect } from 'react';
-import { Star, Filter, Search, ArrowUpDown } from 'lucide-react';
+import { Star, Filter, Search, ArrowUpDown, MapPin } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
-// Import BookSlotModal as a named export
 import { BookSlotModal } from '../components/BookSlotModal';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from 'react-hot-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface Sport {
   id: string;
@@ -18,6 +19,7 @@ interface Sport {
 
 const Sports: React.FC = () => {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
   const [selectedSportId, setSelectedSportId] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -80,11 +82,7 @@ const Sports: React.FC = () => {
       }
     } catch (error) {
       console.error('Error fetching sports:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load sports data',
-        variant: 'destructive',
-      });
+      toast.error('Failed to load sports data');
     } finally {
       setLoading(false);
     }
@@ -124,7 +122,6 @@ const Sports: React.FC = () => {
     if (sortOption === 'venues') {
       return (b.venues_count || 0) - (a.venues_count || 0);
     } else {
-      // Sort by popularity (High > Medium > Low)
       const popularityOrder = { High: 3, Medium: 2, Low: 1 };
       return popularityOrder[b.popularity || 'Low'] - popularityOrder[a.popularity || 'Low'];
     }
@@ -134,49 +131,51 @@ const Sports: React.FC = () => {
     <div className="min-h-screen bg-black">
       <Header />
       
-      <div className="bg-gradient-to-b from-[#1e3b2c] to-black pt-32 pb-12 md:pb-16 relative">
-        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1485395037613-e83d5c1f5290?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80')] opacity-10 bg-center bg-cover"></div>
+      <div className="bg-gradient-to-b from-emerald-900/20 to-black pt-20 pb-8 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1485395037613-e83d5c1f5290?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80')] opacity-5 bg-center bg-cover"></div>
         <div className="container mx-auto px-4 relative z-10">
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 text-center">Explore Sports</h1>
-          <p className="text-xl text-white opacity-90 max-w-3xl mx-auto text-center mb-8">
+          <h1 className={`${isMobile ? 'text-2xl' : 'text-4xl md:text-5xl'} font-bold text-white mb-2 text-center`}>
+            Explore Sports
+          </h1>
+          <p className={`${isMobile ? 'text-sm' : 'text-xl'} text-gray-300 max-w-2xl mx-auto text-center mb-6`}>
             Find the perfect sport for your interests and book available venues
           </p>
           
           <div className="max-w-2xl mx-auto">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-5 w-5 text-[#1e3b2c]" />
+                <Search className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-gray-400`} />
               </div>
               <input
                 type="text"
-                placeholder="Search sports by name or description"
+                placeholder="Search sports..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 w-full p-4 rounded-md focus:outline-none focus:ring-2 focus:ring-[#1e3b2c] bg-white backdrop-blur-sm"
+                className={`pl-10 w-full ${isMobile ? 'p-3 text-sm' : 'p-4'} rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-gray-900/80 backdrop-blur-sm text-white border border-emerald-900/30`}
               />
               <button
                 onClick={() => setIsFilterOpen(!isFilterOpen)}
-                className="absolute inset-y-0 right-0 px-4 flex items-center bg-[#1e3b2c] text-white rounded-r-md hover:bg-[#2a4d3a] transition-colors border border-[#1e3b2c]"
+                className={`absolute inset-y-0 right-0 px-3 flex items-center bg-emerald-900/80 text-white rounded-r-lg hover:bg-emerald-800/80 transition-colors border border-emerald-900/30`}
               >
-                <Filter className="h-5 w-5 mr-2" />
-                Filters
+                <Filter className={`${isMobile ? 'h-4 w-4 mr-1' : 'h-5 w-5 mr-2'}`} />
+                {!isMobile && 'Filters'}
               </button>
             </div>
             
             {isFilterOpen && (
-              <div className="mt-4 bg-white/90 backdrop-blur-md p-6 rounded-md shadow-lg animate-fade-in border border-[#1e3b2c]/30">
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-[#1e3b2c] mb-3">Filter by Popularity</h3>
+              <div className="mt-4 bg-gray-900/90 backdrop-blur-md p-4 rounded-lg shadow-lg border border-emerald-900/30">
+                <div className="mb-4">
+                  <h3 className={`${isMobile ? 'text-sm' : 'text-lg'} font-semibold text-emerald-400 mb-3`}>Filter by Popularity</h3>
                   <div className="flex flex-wrap gap-2">
                     {['High', 'Medium', 'Low'].map(popularity => (
                       <button
                         key={popularity}
                         onClick={() => togglePopularityFilter(popularity)}
-                        className={`px-3 py-1 rounded-full text-sm ${
+                        className={`px-3 py-1 rounded-full ${isMobile ? 'text-xs' : 'text-sm'} ${
                           popularityFilter.includes(popularity)
-                            ? 'bg-[#1e3b2c] text-white'
-                            : 'bg-gray-100 text-[#1e3b2c] hover:bg-gray-200'
-                        } transition-colors`}
+                            ? 'bg-emerald-900/80 text-white'
+                            : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'
+                        } transition-colors border border-emerald-900/20`}
                       >
                         {popularity}
                       </button>
@@ -184,18 +183,18 @@ const Sports: React.FC = () => {
                   </div>
                 </div>
                 
-                <div className="flex justify-end">
+                <div className="flex justify-end gap-2">
                   <button
                     onClick={clearFilters}
-                    className="px-4 py-2 text-gray-700 mr-2 hover:text-[#1e3b2c] transition-colors"
+                    className={`px-3 py-1 text-gray-300 hover:text-emerald-400 transition-colors ${isMobile ? 'text-xs' : 'text-sm'}`}
                   >
-                    Clear Filters
+                    Clear
                   </button>
                   <button
                     onClick={() => setIsFilterOpen(false)}
-                    className="px-4 py-2 bg-[#1e3b2c] text-white rounded-md hover:bg-[#2a4d3a] transition-colors"
+                    className={`px-4 py-1 bg-emerald-900/80 text-white rounded-md hover:bg-emerald-800/80 transition-colors ${isMobile ? 'text-xs' : 'text-sm'}`}
                   >
-                    Apply Filters
+                    Apply
                   </button>
                 </div>
               </div>
@@ -204,84 +203,109 @@ const Sports: React.FC = () => {
         </div>
       </div>
       
-      <div className="container mx-auto px-4 py-12">
-        <div className="mb-6 flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-white">
-            {loading ? 'Loading sports...' : `${filteredSports.length} Sports Found`}
+      <div className="container mx-auto px-4 py-6">
+        <div className="mb-4 flex justify-between items-center">
+          <h2 className={`${isMobile ? 'text-lg' : 'text-2xl'} font-bold text-white`}>
+            {loading ? 'Loading...' : `${filteredSports.length} Sports`}
           </h2>
           <button 
             onClick={toggleSortOption}
-            className="px-3 py-1.5 bg-[#1e3b2c] text-white rounded-md hover:bg-[#2a4d3a] transition-colors flex items-center"
+            className={`px-3 py-1.5 bg-emerald-900/80 text-white rounded-md hover:bg-emerald-800/80 transition-colors flex items-center ${isMobile ? 'text-xs' : 'text-sm'}`}
           >
-            <ArrowUpDown className="h-4 w-4 mr-2" />
-            Sort by {sortOption === 'popularity' ? 'Venues' : 'Popularity'}
+            <ArrowUpDown className={`${isMobile ? 'h-3 w-3 mr-1' : 'h-4 w-4 mr-2'}`} />
+            {isMobile ? (sortOption === 'popularity' ? 'Venues' : 'Popular') : `Sort by ${sortOption === 'popularity' ? 'Venues' : 'Popularity'}`}
           </button>
         </div>
         
         {loading ? (
           <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#1e3b2c]"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-emerald-500"></div>
           </div>
         ) : filteredSports.length === 0 ? (
-          <div className="text-center py-16 bg-navy-light rounded-xl border border-[#1e3b2c]/20">
-            <h3 className="text-2xl font-semibold text-white mb-2">No sports found</h3>
-            <p className="text-gray-300 mb-6">Try adjusting your filters or search term</p>
+          <div className="text-center py-12 bg-gray-900/30 rounded-xl border border-emerald-900/20">
+            <h3 className={`${isMobile ? 'text-lg' : 'text-2xl'} font-semibold text-white mb-2`}>No sports found</h3>
+            <p className={`text-gray-300 mb-4 ${isMobile ? 'text-sm' : ''}`}>Try adjusting your search</p>
             <button
               onClick={clearFilters}
-              className="px-6 py-3 bg-[#1e3b2c] text-white rounded-md hover:bg-[#2a4d3a] transition-colors"
+              className={`px-4 py-2 bg-emerald-900/80 text-white rounded-md hover:bg-emerald-800/80 transition-colors ${isMobile ? 'text-sm' : ''}`}
             >
-              Clear All Filters
+              Clear Filters
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className={`grid gap-3 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'}`}>
             {filteredSports.map((sport) => (
               <div
                 key={sport.id}
-                className="bg-navy-light rounded-lg overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 border border-navy/30 hover:border-[#1e3b2c]/50 h-full flex flex-col group"
+                className={`bg-gray-900/50 rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border border-emerald-900/20 hover:border-emerald-700/50 ${isMobile ? 'h-auto' : 'h-full'} flex ${isMobile ? 'flex-row' : 'flex-col'} group backdrop-blur-sm`}
               >
-                <div className="h-48 relative overflow-hidden">
+                <div className={`${isMobile ? 'w-24 h-20' : 'h-36'} relative overflow-hidden flex-shrink-0`}>
                   <img 
                     src={sport.image_url || 'https://images.unsplash.com/photo-1518063319789-7217e6706b04?q=80&w=1000'} 
                     alt={sport.name} 
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
                   
-                  <div className="absolute top-3 right-3 bg-white/90 backdrop-blur px-2 py-1 rounded-full shadow-sm flex items-center">
-                    <span className="text-xs font-bold text-navy">
-                      {sport.venues_count || 0} venues
-                    </span>
-                  </div>
+                  {!isMobile && (
+                    <div className="absolute top-2 right-2 bg-emerald-900/80 backdrop-blur px-2 py-0.5 rounded-full shadow-sm flex items-center">
+                      <MapPin className="w-3 h-3 text-white mr-1" />
+                      <span className="text-xs font-bold text-white">
+                        {sport.venues_count || 0}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 
-                <div className="p-5 flex flex-col flex-grow">
-                  <h3 className="text-lg font-bold text-white mb-2 line-clamp-1 group-hover:text-[#2def80] transition-colors">
-                    {sport.name}
-                  </h3>
-                  
-                  <div className="mb-3 flex items-center">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      sport.popularity === 'High' 
-                        ? 'bg-green-100 text-green-800'
-                        : sport.popularity === 'Medium'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {sport.popularity}
-                    </span>
+                <div className={`${isMobile ? 'p-3 flex-1' : 'p-4'} flex flex-col ${isMobile ? 'justify-center' : 'flex-grow'}`}>
+                  <div className="flex-1">
+                    <h3 className={`${isMobile ? 'text-sm' : 'text-lg'} font-bold text-white mb-1 line-clamp-1 group-hover:text-emerald-400 transition-colors`}>
+                      {sport.name}
+                    </h3>
+                    
+                    {isMobile && (
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                          sport.popularity === 'High' 
+                            ? 'bg-green-900/50 text-green-300 border border-green-700/30'
+                            : sport.popularity === 'Medium'
+                            ? 'bg-yellow-900/50 text-yellow-300 border border-yellow-700/30'
+                            : 'bg-blue-900/50 text-blue-300 border border-blue-700/30'
+                        }`}>
+                          {sport.popularity}
+                        </span>
+                        <div className="flex items-center text-xs text-gray-400">
+                          <MapPin className="w-3 h-3 mr-1" />
+                          {sport.venues_count || 0} venues
+                        </div>
+                      </div>
+                    )}
+                    
+                    {!isMobile && (
+                      <div className="mb-3 flex items-center">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          sport.popularity === 'High' 
+                            ? 'bg-green-900/50 text-green-300 border border-green-700/30'
+                            : sport.popularity === 'Medium'
+                            ? 'bg-yellow-900/50 text-yellow-300 border border-yellow-700/30'
+                            : 'bg-blue-900/50 text-blue-300 border border-blue-700/30'
+                        }`}>
+                          {sport.popularity}
+                        </span>
+                      </div>
+                    )}
                   </div>
                   
-                  <div className="mt-auto pt-4 grid grid-cols-2 gap-2">
+                  <div className={`${isMobile ? 'grid grid-cols-2 gap-1' : 'mt-auto pt-3 grid grid-cols-2 gap-2'}`}>
                     <Link
                       to={`/venues?sport=${sport.id}`}
-                      className="py-2 border border-[#1e3b2c] text-[#2def80] rounded-md text-sm font-medium hover:bg-[#1e3b2c]/20 transition-all text-center"
+                      className={`${isMobile ? 'py-1.5 text-xs' : 'py-2 text-sm'} border border-emerald-700/50 text-emerald-400 rounded-md font-medium hover:bg-emerald-900/20 transition-all text-center`}
                     >
                       Find Venues
                     </Link>
                     <button
                       onClick={() => handleBookNow(sport.id)}
-                      className="py-2 bg-[#1e3b2c] text-white rounded-md text-sm font-medium hover:bg-[#2a4d3a] transition-colors"
+                      className={`${isMobile ? 'py-1.5 text-xs' : 'py-2 text-sm'} bg-emerald-900/80 text-white rounded-md font-medium hover:bg-emerald-800/80 transition-colors`}
                     >
                       Book Now
                     </button>
@@ -292,12 +316,6 @@ const Sports: React.FC = () => {
           </div>
         )}
       </div>
-      
-      <footer className="bg-[#1e3b2c] text-white py-8">
-        <div className="container mx-auto px-4 text-center">
-          <p>&copy; 2025 Grid2Play. All rights reserved.</p>
-        </div>
-      </footer>
       
       {isBookModalOpen && (
         <BookSlotModal 

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -5,9 +6,9 @@ import { useAuth } from '@/context/AuthContext';
 import { format } from 'date-fns';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { toast } from "@/components/ui/use-toast";
-import TournamentHeroSection from '@/components/tournament/TournamentHeroSection';
-import TournamentTabs from '@/components/tournament/TournamentTabs';
+import { toast } from "react-hot-toast";
+import { TournamentHeroSection } from '@/components/tournament/TournamentHeroSection';
+import { TournamentTabs } from '@/components/tournament/TournamentTabs';
 
 interface Tournament {
   id: string;
@@ -49,14 +50,26 @@ const TournamentDetailsPage: React.FC = () => {
 
         if (error) throw error;
 
-        setTournament(data);
+        // Transform the data to match our Tournament interface
+        const tournamentData: Tournament = {
+          id: data.id,
+          slug: data.slug,
+          name: data.name,
+          description: data.description,
+          image_url: data.image_url || '',
+          start_date: data.start_date,
+          end_date: data.end_date,
+          location: data.location || '',
+          entry_fee: data.entry_fee,
+          max_participants: data.max_participants,
+          registration_deadline: data.registration_deadline,
+          is_active: data.is_active
+        };
+
+        setTournament(tournamentData);
       } catch (error) {
         console.error('Error fetching tournament details:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load tournament details.",
-          variant: "destructive",
-        });
+        toast.error("Failed to load tournament details.");
       } finally {
         setLoading(false);
       }
