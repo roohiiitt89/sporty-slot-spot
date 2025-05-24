@@ -1,11 +1,11 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   BarChart, Calendar, Map, Users, Star, MessageCircle, 
   HelpCircle, LogOut, ChevronRight, AlertCircle, Loader2, 
-  Clock, Banknote, BarChart2, Award, CheckCircle, Download
+  Clock, Banknote, BarChart2, Award, CheckCircle, Download,
+  TrendingUp, Activity, DollarSign, Eye
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
@@ -24,51 +24,58 @@ const quickLinks = [
   {
     title: 'Analytics',
     path: '/admin/analytics-mobile',
-    icon: <BarChart className="w-6 h-6 text-indigo-400" />,
+    icon: <BarChart className="w-6 h-6 text-emerald-400" />,
     desc: 'View stats & trends',
-    color: 'from-indigo-600 to-blue-500',
+    color: 'from-emerald-600 to-emerald-500',
+    category: 'insights'
   },
   {
     title: 'Bookings',
     path: '/admin/bookings-mobile',
-    icon: <Calendar className="w-6 h-6 text-emerald-400" />,
+    icon: <Calendar className="w-6 h-6 text-blue-400" />,
     desc: 'Manage all bookings',
-    color: 'from-emerald-500 to-teal-400',
+    color: 'from-blue-500 to-blue-400',
+    category: 'operations'
   },
   {
     title: 'Venues',
     path: '/admin/venues-mobile',
-    icon: <Map className="w-6 h-6 text-pink-400" />,
+    icon: <Map className="w-6 h-6 text-purple-400" />,
     desc: 'Edit your venues',
-    color: 'from-pink-500 to-red-400',
+    color: 'from-purple-500 to-purple-400',
+    category: 'management'
   },
   {
     title: 'Sports',
     path: '/admin/sports-mobile',
-    icon: <Users className="w-6 h-6 text-amber-400" />,
+    icon: <Users className="w-6 h-6 text-orange-400" />,
     desc: 'Manage sports',
-    color: 'from-amber-500 to-orange-400',
+    color: 'from-orange-500 to-orange-400',
+    category: 'management'
   },
   {
     title: 'Reviews',
     path: '/admin/reviews-mobile',
-    icon: <Star className="w-6 h-6 text-purple-400" />,
-    desc: 'See user reviews',
-    color: 'from-purple-500 to-fuchsia-400',
+    icon: <Star className="w-6 h-6 text-yellow-400" />,
+    desc: 'Customer feedback',
+    color: 'from-yellow-500 to-yellow-400',
+    category: 'customer'
   },
   {
     title: 'Messages',
     path: '/admin/messages-mobile',
     icon: <MessageCircle className="w-6 h-6 text-cyan-400" />,
     desc: 'User messages',
-    color: 'from-cyan-500 to-blue-300',
+    color: 'from-cyan-500 to-cyan-400',
+    category: 'customer'
   },
   {
     title: 'Help Desk',
     path: '/admin/help-mobile',
-    icon: <HelpCircle className="w-6 h-6 text-rose-400" />,
+    icon: <HelpCircle className="w-6 h-6 text-pink-400" />,
     desc: 'Support requests',
-    color: 'from-rose-500 to-pink-300',
+    color: 'from-pink-500 to-pink-400',
+    category: 'customer'
   },
 ];
 
@@ -150,27 +157,27 @@ const WeatherWidget: React.FC<{ venueId: string }> = ({ venueId }) => {
     // Simple logic: if any severe, Poor; if rain > 2mm in next 12h, Moderate; else Good
     if (weather.severe && weather.severe.length > 0) return { label: 'Poor', color: 'bg-red-500' };
     if (weather.forecast && weather.forecast.some((f: any) => f.precipitation > 2)) return { label: 'Moderate', color: 'bg-yellow-500' };
-    return { label: 'Good', color: 'bg-green-500' };
+    return { label: 'Good', color: 'bg-emerald-500' };
   }
   const impact = getImpactScore();
 
   return (
-    <Card className="mb-4 cursor-pointer text-xs rounded-xl border border-navy-700/50 bg-navy-800/70" onClick={() => setExpanded(e => !e)}>
+    <Card className="cursor-pointer text-xs rounded-xl border border-emerald-200/20 bg-white/5 backdrop-blur-sm" onClick={() => setExpanded(e => !e)}>
       <CardHeader className="pb-1 flex flex-row items-center justify-between">
-        <CardTitle className="text-base">Weather Forecast</CardTitle>
+        <CardTitle className="text-base text-emerald-700">Weather Forecast</CardTitle>
         {impact && (
           <span className={`text-xs px-2 py-1 rounded ${impact.color} text-white`}>{impact.label} for outdoor play</span>
         )}
       </CardHeader>
       <CardContent className="pt-0 px-2">
-        {loading && <div className="text-xs text-gray-500">Loading weather...</div>}
-        {error && <div className="text-xs text-red-500">{error}</div>}
+        {loading && <div className="text-xs text-gray-600">Loading weather...</div>}
+        {error && <div className="text-xs text-red-600">{error}</div>}
         {weather && (
           <>
             {/* Current Weather */}
             <div className="flex items-center gap-2 mb-1 ml-4">
-              <span className="text-xl font-bold">{Math.round(weather.current.temp)}°C</span>
-              <span className="text-xs text-gray-500">Now</span>
+              <span className="text-xl font-bold text-emerald-700">{Math.round(weather.current.temp)}°C</span>
+              <span className="text-xs text-gray-600">Now</span>
               {weather.severe && weather.severe.length > 0 && (
                 <Badge variant="destructive">Severe Weather</Badge>
               )}
@@ -180,11 +187,11 @@ const WeatherWidget: React.FC<{ venueId: string }> = ({ venueId }) => {
               <div className="flex gap-1 mb-1">
                 {weather.daily.slice(0, 3).map((d: any, i: number) => (
                   <div key={d.date} className="flex flex-col items-center min-w-[48px]">
-                    <span className="text-[10px] text-gray-500 font-medium">{d.day}</span>
-                    <span className="text-base font-bold">{Math.round(d.temp_max)}°</span>
-                    <span className="text-[10px] text-gray-400">{Math.round(d.temp_min)}°</span>
+                    <span className="text-[10px] text-gray-600 font-medium">{d.day}</span>
+                    <span className="text-base font-bold text-emerald-700">{Math.round(d.temp_max)}°</span>
+                    <span className="text-[10px] text-gray-500">{Math.round(d.temp_min)}°</span>
                     <span className="text-xs">{d.icon}</span>
-                    {d.rain > 0 && <span className="text-blue-500 text-[10px]">{d.rain}mm</span>}
+                    {d.rain > 0 && <span className="text-blue-600 text-[10px]">{d.rain}mm</span>}
                   </div>
                 ))}
               </div>
@@ -193,13 +200,13 @@ const WeatherWidget: React.FC<{ venueId: string }> = ({ venueId }) => {
             <div className="flex gap-1 overflow-x-auto pb-1">
               {weather.forecast.slice(0, 12).map((f: any, i: number) => (
                 <div key={f.time} className="flex flex-col items-center min-w-[32px]">
-                  <span className="text-[10px] text-gray-500">{new Date(f.time).getHours()}:00</span>
-                  <span className="font-medium text-xs">{Math.round(f.temp)}°</span>
+                  <span className="text-[10px] text-gray-600">{new Date(f.time).getHours()}:00</span>
+                  <span className="font-medium text-xs text-emerald-700">{Math.round(f.temp)}°</span>
                   {f.precipitation > 0 && (
-                    <span className="text-blue-500 text-[10px]">{f.precipitation}mm</span>
+                    <span className="text-blue-600 text-[10px]">{f.precipitation}mm</span>
                   )}
                   {[95,96,99].includes(f.weathercode) && (
-                    <span className="text-red-500 text-[10px]">Storm</span>
+                    <span className="text-red-600 text-[10px]">Storm</span>
                   )}
                 </div>
               ))}
@@ -207,15 +214,15 @@ const WeatherWidget: React.FC<{ venueId: string }> = ({ venueId }) => {
             {/* Expandable details */}
             {expanded && weather.daily && (
               <div className="mt-2">
-                <div className="text-xs text-gray-400 mb-1">3-Day Details</div>
+                <div className="text-xs text-gray-500 mb-1">3-Day Details</div>
                 <div className="flex gap-2">
                   {weather.daily.slice(0, 3).map((d: any, i: number) => (
-                    <div key={d.date} className="flex flex-col items-center min-w-[80px] p-2 rounded bg-green-600/80 text-white">
+                    <div key={d.date} className="flex flex-col items-center min-w-[80px] p-2 rounded bg-emerald-100 text-emerald-800">
                       <span className="text-xs font-medium">{d.day}</span>
                       <span className="text-lg font-bold">{Math.round(d.temp_max)}° / {Math.round(d.temp_min)}°</span>
                       <span className="text-xs">{d.icon}</span>
-                      <span className="text-xs text-blue-200">Rain: {d.rain}mm</span>
-                      <span className="text-xs text-white/80">{d.summary}</span>
+                      <span className="text-xs text-blue-700">Rain: {d.rain}mm</span>
+                      <span className="text-xs text-emerald-600">{d.summary}</span>
                     </div>
                   ))}
                 </div>
@@ -232,6 +239,7 @@ const AdminHome_Mobile: React.FC = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const [scrolled, setScrolled] = useState(false);
   const [stats, setStats] = useState<QuickStats>({
     todayBookings: 0,
     averageRating: 0,
@@ -261,6 +269,15 @@ const AdminHome_Mobile: React.FC = () => {
   const approvedBroadcastIdsRef = useRef<Set<string>>(new Set());
   const [broadcastHistory, setBroadcastHistory] = useState<Record<string, any[]>>({});
   const [downloadingReport, setDownloadingReport] = useState(false);
+
+  // Scroll handler for header effect
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // If not on mobile, redirect to desktop admin
   useEffect(() => {
@@ -1008,119 +1025,138 @@ const AdminHome_Mobile: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-navy-900 to-navy-800 pb-20">
-      {/* Header */}
-      <header className="sticky top-0 z-10 bg-gradient-to-r from-black/90 to-navy-900/90 backdrop-blur-md shadow-md">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-emerald-50 pb-20">
+      {/* New Header - Similar to normal user mobile view */}
+      <header className={`sticky top-0 z-10 transition-all duration-300 ${
+        scrolled 
+          ? 'bg-emerald-600/95 backdrop-blur-md shadow-lg' 
+          : 'bg-gradient-to-r from-emerald-600 to-emerald-700'
+      }`}>
         <div className="flex items-center justify-between px-4 py-4">
           <div className="flex items-center">
-            <div className="relative w-8 h-8 mr-2">
-              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg transform rotate-3"></div>
-              <div className="absolute inset-0 bg-navy-900 rounded-lg flex items-center justify-center">
-                <span className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-500">G2P</span>
-              </div>
-            </div>
-            <h1 className="text-2xl font-bold text-white tracking-wide">Grid2Play</h1>
+            <h1 className={`text-2xl font-bold transition-colors duration-300 ${
+              scrolled ? 'text-white' : 'text-white'
+            } tracking-wide`}>
+              Admin Panel
+            </h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <div className="flex flex-col items-end">
-              <span className="text-sm text-gray-300 font-medium truncate max-w-[120px]">{user?.user_metadata?.full_name || user?.email || 'Admin'}</span>
-              <span className="text-xs text-indigo-400">Admin Panel</span>
+              <span className={`text-sm font-medium truncate max-w-[120px] transition-colors duration-300 ${
+                scrolled ? 'text-white' : 'text-white'
+              }`}>
+                {user?.user_metadata?.full_name || user?.email || 'Admin'}
+              </span>
+              <span className={`text-xs transition-colors duration-300 ${
+                scrolled ? 'text-emerald-100' : 'text-emerald-100'
+              }`}>
+                Management Dashboard
+              </span>
             </div>
             <button 
               onClick={handleLogout}
-              className="p-1.5 rounded-full bg-navy-800 hover:bg-navy-700 transition-colors"
+              className={`p-2 rounded-full transition-all duration-300 ${
+                scrolled 
+                  ? 'bg-white/20 hover:bg-white/30' 
+                  : 'bg-white/20 hover:bg-white/30'
+              }`}
             >
-              <LogOut className="w-5 h-5 text-gray-400" />
+              <LogOut className="w-5 h-5 text-white" />
             </button>
           </div>
         </div>
       </header>
 
       {/* Welcome Section */}
-      <section className="px-4 pt-6 pb-2">
-        <div className="bg-gradient-to-r from-indigo-500/10 to-purple-500/10 rounded-xl p-4 mb-4 border border-indigo-500/20">
-          <h2 className="text-xl font-semibold text-white mb-1">Welcome, {user?.user_metadata?.full_name?.split(' ')[0] || 'Admin'}!</h2>
-          <p className="text-gray-300 text-sm">Manage your Grid2Play venues and bookings on the go.</p>
+      <section className="px-4 pt-6 pb-4">
+        <div className="bg-gradient-to-r from-emerald-500/10 to-green-500/10 rounded-xl p-4 mb-4 border border-emerald-200/30">
+          <h2 className="text-xl font-semibold text-emerald-800 mb-1">
+            Welcome, {user?.user_metadata?.full_name?.split(' ')[0] || 'Admin'}! 👋
+          </h2>
+          <p className="text-emerald-700/80 text-sm">
+            Manage your Grid2Play venues and bookings efficiently
+          </p>
         </div>
       </section>
 
-      {/* Enhanced Stats Overview with Tabs */}
-      <section className="px-4 mb-4">
+      {/* Key Metrics Dashboard */}
+      <section className="px-4 mb-6">
+        <h3 className="text-lg font-semibold text-emerald-800 mb-3 flex items-center">
+          <Activity className="w-5 h-5 mr-2" />
+          Today's Performance
+        </h3>
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 bg-navy-800/90 rounded-xl">
-            <TabsTrigger value="overview" className="text-xs py-2 data-[state=active]:bg-indigo-500/20">Overview</TabsTrigger>
-            <TabsTrigger value="bookings" className="text-xs py-2 data-[state=active]:bg-indigo-500/20">Bookings</TabsTrigger>
-            <TabsTrigger value="performance" className="text-xs py-2 data-[state=active]:bg-indigo-500/20">Business</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3 bg-emerald-100/70 rounded-xl">
+            <TabsTrigger value="overview" className="text-xs py-2 data-[state=active]:bg-emerald-500 data-[state=active]:text-white">Overview</TabsTrigger>
+            <TabsTrigger value="bookings" className="text-xs py-2 data-[state=active]:bg-emerald-500 data-[state=active]:text-white">Bookings</TabsTrigger>
+            <TabsTrigger value="performance" className="text-xs py-2 data-[state=active]:bg-emerald-500 data-[state=active]:text-white">Revenue</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="overview" className="mt-2">
-            <div className="bg-navy-800/70 rounded-xl p-4 border border-navy-700/50">
-              <h3 className="text-sm uppercase text-indigo-300 font-semibold mb-2 tracking-wider">Quick Status</h3>
+          <TabsContent value="overview" className="mt-3">
+            <div className="bg-white/80 rounded-xl p-4 border border-emerald-100 shadow-sm">
               {stats.isLoading ? (
                 <div className="flex justify-center items-center py-6">
-                  <Loader2 className="h-8 w-8 animate-spin text-indigo-400" />
+                  <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
                 </div>
               ) : (
-                <div className="grid grid-cols-3 gap-2">
-                  <Link to="/admin/bookings-mobile" className="bg-gradient-to-br from-emerald-500/20 to-emerald-700/20 rounded-lg p-2 border border-emerald-500/30">
-                    <div className="text-2xl font-bold text-emerald-400">{stats.todayBookings}</div>
-                    <div className="text-xs text-gray-300">Today's Bookings</div>
+                <div className="grid grid-cols-3 gap-3">
+                  <Link to="/admin/bookings-mobile" className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-lg p-3 border border-emerald-200/50 hover:shadow-md transition-all">
+                    <div className="text-2xl font-bold text-emerald-700">{stats.todayBookings}</div>
+                    <div className="text-xs text-emerald-600 font-medium">Today's Bookings</div>
                   </Link>
-                  <Link to="/admin/reviews-mobile" className="bg-gradient-to-br from-amber-500/20 to-amber-700/20 rounded-lg p-2 border border-amber-500/30">
-                    <div className="text-2xl font-bold text-amber-400">{stats.averageRating}</div>
-                    <div className="text-xs text-gray-300">Avg. Rating</div>
+                  <Link to="/admin/reviews-mobile" className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-lg p-3 border border-amber-200/50 hover:shadow-md transition-all">
+                    <div className="text-2xl font-bold text-amber-700">{stats.averageRating}</div>
+                    <div className="text-xs text-amber-600 font-medium">Avg Rating</div>
                   </Link>
-                  <Link to="/admin/analytics-mobile" className="bg-gradient-to-br from-blue-500/20 to-blue-700/20 rounded-lg p-2 border border-blue-500/30">
-                    <div className="text-2xl font-bold text-blue-400">{stats.occupancyRate}%</div>
-                    <div className="text-xs text-gray-300">Occupancy</div>
+                  <Link to="/admin/analytics-mobile" className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-3 border border-blue-200/50 hover:shadow-md transition-all">
+                    <div className="text-2xl font-bold text-blue-700">{stats.occupancyRate}%</div>
+                    <div className="text-xs text-blue-600 font-medium">Occupancy</div>
                   </Link>
                 </div>
               )}
             </div>
           </TabsContent>
           
-          <TabsContent value="bookings" className="mt-2">
-            <div className="bg-navy-800/70 rounded-xl p-4 border border-navy-700/50">
-              <h3 className="text-sm uppercase text-indigo-300 font-semibold mb-2 tracking-wider">Booking Stats</h3>
+          <TabsContent value="bookings" className="mt-3">
+            <div className="bg-white/80 rounded-xl p-4 border border-emerald-100 shadow-sm">
               {stats.isLoading ? (
                 <div className="flex justify-center items-center py-6">
-                  <Loader2 className="h-8 w-8 animate-spin text-indigo-400" />
+                  <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-2">
-                  <Link to="/admin/bookings-mobile" className="bg-gradient-to-br from-orange-500/20 to-orange-700/20 rounded-lg p-3 border border-orange-500/30">
-                    <Clock className="h-5 w-5 mb-1 text-orange-400" />
-                    <div className="text-lg font-bold text-orange-400">{stats.pendingBookings}</div>
-                    <div className="text-xs text-gray-300">Pending Bookings</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <Link to="/admin/bookings-mobile" className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg p-3 border border-orange-200/50 hover:shadow-md transition-all">
+                    <Clock className="h-5 w-5 mb-2 text-orange-600" />
+                    <div className="text-xl font-bold text-orange-700">{stats.pendingBookings}</div>
+                    <div className="text-xs text-orange-600 font-medium">Pending Approval</div>
                   </Link>
-                  <Link to="/admin/bookings-mobile" className="bg-gradient-to-br from-emerald-500/20 to-emerald-700/20 rounded-lg p-3 border border-emerald-500/30">
-                    <Calendar className="h-5 w-5 mb-1 text-emerald-400" />
-                    <div className="text-lg font-bold text-emerald-400">{stats.upcomingBookings}</div>
-                    <div className="text-xs text-gray-300">Upcoming Bookings</div>
+                  <Link to="/admin/bookings-mobile" className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-lg p-3 border border-emerald-200/50 hover:shadow-md transition-all">
+                    <Calendar className="h-5 w-5 mb-2 text-emerald-600" />
+                    <div className="text-xl font-bold text-emerald-700">{stats.upcomingBookings}</div>
+                    <div className="text-xs text-emerald-600 font-medium">Upcoming (7 days)</div>
                   </Link>
                 </div>
               )}
             </div>
           </TabsContent>
           
-          <TabsContent value="performance" className="mt-2">
-            <div className="bg-navy-800/70 rounded-xl p-4 border border-navy-700/50">
-              <h3 className="text-sm uppercase text-indigo-300 font-semibold mb-2 tracking-wider">Business Performance</h3>
+          <TabsContent value="performance" className="mt-3">
+            <div className="bg-white/80 rounded-xl p-4 border border-emerald-100 shadow-sm">
               {stats.isLoading ? (
                 <div className="flex justify-center items-center py-6">
-                  <Loader2 className="h-8 w-8 animate-spin text-indigo-400" />
+                  <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="bg-gradient-to-br from-green-500/20 to-green-700/20 rounded-lg p-3 border border-green-500/30">
-                    <Banknote className="h-5 w-5 mb-1 text-green-400" />
-                    <div className="text-lg font-bold text-green-400">₹{stats.monthlyRevenue.toFixed(0)}</div>
-                    <div className="text-xs text-gray-300">Net Revenue (after commission)</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-3 border border-green-200/50">
+                    <DollarSign className="h-5 w-5 mb-2 text-green-600" />
+                    <div className="text-xl font-bold text-green-700">₹{todaysNetRevenue.toFixed(0)}</div>
+                    <div className="text-xs text-green-600 font-medium">Today's Net Revenue</div>
                   </div>
-                  <div className="bg-gradient-to-br from-purple-500/20 to-purple-700/20 rounded-lg p-3 border border-purple-500/30">
-                    <Star className="h-5 w-5 mb-1 text-purple-400" />
-                    <div className="text-lg font-bold text-purple-400">{stats.recentReviews}</div>
-                    <div className="text-xs text-gray-300">Recent Reviews</div>
+                  <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-3 border border-purple-200/50">
+                    <Star className="h-5 w-5 mb-2 text-purple-600" />
+                    <div className="text-xl font-bold text-purple-700">{stats.recentReviews}</div>
+                    <div className="text-xs text-purple-600 font-medium">Recent Reviews</div>
                   </div>
                 </div>
               )}
@@ -1129,275 +1165,335 @@ const AdminHome_Mobile: React.FC = () => {
         </Tabs>
       </section>
 
-      {/* Recent Activity Section */}
+      {/* Management Tools - Categorized */}
       <section className="px-4 mb-6">
-        <div className="bg-navy-800/70 rounded-xl p-4 border border-navy-700/50">
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="text-sm uppercase text-indigo-300 font-semibold tracking-wider">Recent Activity</h3>
-            <Button variant="ghost" size="sm" className="h-7 text-xs text-indigo-300 hover:bg-indigo-500/10">View All</Button>
+        <h3 className="text-lg font-semibold text-emerald-800 mb-4 flex items-center">
+          <TrendingUp className="w-5 h-5 mr-2" />
+          Management Tools
+        </h3>
+        
+        {/* Business Insights */}
+        <div className="mb-6">
+          <h4 className="text-sm font-medium text-emerald-700 mb-3 uppercase tracking-wider">📊 Business Insights</h4>
+          <div className="grid grid-cols-2 gap-3">
+            {quickLinks.filter(link => link.category === 'insights').map(link => (
+              <Link
+                to={link.path}
+                key={link.title}
+                className={`rounded-xl shadow-sm bg-gradient-to-br ${link.color} p-4 flex flex-col items-start transition-all hover:shadow-md active:scale-95 relative overflow-hidden group border border-white/20`}
+              >
+                <div className="mb-2 p-2 bg-white/20 rounded-lg backdrop-blur-sm">{React.cloneElement(link.icon)}</div>
+                <div className="text-white font-semibold text-base mb-1">{link.title}</div>
+                <div className="text-xs text-white/90 leading-tight">{link.desc}</div>
+                <ChevronRight className="absolute bottom-3 right-3 w-4 h-4 text-white/70" />
+              </Link>
+            ))}
           </div>
-          
-          {activityLoading ? (
-            <div className="flex justify-center items-center py-6">
-              <Loader2 className="h-6 w-6 animate-spin text-indigo-400" />
-            </div>
-          ) : recentActivity.length === 0 ? (
-            <div className="text-center py-6 text-gray-400">
-              <BarChart2 className="h-8 w-8 mx-auto text-gray-500 mb-2" />
-              <p>No recent activity</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {recentActivity.map((activity) => (
-                <div key={activity.id} className="bg-navy-700/50 p-3 rounded-lg border border-navy-600/50">
-                  <div className="flex justify-between">
-                    <div className="flex items-center">
-                      {activity.type === 'booking' ? (
-                        <Calendar className="h-4 w-4 text-emerald-400 mr-1.5" />
-                      ) : activity.type === 'review' ? (
-                        <Star className="h-4 w-4 text-amber-400 mr-1.5" />
-                      ) : (
-                        <AlertCircle className="h-4 w-4 text-blue-400 mr-1.5" />
-                      )}
-                      <h4 className="text-sm font-medium text-white">{activity.title}</h4>
-                    </div>
-                    <span className="text-xs text-gray-400">
-                      {format(new Date(activity.timestamp), 'MMM d, h:mm a')}
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-300 mt-1">{activity.details}</p>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
-      </section>
 
-      {/* Quick Links */}
-      <section className="px-4">
-        <h3 className="text-sm uppercase text-indigo-300 font-semibold mb-3 tracking-wider">Management</h3>
-        <div className="grid grid-cols-2 gap-3">
-          {quickLinks.map(link => (
-            <Link
-              to={link.path}
-              key={link.title}
-              className={`rounded-xl shadow-lg bg-gradient-to-br ${link.color} p-3.5 flex flex-col items-start transition-transform active:scale-95 relative overflow-hidden group`}
-            >
-              <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              <div className="mb-1.5 p-2 bg-white/20 rounded-lg backdrop-blur-sm">{React.cloneElement(link.icon)}</div>
-              <div className="text-white font-semibold text-base mb-0.5">{link.title}</div>
-              <div className="text-xs text-white/90 leading-tight">{link.desc}</div>
+        {/* Daily Operations */}
+        <div className="mb-6">
+          <h4 className="text-sm font-medium text-emerald-700 mb-3 uppercase tracking-wider">⚡ Daily Operations</h4>
+          <div className="grid grid-cols-2 gap-3">
+            {quickLinks.filter(link => link.category === 'operations').map(link => (
+              <Link
+                to={link.path}
+                key={link.title}
+                className={`rounded-xl shadow-sm bg-gradient-to-br ${link.color} p-4 flex flex-col items-start transition-all hover:shadow-md active:scale-95 relative overflow-hidden group border border-white/20`}
+              >
+                <div className="mb-2 p-2 bg-white/20 rounded-lg backdrop-blur-sm">{React.cloneElement(link.icon)}</div>
+                <div className="text-white font-semibold text-base mb-1">{link.title}</div>
+                <div className="text-xs text-white/90 leading-tight">{link.desc}</div>
+                <ChevronRight className="absolute bottom-3 right-3 w-4 h-4 text-white/70" />
+              </Link>
+            ))}
+            
+            {/* Quick Action Tools */}
+            <Link to="/admin/book-for-customer-mobile" className="rounded-xl shadow-sm bg-gradient-to-br from-cyan-500 to-cyan-400 p-4 flex flex-col items-start transition-all hover:shadow-md active:scale-95 relative overflow-hidden group border border-white/20">
+              <div className="mb-2 p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                <Calendar className="w-6 h-6 text-cyan-400" />
+              </div>
+              <div className="text-white font-semibold text-base mb-1">Book for Customer</div>
+              <div className="text-xs text-white/90 leading-tight">Create bookings</div>
               <ChevronRight className="absolute bottom-3 right-3 w-4 h-4 text-white/70" />
             </Link>
-          ))}
+            
+            <Link to="/admin/block-time-slots-mobile" className="rounded-xl shadow-sm bg-gradient-to-br from-rose-500 to-rose-400 p-4 flex flex-col items-start transition-all hover:shadow-md active:scale-95 relative overflow-hidden group border border-white/20">
+              <div className="mb-2 p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                <Clock className="w-6 h-6 text-rose-400" />
+              </div>
+              <div className="text-white font-semibold text-base mb-1">Block Slots</div>
+              <div className="text-xs text-white/90 leading-tight">Reserve time slots</div>
+              <ChevronRight className="absolute bottom-3 right-3 w-4 h-4 text-white/70" />
+            </Link>
+          </div>
+        </div>
+
+        {/* Venue Management */}
+        <div className="mb-6">
+          <h4 className="text-sm font-medium text-emerald-700 mb-3 uppercase tracking-wider">🏢 Venue Management</h4>
+          <div className="grid grid-cols-2 gap-3">
+            {quickLinks.filter(link => link.category === 'management').map(link => (
+              <Link
+                to={link.path}
+                key={link.title}
+                className={`rounded-xl shadow-sm bg-gradient-to-br ${link.color} p-4 flex flex-col items-start transition-all hover:shadow-md active:scale-95 relative overflow-hidden group border border-white/20`}
+              >
+                <div className="mb-2 p-2 bg-white/20 rounded-lg backdrop-blur-sm">{React.cloneElement(link.icon)}</div>
+                <div className="text-white font-semibold text-base mb-1">{link.title}</div>
+                <div className="text-xs text-white/90 leading-tight">{link.desc}</div>
+                <ChevronRight className="absolute bottom-3 right-3 w-4 h-4 text-white/70" />
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {/* Customer Relations */}
+        <div className="mb-6">
+          <h4 className="text-sm font-medium text-emerald-700 mb-3 uppercase tracking-wider">🤝 Customer Relations</h4>
+          <div className="grid grid-cols-1 gap-3">
+            {quickLinks.filter(link => link.category === 'customer').map(link => (
+              <Link
+                to={link.path}
+                key={link.title}
+                className={`rounded-xl shadow-sm bg-gradient-to-r ${link.color} p-4 flex items-center transition-all hover:shadow-md active:scale-95 relative overflow-hidden group border border-white/20`}
+              >
+                <div className="mr-3 p-2 bg-white/20 rounded-lg backdrop-blur-sm">{React.cloneElement(link.icon)}</div>
+                <div className="flex-1">
+                  <div className="text-white font-semibold text-base">{link.title}</div>
+                  <div className="text-xs text-white/90">{link.desc}</div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-white/70" />
+              </Link>
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* Admin Tools */}
-      <section className="px-4 mt-6">
-        <h3 className="text-sm uppercase text-indigo-300 font-semibold mb-3 tracking-wider">Admin Tools</h3>
-        <div className="grid grid-cols-1 gap-3">
-          <Link to="/admin/book-for-customer-mobile" className="flex items-center p-3 bg-navy-800/80 rounded-xl border border-navy-700/50">
-            <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 mr-3">
-              <Calendar className="w-5 h-5 text-white" />
+      {/* Revenue Analytics */}
+      <section className="px-4 mb-6">
+        <h3 className="text-lg font-semibold text-emerald-800 mb-4 flex items-center">
+          <Banknote className="w-5 h-5 mr-2" />
+          Revenue Analytics
+        </h3>
+        
+        {/* Custom Date Range Revenue */}
+        <div className="bg-white/80 rounded-xl p-4 border border-emerald-100 shadow-sm mb-4">
+          <h4 className="text-base font-medium text-emerald-700 mb-3">Custom Date Range Analysis</h4>
+          <div className="space-y-3">
+            <div className="flex gap-2">
+              <input 
+                type="date" 
+                value={customStartDate ? format(customStartDate, 'yyyy-MM-dd') : ''} 
+                onChange={e => setCustomStartDate(e.target.value ? new Date(e.target.value) : null)} 
+                className="bg-emerald-50 text-emerald-800 rounded-lg px-3 py-2 text-sm border border-emerald-200 flex-1" 
+              />
+              <span className="text-emerald-600 self-center text-sm">to</span>
+              <input 
+                type="date" 
+                value={customEndDate ? format(customEndDate, 'yyyy-MM-dd') : ''} 
+                onChange={e => setCustomEndDate(e.target.value ? new Date(e.target.value) : null)} 
+                className="bg-emerald-50 text-emerald-800 rounded-lg px-3 py-2 text-sm border border-emerald-200 flex-1" 
+              />
             </div>
-            <div className="flex-1">
-              <div className="text-white font-medium">Book for Customer</div>
-              <div className="text-xs text-gray-400">Create bookings on behalf of customers</div>
+            
+            <div className="bg-gradient-to-r from-emerald-100 to-green-100 rounded-lg p-3 border border-emerald-200">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-lg font-bold text-emerald-800">₹{customNetRevenue.toFixed(0)}</div>
+                <Banknote className="h-5 w-5 text-emerald-600" />
+              </div>
+              <div className="text-sm text-emerald-700 font-medium">Net Revenue (After Commission)</div>
             </div>
-            <ChevronRight className="w-5 h-5 text-gray-500" />
-          </Link>
-          
-          <Link to="/admin/block-time-slots-mobile" className="flex items-center p-3 bg-navy-800/80 rounded-xl border border-navy-700/50">
-            <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-gradient-to-br from-rose-500 to-pink-600 mr-3">
-              <Calendar className="w-5 h-5 text-white" />
-            </div>
-            <div className="flex-1">
-              <div className="text-white font-medium">Block Time Slots</div>
-              <div className="text-xs text-gray-400">Reserve slots for maintenance or events</div>
-            </div>
-            <ChevronRight className="w-5 h-5 text-gray-500" />
-          </Link>
+            
+            {/* Download Button */}
+            {customStartDate && customEndDate && (
+              <div className="pt-2 border-t border-emerald-200">
+                <Button
+                  onClick={downloadRevenueReport}
+                  disabled={downloadingReport}
+                  size="sm"
+                  className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white"
+                >
+                  {downloadingReport ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Generating Report...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4 mr-2" />
+                      Download Revenue Report
+                    </>
+                  )}
+                </Button>
+                <p className="text-xs text-emerald-600 mt-2 text-center">
+                  Excel sheet with detailed booking analytics & revenue calculations
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </section>
-      
-      {/* Performance Overview */}
-      <section className="px-4 mt-6">
-        <h3 className="text-sm uppercase text-indigo-300 font-semibold mb-3 tracking-wider">Performance Highlights</h3>
-        <div className="bg-navy-800/70 rounded-xl p-4 border border-navy-700/50">
+
+      {/* Performance Insights */}
+      <section className="px-4 mb-6">
+        <h3 className="text-lg font-semibold text-emerald-800 mb-4 flex items-center">
+          <Award className="w-5 h-5 mr-2" />
+          Performance Insights
+        </h3>
+        
+        <div className="bg-white/80 rounded-xl p-4 border border-emerald-100 shadow-sm">
           <div className="flex justify-between items-center mb-4">
-            <div className="flex items-center">
-              <Award className="w-5 h-5 text-amber-400 mr-2" />
-              <h4 className="text-white font-medium">Most Popular Courts</h4>
-            </div>
-            <Link to="/admin/analytics-mobile" className="text-xs text-indigo-400">View All</Link>
+            <h4 className="text-base font-medium text-emerald-700">Top Performing Courts</h4>
+            <Link to="/admin/analytics-mobile" className="text-sm text-emerald-600 hover:text-emerald-700">View All</Link>
           </div>
           
           {courtDataLoading || stats.isLoading ? (
             <div className="flex justify-center items-center py-4">
-              <Loader2 className="h-6 w-6 animate-spin text-indigo-400" />
+              <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
             </div>
           ) : popularCourts.length === 0 ? (
-            <div className="text-center py-4 text-gray-500">
+            <div className="text-center py-4 text-emerald-600">
               <p>No booking data available</p>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {popularCourts.map((court, index) => (
-                <div key={index} className="flex justify-between bg-navy-700/40 p-2 rounded">
-                  <span className="text-sm text-gray-300">{court.court_name}</span>
-                  <span className="text-sm font-medium text-emerald-400">{court.bookings_percentage}% booked</span>
+                <div key={index} className="flex justify-between items-center bg-emerald-50 p-3 rounded-lg">
+                  <span className="text-sm font-medium text-emerald-800">{court.court_name}</span>
+                  <span className="text-sm font-bold text-emerald-600">{court.bookings_percentage}% utilized</span>
                 </div>
               ))}
             </div>
           )}
         </div>
       </section>
-      
-      {/* Today's Net Revenue */}
-      <section className="px-4 mt-6">
-        <h3 className="text-sm uppercase text-indigo-300 font-semibold mb-3 tracking-wider">Today's Net Revenue</h3>
-        <div className="bg-navy-800/70 rounded-xl p-4 border border-navy-700/50">
-          {stats.isLoading ? (
+
+      {/* Recent Activity */}
+      <section className="px-4 mb-6">
+        <h3 className="text-lg font-semibold text-emerald-800 mb-4 flex items-center">
+          <Activity className="w-5 h-5 mr-2" />
+          Recent Activity
+        </h3>
+        
+        <div className="bg-white/80 rounded-xl p-4 border border-emerald-100 shadow-sm">
+          {activityLoading ? (
             <div className="flex justify-center items-center py-6">
-              <Loader2 className="h-8 w-8 animate-spin text-indigo-400" />
+              <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
+            </div>
+          ) : recentActivity.length === 0 ? (
+            <div className="text-center py-6 text-emerald-600">
+              <Activity className="h-8 w-8 mx-auto text-emerald-400 mb-2" />
+              <p>No recent activity</p>
             </div>
           ) : (
-            <div className="bg-gradient-to-br from-blue-500/20 to-blue-700/20 rounded-lg p-3 border border-blue-500/30 mt-2">
-              <Banknote className="h-5 w-5 mb-1 text-blue-400" />
-              <div className="text-lg font-bold text-blue-400">₹{todaysNetRevenue.toFixed(0)}</div>
-              <div className="text-xs text-gray-300">Today's Net Revenue</div>
-            </div>
-          )}
-        </div>
-      </section>
-      
-      {/* Custom Date Range Net Revenue */}
-      <section className="px-4 mt-6">
-        <h3 className="text-sm uppercase text-indigo-300 font-semibold mb-3 tracking-wider">Custom Date Range Net Revenue</h3>
-        <div className="bg-navy-800/70 rounded-xl p-4 border border-navy-700/50">
-          {stats.isLoading ? (
-            <div className="flex justify-center items-center py-6">
-              <Loader2 className="h-8 w-8 animate-spin text-indigo-400" />
-            </div>
-          ) : (
-            <div className="bg-gradient-to-br from-pink-500/20 to-pink-700/20 rounded-lg p-3 border border-pink-500/30 mt-2">
-              <Banknote className="h-5 w-5 mb-1 text-pink-400" />
-              <div className="flex items-center gap-2 mb-1">
-                <input type="date" value={customStartDate ? format(customStartDate, 'yyyy-MM-dd') : ''} onChange={e => setCustomStartDate(e.target.value ? new Date(e.target.value) : null)} className="bg-navy-900 text-white rounded px-2 py-1 text-xs" />
-                <span className="text-gray-400">to</span>
-                <input type="date" value={customEndDate ? format(customEndDate, 'yyyy-MM-dd') : ''} onChange={e => setCustomEndDate(e.target.value ? new Date(e.target.value) : null)} className="bg-navy-900 text-white rounded px-2 py-1 text-xs" />
-              </div>
-              <div className="text-lg font-bold text-pink-400">₹{customNetRevenue.toFixed(0)}</div>
-              <div className="text-xs text-gray-300">Net Revenue (Custom Range)</div>
-              
-              {/* Download Button */}
-              {customStartDate && customEndDate && (
-                <div className="mt-3 pt-2 border-t border-pink-500/30">
-                  <Button
-                    onClick={downloadRevenueReport}
-                    disabled={downloadingReport}
-                    size="sm"
-                    className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white text-xs"
-                  >
-                    {downloadingReport ? (
-                      <>
-                        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                        Generating Report...
-                      </>
-                    ) : (
-                      <>
-                        <Download className="w-3 h-3 mr-1" />
-                        Download Revenue Report
-                      </>
-                    )}
-                  </Button>
-                  <p className="text-xs text-gray-400 mt-1 text-center">
-                    Excel sheet with booking details & revenue calculations
-                  </p>
+            <div className="space-y-3">
+              {recentActivity.slice(0, 5).map((activity) => (
+                <div key={activity.id} className="bg-emerald-50/50 p-3 rounded-lg border border-emerald-100">
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center flex-1">
+                      {activity.type === 'booking' ? (
+                        <Calendar className="h-4 w-4 text-emerald-600 mr-2 flex-shrink-0" />
+                      ) : activity.type === 'review' ? (
+                        <Star className="h-4 w-4 text-amber-500 mr-2 flex-shrink-0" />
+                      ) : (
+                        <AlertCircle className="h-4 w-4 text-blue-500 mr-2 flex-shrink-0" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <h4 className="text-sm font-medium text-emerald-800 truncate">{activity.title}</h4>
+                        <p className="text-xs text-emerald-600 mt-1">{activity.details}</p>
+                      </div>
+                    </div>
+                    <span className="text-xs text-emerald-500 ml-2 flex-shrink-0">
+                      {format(new Date(activity.timestamp), 'MMM d, h:mm a')}
+                    </span>
+                  </div>
                 </div>
-              )}
+              ))}
             </div>
           )}
         </div>
       </section>
 
-      {/* Weather Widget - moved below custom net revenue */}
+      {/* Weather Widget - Enhanced Design */}
       {adminVenues[0] && (
-        <section className="px-4 mt-6">
+        <section className="px-4 mb-6">
+          <h3 className="text-lg font-semibold text-emerald-800 mb-4 flex items-center">
+            <Eye className="w-5 h-5 mr-2" />
+            Weather Conditions
+          </h3>
           <WeatherWidget venueId={adminVenues[0].venue_id} />
         </section>
       )}
       
       {/* Venue Subscribers & Broadcasts Section */}
-      <section className="px-4 mt-6">
-        <h3 className="text-sm uppercase text-indigo-300 font-semibold mb-3 tracking-wider">Venue Subscribers & Broadcasts</h3>
+      <section className="px-4 mb-6">
+        <h3 className="text-lg font-semibold text-emerald-800 mb-4 flex items-center">
+          <MessageCircle className="w-5 h-5 mr-2" />
+          Customer Communications
+        </h3>
         <div className="space-y-4">
           {adminVenues.map(v => (
-            <div key={v.venue_id} className="bg-navy-800/70 rounded-xl p-4 border border-navy-700/50 flex flex-col md:flex-row md:items-center md:justify-between">
-              <div className="w-full">
-                <div className="text-white font-semibold text-lg mb-1">{venuesWithStats.find(venue => venue.id === v.venue_id)?.name || 'Venue'}</div>
-                <div className="text-xs text-gray-400 mb-2">Subscribers: <span className="text-emerald-400 font-bold">{venueSubscribers[v.venue_id] || 0}</span></div>
-                {/* Broadcast History Table */}
-                <div className="mt-2">
-                  <div className="text-xs text-gray-300 mb-1 font-semibold">Previous Broadcasts</div>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full text-xs text-left">
-                      <thead>
-                        <tr>
-                          <th className="pr-2 pb-1 font-medium">Title</th>
-                          <th className="pr-2 pb-1 font-medium">Message</th>
-                          <th className="pr-2 pb-1 font-medium">Status</th>
-                          <th className="pr-2 pb-1 font-medium">Time</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(broadcastHistory[v.venue_id] || []).slice(0, 5).map((b) => (
-                          <tr key={b.id}>
-                            <td className="pr-2 py-1 text-white max-w-[120px] truncate">{b.title}</td>
-                            <td className="pr-2 py-1 text-gray-300 max-w-[180px] truncate">{b.message}</td>
-                            <td className="pr-2 py-1">
-                              {b.approved ? (
-                                <span className="flex items-center text-green-400 font-semibold"><CheckCircle className="w-4 h-4 mr-1" /> Approved</span>
-                              ) : (
-                                <span className="flex items-center text-yellow-400 font-semibold"><Clock className="w-4 h-4 mr-1" /> Sent</span>
-                              )}
-                            </td>
-                            <td className="pr-2 py-1 text-gray-400">{new Date(b.created_at).toLocaleString()}</td>
-                          </tr>
-                        ))}
-                        {(broadcastHistory[v.venue_id] || []).length === 0 && (
-                          <tr><td colSpan={4} className="text-gray-500 py-2">No broadcasts yet</td></tr>
-                        )}
-                      </tbody>
-                    </table>
+            <div key={v.venue_id} className="bg-white/80 rounded-xl p-4 border border-emerald-100 shadow-sm">
+              <div className="flex flex-col space-y-3">
+                <div>
+                  <div className="text-emerald-800 font-semibold text-lg">{venuesWithStats.find(venue => venue.id === v.venue_id)?.name || 'Venue'}</div>
+                  <div className="text-sm text-emerald-600">Subscribers: <span className="text-emerald-700 font-bold">{venueSubscribers[v.venue_id] || 0}</span></div>
+                </div>
+                
+                {/* Broadcast History */}
+                <div>
+                  <div className="text-sm text-emerald-700 mb-2 font-medium">Recent Broadcasts</div>
+                  <div className="bg-emerald-50 rounded-lg p-3 max-h-32 overflow-y-auto">
+                    {(broadcastHistory[v.venue_id] || []).slice(0, 3).map((b) => (
+                      <div key={b.id} className="text-xs border-b border-emerald-100 pb-2 mb-2 last:border-b-0 last:mb-0">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-emerald-800 truncate">{b.title}</div>
+                            <div className="text-emerald-600 truncate">{b.message}</div>
+                          </div>
+                          <div className="ml-2 flex-shrink-0">
+                            {b.approved ? (
+                              <span className="text-green-600 text-xs font-medium">✓ Sent</span>
+                            ) : (
+                              <span className="text-yellow-600 text-xs font-medium">⏳ Pending</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {(broadcastHistory[v.venue_id] || []).length === 0 && (
+                      <div className="text-emerald-500 text-xs">No broadcasts yet</div>
+                    )}
                   </div>
                 </div>
+                
+                <Button
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  onClick={() => setBroadcastModal({ open: true, venueId: v.venue_id })}
+                >
+                  Send Notification
+                </Button>
               </div>
-              <Button
-                className="mt-2 md:mt-0"
-                onClick={() => setBroadcastModal({ open: true, venueId: v.venue_id })}
-              >
-                Send Notification
-              </Button>
             </div>
           ))}
         </div>
+        
         <Dialog open={broadcastModal.open} onOpenChange={open => setBroadcastModal({ open, venueId: open ? broadcastModal.venueId : null })}>
-          <DialogContent>
+          <DialogContent className="bg-white">
             <DialogHeader>
-              <DialogTitle>Send Broadcast Notification</DialogTitle>
+              <DialogTitle className="text-emerald-800">Send Broadcast Notification</DialogTitle>
             </DialogHeader>
-            <div className="space-y-2">
+            <div className="space-y-3">
               <input
-                className="w-full px-3 py-2 rounded bg-navy-900 text-white border border-navy-700"
+                className="w-full px-3 py-2 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                 placeholder="Title"
                 value={broadcastTitle}
                 onChange={e => setBroadcastTitle(e.target.value)}
                 maxLength={80}
               />
               <textarea
-                className="w-full px-3 py-2 rounded bg-navy-900 text-white border border-navy-700"
+                className="w-full px-3 py-2 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                 placeholder="Message"
                 value={broadcastMessage}
                 onChange={e => setBroadcastMessage(e.target.value)}
@@ -1406,7 +1502,11 @@ const AdminHome_Mobile: React.FC = () => {
               />
             </div>
             <DialogFooter>
-              <Button onClick={handleSendBroadcast} disabled={broadcastLoading || !broadcastTitle || !broadcastMessage}>
+              <Button 
+                onClick={handleSendBroadcast} 
+                disabled={broadcastLoading || !broadcastTitle || !broadcastMessage}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
                 {broadcastLoading ? 'Sending...' : 'Send'}
               </Button>
               <Button variant="ghost" onClick={() => setBroadcastModal({ open: false, venueId: null })}>
@@ -1418,9 +1518,9 @@ const AdminHome_Mobile: React.FC = () => {
       </section>
       
       {/* Footer */}
-      <footer className="px-4 py-6 mt-8 text-center">
-        <p className="text-xs text-gray-500">Grid2Play Admin v1.0</p>
-        <p className="text-xs text-gray-600 mt-1">&copy; {new Date().getFullYear()} All rights reserved</p>
+      <footer className="px-4 py-6 mt-8 text-center bg-emerald-50/50">
+        <p className="text-sm text-emerald-600 font-medium">Grid2Play Admin Dashboard</p>
+        <p className="text-xs text-emerald-500 mt-1">&copy; {new Date().getFullYear()} All rights reserved</p>
       </footer>
     </div>
   );
