@@ -107,8 +107,11 @@ export type Database = {
           guest_name: string | null
           guest_phone: string | null
           id: string
+          payment_hold_until: string | null
           payment_method: string | null
           payment_reference: string | null
+          payment_released: boolean
+          payment_released_at: string | null
           payment_status: string | null
           start_time: string
           status: Database["public"]["Enums"]["booking_status"]
@@ -125,8 +128,11 @@ export type Database = {
           guest_name?: string | null
           guest_phone?: string | null
           id?: string
+          payment_hold_until?: string | null
           payment_method?: string | null
           payment_reference?: string | null
+          payment_released?: boolean
+          payment_released_at?: string | null
           payment_status?: string | null
           start_time: string
           status?: Database["public"]["Enums"]["booking_status"]
@@ -143,8 +149,11 @@ export type Database = {
           guest_name?: string | null
           guest_phone?: string | null
           id?: string
+          payment_hold_until?: string | null
           payment_method?: string | null
           payment_reference?: string | null
+          payment_released?: boolean
+          payment_released_at?: string | null
           payment_status?: string | null
           start_time?: string
           status?: Database["public"]["Enums"]["booking_status"]
@@ -424,31 +433,43 @@ export type Database = {
       }
       notifications: {
         Row: {
+          approved: boolean | null
           created_at: string
           id: string
           message: string
           metadata: Json | null
           read_status: boolean
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           title: string
           type: string | null
           user_id: string | null
         }
         Insert: {
+          approved?: boolean | null
           created_at?: string
           id?: string
           message: string
           metadata?: Json | null
           read_status?: boolean
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           title: string
           type?: string | null
           user_id?: string | null
         }
         Update: {
+          approved?: boolean | null
           created_at?: string
           id?: string
           message?: string
           metadata?: Json | null
           read_status?: boolean
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           title?: string
           type?: string | null
           user_id?: string | null
@@ -1432,6 +1453,18 @@ export type Database = {
               p_total_price: number
               p_guest_name?: string
               p_guest_phone?: string
+            }
+          | {
+              p_court_id: string
+              p_user_id: string
+              p_booking_date: string
+              p_start_time: string
+              p_end_time: string
+              p_total_price: number
+              p_guest_name?: string
+              p_guest_phone?: string
+              p_booked_by_admin_id?: string
+              p_payment_hold_until?: string
             }
           | {
               p_court_id: string
